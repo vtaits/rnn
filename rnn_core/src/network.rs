@@ -1,21 +1,17 @@
 use ndarray::{Array1, Array2};
-pub struct NetworkParams {
-  /// Width in neurons of one field
-  pub field_width: usize,
-  /// Height in neurons of one field
-  pub field_height: usize,
-  /// Width in fields of one layer
-  pub layer_width: usize,
-  // Height in fields of one layer
-  pub layer_height: usize,
-}
+
+use crate::{get_synapse_mask::get_synapse_mask, spiral::get_next_field, structures::{NetworkParams, SynapseMask, SynapseParams}};
 
 struct ComputedParams {
-  // number of neurons
+  // number of neurons in one field
   field_size: usize,
   field_width: usize,
   // number of neurons in one row of fields
   row_size: usize,
+  // number of neurons in one row of neurons
+  row_width: usize,
+  // number of neurons in one column of neurons
+  column_height: usize,
 }
 
 // TO DO: bit-vec / bitfield
@@ -54,29 +50,75 @@ fn get_neuron_index(
   return layer_offset + field_offset;
 }
 
-fn get_next_field(params: &NetworkParams, field_x: usize, field_y: usize) -> (usize, usize) {
-  let layer_2_to_1_x = if field_y % 2 == 0 {
-    if field_x == params.layer_width - 1 { field_x } else { field_x + 1 }
-  } else {
-    if field_x == 0 { field_x } else { field_x - 1 }
-  };
+fn get_neuron_coordinates(
+  params: &NetworkParams,
+  layer_x: usize,
+  layer_y: usize,
+  neuron_in_field_x: usize,
+  neuron_in_field_y: usize,
+) -> (usize, usize) {
+  let layer_x_offset = params.field_width * layer_x;
+  let layer_y_offset = params.field_height * layer_y;
 
-  let layer_2_to_1_y = if field_y % 2 == 0 {
-    if field_x == params.layer_width - 1 {
-      if field_y == params.layer_height - 1 { 0 } else { field_y + 1 }
-    } else { field_y }
-  } else {
-    if field_x == 0 {
-      if field_y == params.layer_height - 1 { 0 } else { field_y + 1 }
-    } else { field_y }
-  };
+  let field_x_offset = neuron_in_field_x;
+  let field_y_offset = neuron_in_field_y;
 
-  return (layer_2_to_1_x, layer_2_to_1_y);
+  return (layer_x_offset + field_x_offset, layer_y_offset + field_y_offset);
+}
+
+fn get_neuron_index_by_coordinates(
+  params: &NetworkParams,
+  computed_params: &ComputedParams,
+  neuron_x: usize,
+  neuron_y: usize,
+) -> usize {
+  let neuron_in_field_x = neuron_x % params.field_width;
+  let neuron_in_field_y = neuron_y % params.field_height;
+  
+  let layer_x = (neuron_x - neuron_in_field_x) / params.field_width;
+  let layer_y = (neuron_y - neuron_in_field_y) / params.field_height;
+
+  return get_neuron_index(computed_params, layer_x, layer_y, neuron_in_field_x, neuron_in_field_y);
+}
+
+fn apply_mask(
+  params: &NetworkParams,
+  computed_params: &ComputedParams,
+  base_neuron_index: usize,
+  weights: &mut Array2<f32>,
+  mask: &SynapseMask,
+  x: usize,
+  y: usize,
+) {
+  for iter_x in 0..mask.size {
+    let offset_x = iter_x as i32 - mask.offset as i32;
+    let neuron_x = (x as i32) + offset_x;
+
+    if neuron_x < 0 || (neuron_x as usize) > computed_params.row_width - 1 {
+      continue;
+    }
+    
+    for iter_y in 0..mask.size {
+      let offset_y = iter_y as i32 - mask.offset as i32;
+      let neuron_y = (y as i32) + offset_y;
+  
+      if neuron_y < 0 || (neuron_y as usize) > computed_params.column_height - 1 {
+        continue;
+      }
+
+      let target_neuron_index = get_neuron_index_by_coordinates(params, computed_params, neuron_x as usize, neuron_y as usize);
+
+      let value = mask.mask[[iter_x, iter_y]];
+
+      weights[[target_neuron_index, base_neuron_index]] = value;
+    }
+  }
 }
 
 fn set_initial_connections(
   computed_params: &ComputedParams,
   params: &NetworkParams,
+  mask: &SynapseMask,
 ) -> (
   // weights of synapses from the first layer to the second layer
   Array2<f32>,
@@ -92,15 +134,17 @@ fn set_initial_connections(
     for layer_x in 0..params.layer_width {
       let (layer_2_to_1_x, layer_2_to_1_y) = get_next_field(&params, layer_x, layer_y);
 
-      println!("{} {} -> {}, {}", layer_x, layer_y, layer_2_to_1_x, layer_2_to_1_y);
-
       for neuron_in_field_y in 0..params.field_height {
         for neuron_in_field_x in 0..params.field_width {
           let neuron_index = get_neuron_index(computed_params, layer_x, layer_y, neuron_in_field_x, neuron_in_field_y);
-          let neuron_2_to_1_index = get_neuron_index(computed_params, layer_2_to_1_x, layer_2_to_1_y, neuron_in_field_x, neuron_in_field_y);
 
-          weights_1_to_2[[neuron_index, neuron_index]] = 1.0;
-          weights_2_to_1[[neuron_2_to_1_index, neuron_index]] = 1.0;
+          let (x, y) = get_neuron_coordinates(params, layer_x, layer_y, neuron_in_field_x, neuron_in_field_y);
+
+          apply_mask(params, computed_params, neuron_index, &mut weights_1_to_2, mask, x, y);
+
+          let (x_2_to_1, y_2_to_1) = get_neuron_coordinates(params, layer_2_to_1_x, layer_2_to_1_y, neuron_in_field_x, neuron_in_field_y);
+
+          apply_mask(params, computed_params, neuron_index, &mut weights_2_to_1, mask, x_2_to_1, y_2_to_1);
         }
       }
     }
@@ -113,7 +157,10 @@ fn set_initial_connections(
 }
 
 impl Network {
-  pub fn new(params: &NetworkParams) -> Network {
+  pub fn new(
+    params: &NetworkParams,
+    synapse_params: &SynapseParams,
+  ) -> Network {
     let NetworkParams {
       field_width,
       field_height,
@@ -123,6 +170,8 @@ impl Network {
 
     let field_size = field_width * field_height;
     let row_size = field_size * layer_width;
+    let row_width = field_width * layer_width;
+    let column_height = field_height * layer_height;
 
     let layer_size = field_size * layer_width * layer_height;
 
@@ -133,9 +182,13 @@ impl Network {
       field_size,
       field_width: *field_width,
       row_size,
+      row_width,
+      column_height,
     };
 
-    let (weights_1_to_2, weights_2_to_1) = set_initial_connections(&computed_params, &params);
+    let mask = get_synapse_mask(synapse_params);
+
+    let (weights_1_to_2, weights_2_to_1) = set_initial_connections(&computed_params, &params, &mask);
 
     return Network {
       computed_params,
@@ -192,7 +245,7 @@ impl Network {
           for neuron_in_field_x in 0..self.field_width {
             let neuron_index = get_neuron_index(&self.computed_params, layer_x, layer_y, neuron_in_field_x, neuron_in_field_y);
 
-            print!("{}", if layer[[neuron_index]] == 1.0 { "+" } else { "." });
+            print!("{} ", layer[[neuron_index]]);
           }
 
           print!(" ");
