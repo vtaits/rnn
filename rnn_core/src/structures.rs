@@ -3,6 +3,7 @@ use ndarray::Array2;
 pub struct SynapseParams {
     pub alpha: f32,
     pub h: u8,
+    pub threshold: f32,
 }
 
 pub struct NetworkParams {

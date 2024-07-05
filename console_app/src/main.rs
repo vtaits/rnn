@@ -36,6 +36,7 @@ fn main() {
     let synapse_params = SynapseParams {
         alpha: 3.0,
         h: 2,
+        threshold: 0.5,
     };
 
     let capacity = params.field_width * params.field_height;

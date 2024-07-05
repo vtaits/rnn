@@ -1,6 +1,6 @@
 use ndarray::{Array1, Array2};
 
-use crate::{get_synapse_mask::get_synapse_mask, spiral::get_next_field, structures::{NetworkParams, SynapseMask, SynapseParams}};
+use crate::{apply_synapses::{apply_synapses, build_kernel, CompiledKernel}, get_synapse_mask::get_synapse_mask, spiral::get_next_field, structures::{NetworkParams, SynapseMask, SynapseParams}};
 
 struct ComputedParams {
   // number of neurons in one field
@@ -19,6 +19,8 @@ pub struct Network {
   computed_params: ComputedParams,
   field_width: usize,
   field_height: usize,
+  // compiled kernel for opencl computations
+  kernel: CompiledKernel,
   layer_width: usize,
   layer_height: usize,
   // number of neurons
@@ -29,8 +31,8 @@ pub struct Network {
   neurons_1: Array1<f32>,
   // neuron states at the second layer
   neurons_2: Array1<f32>,
-  // number of neurons in one row of fields
-  row_size: usize,
+  // threshold of neuron firing
+  threshold: f32,
   // weights of synapses from the first layer to the second layer
   weights_1_to_2: Array2<f32>,
   // weights of synapses from the second layer to the first layer
@@ -190,17 +192,20 @@ impl Network {
 
     let (weights_1_to_2, weights_2_to_1) = set_initial_connections(&computed_params, &params, &mask);
 
+    let kernel = build_kernel(layer_size).unwrap();
+
     return Network {
       computed_params,
       field_width: *field_width,
       field_height: *field_height,
+      kernel,
       layer_width: *layer_width,
       layer_height: *layer_height,
       field_size,
       layer_size,
       neurons_1,
       neurons_2,
-      row_size,
+      threshold: synapse_params.threshold,
       weights_1_to_2,
       weights_2_to_1,
     };
@@ -221,8 +226,8 @@ impl Network {
       self.neurons_1[[pos]] = 0.0;
     }
 
-    let neurons_2_next: Array1<f32>  = self.weights_1_to_2.dot(&self.neurons_1);
-    let neurons_1_next: Array1<f32>  = self.weights_2_to_1.dot(&self.neurons_2);
+    let neurons_2_next = apply_synapses(&self.kernel, self.layer_size, &self.weights_1_to_2, &self.neurons_1, self.threshold).unwrap();
+    let neurons_1_next = apply_synapses(&self.kernel, self.layer_size, &self.weights_2_to_1, &self.neurons_2, self.threshold).unwrap();
 
     self.neurons_1 = neurons_1_next;
     self.neurons_2 = neurons_2_next;
@@ -245,7 +250,7 @@ impl Network {
           for neuron_in_field_x in 0..self.field_width {
             let neuron_index = get_neuron_index(&self.computed_params, layer_x, layer_y, neuron_in_field_x, neuron_in_field_y);
 
-            print!("{} ", layer[[neuron_index]]);
+            print!("{} ", if layer[[neuron_index]] > 0.5 { "+" } else { "." });
           }
 
           print!(" ");
