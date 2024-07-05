@@ -31,6 +31,12 @@ pub struct Network {
   neurons_1: Array1<f32>,
   // neuron states at the second layer
   neurons_2: Array1<f32>,
+  // initial refract interval of the excited neuron
+  refract_interval: u8,
+  // timeouts of neuron refract states of the first layer
+  refract_intervals_1: Array1<u8>,
+  // timeouts of neuron refract states of the second layer
+  refract_intervals_2: Array1<u8>,
   // threshold of neuron firing
   threshold: f32,
   // weights of synapses from the first layer to the second layer
@@ -177,9 +183,6 @@ impl Network {
 
     let layer_size = field_size * layer_width * layer_height;
 
-    let neurons_1 = Array1::<f32>::zeros(layer_size);
-    let neurons_2 = Array1::<f32>::zeros(layer_size);
-
     let computed_params = ComputedParams {
       field_size,
       field_width: *field_width,
@@ -203,8 +206,11 @@ impl Network {
       layer_height: *layer_height,
       field_size,
       layer_size,
-      neurons_1,
-      neurons_2,
+      neurons_1: Array1::<f32>::zeros(layer_size),
+      neurons_2: Array1::<f32>::zeros(layer_size),
+      refract_interval: synapse_params.refract_interval,
+      refract_intervals_1: Array1::<u8>::zeros(layer_size),
+      refract_intervals_2: Array1::<u8>::zeros(layer_size),
       threshold: synapse_params.threshold,
       weights_1_to_2,
       weights_2_to_1,
@@ -226,8 +232,26 @@ impl Network {
       self.neurons_1[[pos]] = 0.0;
     }
 
-    let neurons_2_next = apply_synapses(&self.kernel, self.layer_size, &self.weights_1_to_2, &self.neurons_1, self.threshold).unwrap();
-    let neurons_1_next = apply_synapses(&self.kernel, self.layer_size, &self.weights_2_to_1, &self.neurons_2, self.threshold).unwrap();
+    let neurons_2_next = apply_synapses(
+      &self.kernel,
+      self.layer_size,
+      &self.weights_1_to_2,
+      &self.neurons_1,
+      &mut self.refract_intervals_2,
+      self.refract_interval,
+      self.threshold,
+    ).unwrap();
+
+    let neurons_1_next = apply_synapses(
+      &self.kernel,
+      self.layer_size,
+      &self.weights_2_to_1,
+      &self.neurons_2,
+      &mut self.refract_intervals_1,
+      self.refract_interval,
+      self.threshold,
+    ).unwrap();
+
 
     self.neurons_1 = neurons_1_next;
     self.neurons_2 = neurons_2_next;

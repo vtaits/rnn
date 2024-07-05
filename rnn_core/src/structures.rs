@@ -4,6 +4,7 @@ pub struct SynapseParams {
     pub alpha: f32,
     pub h: u8,
     pub threshold: f32,
+    pub refract_interval: u8,
 }
 
 pub struct NetworkParams {
