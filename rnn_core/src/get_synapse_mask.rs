@@ -2,7 +2,7 @@ use ndarray::Array2;
 
 use crate::structures::{SynapseMask, SynapseParams};
 
-const MIN_BETA: f32 = 0.1;
+const MIN_BETA: f32 = 0.001;
 const MAX_OFFSET: usize = 100;
 
 fn get_beta(synapse_params: &SynapseParams, distance: f32) -> f32 {

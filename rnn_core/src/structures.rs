@@ -2,6 +2,11 @@ use ndarray::Array2;
 
 pub struct SynapseParams {
     pub alpha: f32,
+    pub gamma: f32,
+    pub g_dec: f32,
+    pub g_inc: f32,
+    pub g_0: f32,
+    pub initial_strong_g: f32,
     pub h: u8,
     pub threshold: f32,
     pub refract_interval: u8,
