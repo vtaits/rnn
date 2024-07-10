@@ -314,4 +314,8 @@ impl Network {
       println!();
     }
   }
+
+  pub fn get_layer_dimensions(&self) -> (usize, usize) {
+    return (self.computed_params.row_width, self.computed_params.column_height);
+  }
 }

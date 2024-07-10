@@ -1,8 +1,8 @@
 [package]
-name = "console_app"
+name = "console_ui"
 version = "1.0.0"
 edition = "2021"
 
 [dependencies]
-console_ui = { path = "../console_ui" }
 rnn_core = { path = "../rnn_core" }
+ratatui = { version = "0.27.0", features = ["all-widgets"]}
