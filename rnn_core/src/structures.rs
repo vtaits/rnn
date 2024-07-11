@@ -26,5 +26,5 @@ pub struct NetworkParams {
 pub struct SynapseMask {
     pub size: usize,
     pub offset: usize,
-    pub mask: Array2<f32>
+    pub mask: Array2<f32>,
 }

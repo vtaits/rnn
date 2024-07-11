@@ -19,7 +19,7 @@ fn get_max_offset(synapse_params: &SynapseParams) -> usize {
     }
 
     return MAX_OFFSET;
-} 
+}
 
 pub fn get_synapse_mask(synapse_params: &SynapseParams) -> SynapseMask {
     let offset = get_max_offset(synapse_params);
@@ -40,9 +40,5 @@ pub fn get_synapse_mask(synapse_params: &SynapseParams) -> SynapseMask {
         }
     }
 
-    return SynapseMask {
-        mask,
-        offset,
-        size,
-    };
+    return SynapseMask { mask, offset, size };
 }

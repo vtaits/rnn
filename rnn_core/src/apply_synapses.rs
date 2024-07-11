@@ -1,18 +1,16 @@
 use ndarray::{Array1, Array2};
-use ocl::{ProQue, Buffer, Kernel};
+use ocl::{Buffer, Kernel, ProQue};
 
 pub struct CompiledKernel {
     kernel: Kernel,
-    pro_que: ProQue
+    pro_que: ProQue,
 }
 
 pub fn build_kernel(layer_size: usize) -> ocl::Result<CompiledKernel> {
     let kernel_source = include_str!("apply_synapses.cl");
 
     // Создаем контекст и очередь
-    let pro_que = ProQue::builder()
-        .src(kernel_source)
-        .build()?;
+    let pro_que = ProQue::builder().src(kernel_source).build()?;
 
     let kernel = Kernel::builder()
         .program(&pro_que.program())
@@ -31,10 +29,7 @@ pub fn build_kernel(layer_size: usize) -> ocl::Result<CompiledKernel> {
         .arg_named("g_0", 0.0 as f32)
         .build()?;
 
-    return Ok(CompiledKernel {
-        kernel,
-        pro_que
-    });
+    return Ok(CompiledKernel { kernel, pro_que });
 }
 
 pub fn apply_synapses(
@@ -80,13 +75,23 @@ pub fn apply_synapses(
         .build()?;
 
     unsafe {
-        compiled_kernel.kernel.set_arg("accumulated_weights", &buffer_accumulated_weights)?;
-        compiled_kernel.kernel.set_arg("distance_weights", &buffer_distance_weights)?;
+        compiled_kernel
+            .kernel
+            .set_arg("accumulated_weights", &buffer_accumulated_weights)?;
+        compiled_kernel
+            .kernel
+            .set_arg("distance_weights", &buffer_distance_weights)?;
         compiled_kernel.kernel.set_arg("neurons", &buffer_neurons)?;
-        compiled_kernel.kernel.set_arg("refract_intervals", &buffer_refract_intervals)?;
+        compiled_kernel
+            .kernel
+            .set_arg("refract_intervals", &buffer_refract_intervals)?;
         compiled_kernel.kernel.set_arg("result", &buffer_result)?;
-        compiled_kernel.kernel.set_arg("layer_size", layer_size as u32)?;
-        compiled_kernel.kernel.set_arg("initial_refract_interval", initial_refract_interval)?;
+        compiled_kernel
+            .kernel
+            .set_arg("layer_size", layer_size as u32)?;
+        compiled_kernel
+            .kernel
+            .set_arg("initial_refract_interval", initial_refract_interval)?;
         compiled_kernel.kernel.set_arg("threshold", threshold)?;
         compiled_kernel.kernel.set_arg("gamma", gamma)?;
         compiled_kernel.kernel.set_arg("g_0", g_0)?;
@@ -97,7 +102,10 @@ pub fn apply_synapses(
     let mut vec_result = vec![0.0f32; layer_size];
     buffer_result.read(&mut vec_result).enq()?;
 
-    buffer_refract_intervals.read(refract_intervals.as_slice_mut().unwrap()).enq().unwrap();
+    buffer_refract_intervals
+        .read(refract_intervals.as_slice_mut().unwrap())
+        .enq()
+        .unwrap();
 
     let result = Array1::from_vec(vec_result);
 
