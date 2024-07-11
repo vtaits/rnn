@@ -44,23 +44,21 @@ pub fn take_event(app: &mut App) -> io::Result<bool> {
                 };
             }
             KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
-                if let CurrentScreen::Neurons = app.current_screen {
-                    match key.code {
-                        KeyCode::Up => {
-                            app.up();
-                        }
-                        KeyCode::Down => {
-                            app.down();
-                        }
-                        KeyCode::Left => {
-                            app.left();
-                        }
-                        KeyCode::Right => {
-                            app.right();
-                        }
-                        _ => {}
-                    };
-                }
+                match key.code {
+                    KeyCode::Up => {
+                        app.up();
+                    }
+                    KeyCode::Down => {
+                        app.down();
+                    }
+                    KeyCode::Left => {
+                        app.left();
+                    }
+                    KeyCode::Right => {
+                        app.right();
+                    }
+                    _ => {}
+                };
             }
             _ => {}
         }

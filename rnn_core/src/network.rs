@@ -444,4 +444,54 @@ impl<'a> Network<'a> {
     ) -> (usize, usize, usize, usize) {
         return get_neuron_full_coordinates(&self.params, neuron_x, neuron_y);
     }
+
+    pub fn get_neuron_accumulated_weights(
+        &self,
+        layer_index: u8,
+        neuron_x: usize,
+        neuron_y: usize,
+    ) -> Array2<f32> {
+        let weights_layer = if layer_index == 1 {
+            &self.accumulated_weights_1_to_2
+        } else {
+            &self.accumulated_weights_2_to_1
+        };
+
+        let mut res = Array2::<f32>::zeros([
+            self.computed_params.row_width,
+            self.computed_params.column_height,
+        ]);
+
+        let neuron_index =
+            get_neuron_index_by_coordinates(self.params, &self.computed_params, neuron_x, neuron_y);
+
+        for layer_y in 0..self.layer_height {
+            for neuron_in_field_y in 0..self.field_height {
+                for layer_x in 0..self.layer_width {
+                    for neuron_in_field_x in 0..self.field_width {
+                        let target_neuron_index = get_neuron_index(
+                            &self.computed_params,
+                            layer_x,
+                            layer_y,
+                            neuron_in_field_x,
+                            neuron_in_field_y,
+                        );
+
+                        let (target_x, target_y) = get_neuron_coordinates(
+                            self.params,
+                            layer_x,
+                            layer_y,
+                            neuron_in_field_x,
+                            neuron_in_field_y,
+                        );
+
+                        res[[target_x, target_y]] =
+                            weights_layer[[target_neuron_index, neuron_index]];
+                    }
+                }
+            }
+        }
+
+        return res;
+    }
 }

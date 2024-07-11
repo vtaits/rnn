@@ -1,3 +1,4 @@
+mod render_accumulated_weights;
 mod render_neurons;
 
 use ratatui::{
@@ -10,6 +11,7 @@ use ratatui::{
 
 use crate::app::{App, CurrentScreen, Layer};
 
+use render_accumulated_weights::render_accumulated_weights;
 use render_neurons::render_neurons;
 
 fn get_title<'a>(app: &'a App) -> Paragraph<'a> {
@@ -78,7 +80,15 @@ pub fn ui(f: &mut Frame, app: &App) {
 
     f.render_widget(title, chunks[0]);
 
-    render_neurons(f, chunks[1], app);
+    match app.current_screen {
+        CurrentScreen::AccumulatedWeights => {
+            render_accumulated_weights(f, chunks[1], app);
+        }
+        CurrentScreen::Neurons => {
+            render_neurons(f, chunks[1], app);
+        }
+        _ => {}
+    }
 
     let keys_hint = get_keys_hint(app);
 

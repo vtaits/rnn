@@ -1,5 +1,5 @@
 use ratatui::{
-    layout::{Rect},
+    layout::Rect,
     style::{Color, Style},
     widgets::{Block, Borders, Cell, Row, Table},
     Frame,
@@ -75,7 +75,11 @@ pub fn render_neurons(frame: &mut Frame, area: Rect, app: &App) {
     }
 
     let table: Table = Table::new(rows, widths)
-        .block(Block::default().title("Table").borders(Borders::ALL))
+        .block(
+            Block::default()
+                .title("Refract timeouts")
+                .borders(Borders::ALL),
+        )
         .style(Style::default().fg(Color::White));
 
     frame.render_widget(table, area);
