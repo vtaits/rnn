@@ -1,13 +1,15 @@
 mod render_accumulated_weights;
+mod render_distance_weights;
 mod render_neurons;
 
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
-    text::{Line, Span, Text},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap},
+    text::{Line, Span},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
+use render_distance_weights::render_distance_weights;
 
 use crate::app::{App, CurrentScreen, Layer};
 
@@ -83,6 +85,9 @@ pub fn ui(f: &mut Frame, app: &App) {
     match app.current_screen {
         CurrentScreen::AccumulatedWeights => {
             render_accumulated_weights(f, chunks[1], app);
+        }
+        CurrentScreen::DistanceWeights => {
+            render_distance_weights(f, chunks[1], app);
         }
         CurrentScreen::Neurons => {
             render_neurons(f, chunks[1], app);

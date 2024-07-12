@@ -30,8 +30,8 @@ fn main() {
     let params = NetworkParams {
         field_width: 5,
         field_height: 4,
-        layer_width: 10,
-        layer_height: 10,
+        layer_width: 5,
+        layer_height: 5,
     };
 
     let synapse_params = SynapseParams {

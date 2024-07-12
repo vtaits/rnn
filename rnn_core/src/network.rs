@@ -445,6 +445,50 @@ impl<'a> Network<'a> {
         return get_neuron_full_coordinates(&self.params, neuron_x, neuron_y);
     }
 
+    fn get_neuron_weights(
+      &self,
+      weights_layer: &Array2<f32>,
+      neuron_x: usize,
+      neuron_y: usize,
+  ) -> Array2<f32> {
+      let mut res = Array2::<f32>::zeros([
+          self.computed_params.row_width,
+          self.computed_params.column_height,
+      ]);
+
+      let neuron_index =
+          get_neuron_index_by_coordinates(self.params, &self.computed_params, neuron_x, neuron_y);
+
+      for layer_y in 0..self.layer_height {
+          for neuron_in_field_y in 0..self.field_height {
+              for layer_x in 0..self.layer_width {
+                  for neuron_in_field_x in 0..self.field_width {
+                      let target_neuron_index = get_neuron_index(
+                          &self.computed_params,
+                          layer_x,
+                          layer_y,
+                          neuron_in_field_x,
+                          neuron_in_field_y,
+                      );
+
+                      let (target_x, target_y) = get_neuron_coordinates(
+                          self.params,
+                          layer_x,
+                          layer_y,
+                          neuron_in_field_x,
+                          neuron_in_field_y,
+                      );
+
+                      res[[target_x, target_y]] =
+                          weights_layer[[target_neuron_index, neuron_index]];
+                  }
+              }
+          }
+      }
+
+      return res;
+  }
+
     pub fn get_neuron_accumulated_weights(
         &self,
         layer_index: u8,
@@ -457,41 +501,21 @@ impl<'a> Network<'a> {
             &self.accumulated_weights_2_to_1
         };
 
-        let mut res = Array2::<f32>::zeros([
-            self.computed_params.row_width,
-            self.computed_params.column_height,
-        ]);
-
-        let neuron_index =
-            get_neuron_index_by_coordinates(self.params, &self.computed_params, neuron_x, neuron_y);
-
-        for layer_y in 0..self.layer_height {
-            for neuron_in_field_y in 0..self.field_height {
-                for layer_x in 0..self.layer_width {
-                    for neuron_in_field_x in 0..self.field_width {
-                        let target_neuron_index = get_neuron_index(
-                            &self.computed_params,
-                            layer_x,
-                            layer_y,
-                            neuron_in_field_x,
-                            neuron_in_field_y,
-                        );
-
-                        let (target_x, target_y) = get_neuron_coordinates(
-                            self.params,
-                            layer_x,
-                            layer_y,
-                            neuron_in_field_x,
-                            neuron_in_field_y,
-                        );
-
-                        res[[target_x, target_y]] =
-                            weights_layer[[target_neuron_index, neuron_index]];
-                    }
-                }
-            }
-        }
-
-        return res;
+        return self.get_neuron_weights(weights_layer, neuron_x, neuron_y);
     }
+
+    pub fn get_neuron_distance_weights(
+      &self,
+      layer_index: u8,
+      neuron_x: usize,
+      neuron_y: usize,
+  ) -> Array2<f32> {
+      let weights_layer = if layer_index == 1 {
+          &self.distance_weights_1_to_2
+      } else {
+          &self.distance_weights_2_to_1
+      };
+
+      return self.get_neuron_weights(weights_layer, neuron_x, neuron_y);
+  }
 }

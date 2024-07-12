@@ -7,7 +7,7 @@ use ratatui::{
 
 use crate::app::{App, Layer};
 
-pub fn render_accumulated_weights(frame: &mut Frame, area: Rect, app: &App) {
+pub fn render_distance_weights(frame: &mut Frame, area: Rect, app: &App) {
     let network = app.get_network();
     let network_params = network.get_params();
 
@@ -16,7 +16,7 @@ pub fn render_accumulated_weights(frame: &mut Frame, area: Rect, app: &App) {
         Layer::Layer2 => 2,
     };
 
-    let weights = network.get_neuron_accumulated_weights(layer_index, app.neuron_x, app.neuron_y);
+    let weights = network.get_neuron_distance_weights(layer_index, app.neuron_x, app.neuron_y);
 
     let mut widths: Vec<u16> = vec![];
 
@@ -74,7 +74,7 @@ pub fn render_accumulated_weights(frame: &mut Frame, area: Rect, app: &App) {
     let table: Table = Table::new(rows, widths)
         .block(
             Block::default()
-                .title("Accumulated weights")
+                .title("Distance weights")
                 .borders(Borders::ALL),
         )
         .style(Style::default().fg(Color::White));
