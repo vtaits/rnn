@@ -50,8 +50,8 @@ fn main() {
 
     let mut network = Network::new(&params, synapse_params);
 
-    run_console_app(&mut network);
-    return;
+    // run_console_app(&mut network);
+    // return;
 
     let numbers = vec![
         2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89,
@@ -132,4 +132,6 @@ fn main() {
     }
 
     network.print_states();
+
+    let _ = run_console_app(&mut network);
 }

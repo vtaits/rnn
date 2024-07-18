@@ -1,10 +1,13 @@
 use ndarray::{Array1, Array2};
 
 use crate::{
-    apply_synapses::{apply_synapses, build_kernel, CompiledKernel},
+    apply_synapses::{apply_synapses, build_apply_synapses_kernel},
     get_synapse_mask::get_synapse_mask,
+    recount_accumulated_weights::{
+        build_recount_accumulated_weights_kernel, recount_accumulated_weights,
+    },
     spiral::get_next_field,
-    structures::{NetworkParams, SynapseMask, SynapseParams},
+    structures::{CompiledKernel, NetworkParams, SynapseMask, SynapseParams},
 };
 
 struct ComputedParams {
@@ -32,8 +35,10 @@ pub struct Network<'a> {
     distance_weights_2_to_1: Array2<f32>,
     field_width: usize,
     field_height: usize,
-    // compiled kernel for opencl computations
-    kernel: CompiledKernel,
+    // compiled kernel for recount accumulated weights with opencl
+    kernel_accumulated_weights: CompiledKernel,
+    // compiled kernel for recount neurons and refract intervals with opencl
+    kernel_synapses: CompiledKernel,
     layer_width: usize,
     layer_height: usize,
     // number of neurons
@@ -286,7 +291,9 @@ impl<'a> Network<'a> {
             accumulated_weights_2_to_1,
         ) = set_initial_connections(&computed_params, &synapse_params, &params, &mask);
 
-        let kernel = build_kernel(layer_size).unwrap();
+        let kernel_accumulated_weights =
+            build_recount_accumulated_weights_kernel(layer_size).unwrap();
+        let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
         return Network {
             accumulated_weights_1_to_2,
@@ -296,7 +303,8 @@ impl<'a> Network<'a> {
             distance_weights_2_to_1,
             field_width: *field_width,
             field_height: *field_height,
-            kernel,
+            kernel_accumulated_weights,
+            kernel_synapses,
             layer_width: *layer_width,
             layer_height: *layer_height,
             field_size,
@@ -330,7 +338,7 @@ impl<'a> Network<'a> {
         }
 
         let apply_synapses_result_2 = apply_synapses(
-            &self.kernel,
+            &self.kernel_synapses,
             self.layer_size,
             &self.accumulated_weights_1_to_2,
             &self.distance_weights_1_to_2,
@@ -344,7 +352,7 @@ impl<'a> Network<'a> {
         .unwrap();
 
         let apply_synapses_result_1 = apply_synapses(
-            &self.kernel,
+            &self.kernel_synapses,
             self.layer_size,
             &self.accumulated_weights_2_to_1,
             &self.distance_weights_2_to_1,
@@ -357,10 +365,37 @@ impl<'a> Network<'a> {
         )
         .unwrap();
 
+        let next_accumulated_weights_1_to_2 = recount_accumulated_weights(
+            &self.kernel_accumulated_weights,
+            self.layer_size,
+            &self.accumulated_weights_1_to_2,
+            &self.neurons_1,
+            &apply_synapses_result_2.next_neurons,
+            &self.refract_intervals_2,
+            self.synapse_params.g_dec,
+            self.synapse_params.g_inc,
+        )
+        .unwrap();
+
+        let next_accumulated_weights_2_to_1 = recount_accumulated_weights(
+            &self.kernel_accumulated_weights,
+            self.layer_size,
+            &self.accumulated_weights_2_to_1,
+            &self.neurons_2,
+            &apply_synapses_result_1.next_neurons,
+            &self.refract_intervals_1,
+            self.synapse_params.g_dec,
+            self.synapse_params.g_inc,
+        )
+        .unwrap();
+
         self.neurons_1 = apply_synapses_result_1.next_neurons;
         self.refract_intervals_1 = apply_synapses_result_1.next_refract_intervals;
+        self.accumulated_weights_1_to_2 = next_accumulated_weights_1_to_2;
+
         self.neurons_2 = apply_synapses_result_2.next_neurons;
         self.refract_intervals_2 = apply_synapses_result_2.next_refract_intervals;
+        self.accumulated_weights_2_to_1 = next_accumulated_weights_2_to_1;
     }
 
     pub fn print_states(&self) {
@@ -448,48 +483,48 @@ impl<'a> Network<'a> {
     }
 
     fn get_neuron_weights(
-      &self,
-      weights_layer: &Array2<f32>,
-      neuron_x: usize,
-      neuron_y: usize,
-  ) -> Array2<f32> {
-      let mut res = Array2::<f32>::zeros([
-          self.computed_params.row_width,
-          self.computed_params.column_height,
-      ]);
+        &self,
+        weights_layer: &Array2<f32>,
+        neuron_x: usize,
+        neuron_y: usize,
+    ) -> Array2<f32> {
+        let mut res = Array2::<f32>::zeros([
+            self.computed_params.row_width,
+            self.computed_params.column_height,
+        ]);
 
-      let neuron_index =
-          get_neuron_index_by_coordinates(self.params, &self.computed_params, neuron_x, neuron_y);
+        let neuron_index =
+            get_neuron_index_by_coordinates(self.params, &self.computed_params, neuron_x, neuron_y);
 
-      for layer_y in 0..self.layer_height {
-          for neuron_in_field_y in 0..self.field_height {
-              for layer_x in 0..self.layer_width {
-                  for neuron_in_field_x in 0..self.field_width {
-                      let target_neuron_index = get_neuron_index(
-                          &self.computed_params,
-                          layer_x,
-                          layer_y,
-                          neuron_in_field_x,
-                          neuron_in_field_y,
-                      );
+        for layer_y in 0..self.layer_height {
+            for neuron_in_field_y in 0..self.field_height {
+                for layer_x in 0..self.layer_width {
+                    for neuron_in_field_x in 0..self.field_width {
+                        let target_neuron_index = get_neuron_index(
+                            &self.computed_params,
+                            layer_x,
+                            layer_y,
+                            neuron_in_field_x,
+                            neuron_in_field_y,
+                        );
 
-                      let (target_x, target_y) = get_neuron_coordinates(
-                          self.params,
-                          layer_x,
-                          layer_y,
-                          neuron_in_field_x,
-                          neuron_in_field_y,
-                      );
+                        let (target_x, target_y) = get_neuron_coordinates(
+                            self.params,
+                            layer_x,
+                            layer_y,
+                            neuron_in_field_x,
+                            neuron_in_field_y,
+                        );
 
-                      res[[target_x, target_y]] =
-                          weights_layer[[target_neuron_index, neuron_index]];
-                  }
-              }
-          }
-      }
+                        res[[target_x, target_y]] =
+                            weights_layer[[target_neuron_index, neuron_index]];
+                    }
+                }
+            }
+        }
 
-      return res;
-  }
+        return res;
+    }
 
     pub fn get_neuron_accumulated_weights(
         &self,
@@ -507,17 +542,17 @@ impl<'a> Network<'a> {
     }
 
     pub fn get_neuron_distance_weights(
-      &self,
-      layer_index: u8,
-      neuron_x: usize,
-      neuron_y: usize,
-  ) -> Array2<f32> {
-      let weights_layer = if layer_index == 1 {
-          &self.distance_weights_1_to_2
-      } else {
-          &self.distance_weights_2_to_1
-      };
+        &self,
+        layer_index: u8,
+        neuron_x: usize,
+        neuron_y: usize,
+    ) -> Array2<f32> {
+        let weights_layer = if layer_index == 1 {
+            &self.distance_weights_1_to_2
+        } else {
+            &self.distance_weights_2_to_1
+        };
 
-      return self.get_neuron_weights(weights_layer, neuron_x, neuron_y);
-  }
+        return self.get_neuron_weights(weights_layer, neuron_x, neuron_y);
+    }
 }

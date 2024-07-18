@@ -1,12 +1,9 @@
 use ndarray::{Array1, Array2};
 use ocl::{Buffer, Kernel, ProQue};
 
-pub struct CompiledKernel {
-    kernel: Kernel,
-    pro_que: ProQue,
-}
+use crate::structures::CompiledKernel;
 
-pub fn build_kernel(layer_size: usize) -> ocl::Result<CompiledKernel> {
+pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKernel> {
     let kernel_source = include_str!("apply_synapses.cl");
 
     let pro_que = ProQue::builder().src(kernel_source).build()?;
@@ -94,8 +91,12 @@ pub fn apply_synapses(
         compiled_kernel
             .kernel
             .set_arg("refract_intervals", &buffer_refract_intervals)?;
-        compiled_kernel.kernel.set_arg("next_neurons", &buffer_next_neurons)?;
-        compiled_kernel.kernel.set_arg("next_refract_intervals", &buffer_next_refract_intervals)?;
+        compiled_kernel
+            .kernel
+            .set_arg("next_neurons", &buffer_next_neurons)?;
+        compiled_kernel
+            .kernel
+            .set_arg("next_refract_intervals", &buffer_next_refract_intervals)?;
         compiled_kernel
             .kernel
             .set_arg("layer_size", layer_size as u32)?;
@@ -114,7 +115,9 @@ pub fn apply_synapses(
     let next_neurons = Array1::from_vec(vec_next_neurons);
 
     let mut vec_next_refract_intervals = vec![0u8; layer_size];
-    buffer_next_refract_intervals.read(&mut vec_next_refract_intervals).enq()?;
+    buffer_next_refract_intervals
+        .read(&mut vec_next_refract_intervals)
+        .enq()?;
 
     let next_refract_intervals = Array1::from_vec(vec_next_refract_intervals);
 

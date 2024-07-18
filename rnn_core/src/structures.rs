@@ -1,4 +1,10 @@
 use ndarray::Array2;
+use ocl::{Kernel, ProQue};
+
+pub struct CompiledKernel {
+    pub kernel: Kernel,
+    pub pro_que: ProQue,
+}
 
 pub struct SynapseParams {
     pub alpha: f32,
