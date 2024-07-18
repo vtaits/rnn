@@ -2,7 +2,7 @@ use crate::app::{App, CurrentScreen, Layer};
 use ratatui::crossterm::event::{self, Event, KeyCode};
 use std::io;
 
-pub fn take_event(app: &mut App) -> io::Result<bool> {
+pub fn take_event<T>(app: &mut App<T>) -> io::Result<bool> {
     if let Event::Key(key) = event::read()? {
         if key.kind == event::KeyEventKind::Release {
             // Skip events that are not KeyEventKind::Press

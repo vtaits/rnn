@@ -7,7 +7,7 @@ use ratatui::{
 
 use crate::app::{App, Layer};
 
-pub fn render_accumulated_weights(frame: &mut Frame, area: Rect, app: &App) {
+pub fn render_accumulated_weights<T>(frame: &mut Frame, area: Rect, app: &App<T>) {
     let network = app.get_network();
     let network_params = network.get_params();
 

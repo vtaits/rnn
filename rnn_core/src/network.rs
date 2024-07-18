@@ -7,7 +7,7 @@ use crate::{
         build_recount_accumulated_weights_kernel, recount_accumulated_weights,
     },
     spiral::get_next_field,
-    structures::{CompiledKernel, NetworkParams, SynapseMask, SynapseParams},
+    structures::{CompiledKernel, DataAdapter, NetworkParams, SynapseMask, SynapseParams},
 };
 
 struct ComputedParams {
@@ -23,12 +23,13 @@ struct ComputedParams {
 }
 
 // TO DO: bit-vec / bitfield
-pub struct Network<'a> {
+pub struct Network<T> {
     computed_params: ComputedParams,
     // acumulated weights of synapses from the first layer to the second layer
     accumulated_weights_1_to_2: Array2<f32>,
     // acumulated weights of synapses from the second layer to the first layer
     accumulated_weights_2_to_1: Array2<f32>,
+    data_adapter: DataAdapter<T>,
     // distance weights of synapses from the first layer to the second layer
     distance_weights_1_to_2: Array2<f32>,
     // distance weights of synapses from the second layer to the first layer
@@ -53,7 +54,7 @@ pub struct Network<'a> {
     refract_intervals_1: Array1<u8>,
     // timeouts of neuron refract states of the second layer
     refract_intervals_2: Array1<u8>,
-    params: &'a NetworkParams,
+    params: NetworkParams,
     synapse_params: SynapseParams,
 }
 
@@ -258,8 +259,12 @@ fn set_initial_connections(
     );
 }
 
-impl<'a> Network<'a> {
-    pub fn new(params: &NetworkParams, synapse_params: SynapseParams) -> Network {
+impl<T> Network<T> {
+    pub fn new(
+        params: NetworkParams,
+        synapse_params: SynapseParams,
+        data_adapter: DataAdapter<T>,
+    ) -> Network<T> {
         let NetworkParams {
             field_width,
             field_height,
@@ -276,7 +281,7 @@ impl<'a> Network<'a> {
 
         let computed_params = ComputedParams {
             field_size,
-            field_width: *field_width,
+            field_width,
             row_size,
             row_width,
             column_height,
@@ -299,14 +304,15 @@ impl<'a> Network<'a> {
             accumulated_weights_1_to_2,
             accumulated_weights_2_to_1,
             computed_params,
+            data_adapter,
             distance_weights_1_to_2,
             distance_weights_2_to_1,
-            field_width: *field_width,
-            field_height: *field_height,
+            field_width,
+            field_height,
             kernel_accumulated_weights,
             kernel_synapses,
-            layer_width: *layer_width,
-            layer_height: *layer_height,
+            layer_width,
+            layer_height,
             field_size,
             layer_size,
             neurons_1: Array1::<f32>::zeros(layer_size),
@@ -319,17 +325,17 @@ impl<'a> Network<'a> {
     }
 
     pub fn get_params(&self) -> &NetworkParams {
-        return self.params;
+        return &self.params;
     }
 
-    pub fn tick(&mut self, data: &Vec<bool>) {
-        let data_len = data.len();
+    pub fn tick_binary(&mut self, bit_vec: &Vec<bool>) {
+        let data_len = bit_vec.len();
 
         if data_len > self.field_size {
-            panic!("The length of the data chunk should be less than or equal to the size of one field");
+            panic!("The length of the bit vec chunk should be less than or equal to the size of one field");
         }
 
-        for (pos, value) in data.iter().enumerate() {
+        for (pos, value) in bit_vec.iter().enumerate() {
             self.neurons_1[[pos]] = if *value { 1.0 } else { 0.0 };
         }
 
@@ -396,6 +402,12 @@ impl<'a> Network<'a> {
         self.neurons_2 = apply_synapses_result_2.next_neurons;
         self.refract_intervals_2 = apply_synapses_result_2.next_refract_intervals;
         self.accumulated_weights_2_to_1 = next_accumulated_weights_2_to_1;
+    }
+
+    pub fn tick(&mut self, data: T) {
+        let bit_vec = (self.data_adapter.data_to_binary)(data);
+
+        self.tick_binary(&bit_vec);
     }
 
     pub fn print_states(&self) {
@@ -493,8 +505,12 @@ impl<'a> Network<'a> {
             self.computed_params.column_height,
         ]);
 
-        let neuron_index =
-            get_neuron_index_by_coordinates(self.params, &self.computed_params, neuron_x, neuron_y);
+        let neuron_index = get_neuron_index_by_coordinates(
+            &self.params,
+            &self.computed_params,
+            neuron_x,
+            neuron_y,
+        );
 
         for layer_y in 0..self.layer_height {
             for neuron_in_field_y in 0..self.field_height {
@@ -509,7 +525,7 @@ impl<'a> Network<'a> {
                         );
 
                         let (target_x, target_y) = get_neuron_coordinates(
-                            self.params,
+                            &self.params,
                             layer_x,
                             layer_y,
                             neuron_in_field_x,

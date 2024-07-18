@@ -7,7 +7,7 @@ use ratatui::{
 
 use crate::app::{App, Layer};
 
-pub fn render_neurons(frame: &mut Frame, area: Rect, app: &App) {
+pub fn render_neurons<T>(frame: &mut Frame, area: Rect, app: &App<T>) {
     let network = app.get_network();
     let network_params = network.get_params();
 
@@ -52,10 +52,10 @@ pub fn render_neurons(frame: &mut Frame, area: Rect, app: &App) {
                     } else {
                         String::from("·")
                     };
-                    let cell = if (layer_x == target_layer_x
+                    let cell = if layer_x == target_layer_x
                         && layer_y == target_layer_y
                         && neuron_in_field_x == target_neuron_in_field_x
-                        && neuron_in_field_y == target_neuron_in_field_y)
+                        && neuron_in_field_y == target_neuron_in_field_y
                     {
                         Cell::from(cell_content).style(highlight_style)
                     } else {

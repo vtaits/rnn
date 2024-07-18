@@ -1,4 +1,4 @@
-use rnn_core::{Network, NetworkParams};
+use rnn_core::Network;
 
 pub enum CurrentScreen {
     Neurons,
@@ -11,17 +11,17 @@ pub enum Layer {
     Layer2,
 }
 
-pub struct App<'a> {
+pub struct App<T> {
     pub buffer: String,
     pub current_screen: CurrentScreen,
     pub layer: Layer,
     pub neuron_x: usize,
     pub neuron_y: usize,
-    network: &'a mut Network<'a>,
+    network: Box<Network<T>>,
 }
 
-impl<'a> App<'a> {
-    pub fn new(network: &'a mut Network<'a>) -> App<'a> {
+impl<T> App<T> {
+    pub fn new(network: Box<Network<T>>) -> Self {
         App {
             buffer: String::new(),
             current_screen: CurrentScreen::Neurons,
@@ -32,12 +32,8 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn get_network(&self) -> &Network {
-        return self.network;
-    }
-
-    pub fn get_network_params(&self) -> &NetworkParams {
-        return self.network.get_params();
+    pub fn get_network(&self) -> &Network<T> {
+        return self.network.as_ref();
     }
 
     pub fn tick_buffer(&mut self) {
@@ -54,7 +50,7 @@ impl<'a> App<'a> {
 
         self.buffer = String::new();
 
-        self.network.tick(&data);
+        self.network.tick_binary(&data);
     }
 
     pub fn left(&mut self) {

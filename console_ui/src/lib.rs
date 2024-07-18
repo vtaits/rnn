@@ -6,7 +6,7 @@ use app::App;
 use ratatui::{
     backend::{Backend, CrosstermBackend},
     crossterm::{
-        event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
+        event::{DisableMouseCapture, EnableMouseCapture},
         execute,
         terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     },
@@ -17,7 +17,7 @@ use std::{error::Error, io};
 use take_event::take_event;
 use ui::ui;
 
-pub fn run_console_app<'a>(network: &'a mut Network<'a>) -> Result<(), Box<dyn Error>> {
+pub fn run_console_app<T>(network: Box<Network<T>>) -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
     let mut stderr = io::stderr(); // This is a special case. Normally using stdout is fine
@@ -41,7 +41,7 @@ pub fn run_console_app<'a>(network: &'a mut Network<'a>) -> Result<(), Box<dyn E
     Ok(())
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<()> {
+fn run_app<B: Backend, T>(terminal: &mut Terminal<B>, app: &mut App<T>) -> io::Result<()> {
     loop {
         terminal.draw(|f| ui(f, app))?;
 

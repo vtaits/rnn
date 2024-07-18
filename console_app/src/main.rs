@@ -1,7 +1,7 @@
 extern crate rnn_core;
 
 use console_ui::run_console_app;
-use rnn_core::{Network, NetworkParams, SynapseParams};
+use rnn_core::{DataAdapter, Network, NetworkParams, SynapseParams};
 
 fn number_to_bytes(number: usize, capacity: usize) -> Vec<bool> {
     let mut result = Vec::new();
@@ -48,10 +48,16 @@ fn main() {
 
     let capacity = params.field_width * params.field_height;
 
-    let mut network = Network::new(&params, synapse_params);
+    let data_adapter = DataAdapter {
+        data_to_binary: Box::new(move |number: usize| {
+            return number_to_bytes(number, capacity);
+        }),
+        binary_to_data: Box::new(|_data| {
+            return 0 as usize;
+        }),
+    };
 
-    // run_console_app(&mut network);
-    // return;
+    let mut network = Network::new(params, synapse_params, data_adapter);
 
     let numbers = vec![
         2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89,
@@ -128,10 +134,10 @@ fn main() {
 
         print_bytes(&bytes);
 
-        network.tick(&bytes);
+        network.tick(number);
     }
 
     network.print_states();
 
-    let _ = run_console_app(&mut network);
+    let _ = run_console_app(Box::new(network));
 }
