@@ -9,7 +9,7 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
     let pro_que = ProQue::builder().src(kernel_source).build()?;
 
     let kernel = Kernel::builder()
-        .program(&pro_que.program())
+        .program(pro_que.program())
         .name("apply_synapses")
         .queue(pro_que.queue().clone())
         .global_work_size(layer_size)
@@ -19,14 +19,14 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
         .arg_named("refract_intervals", None::<&Buffer<u8>>)
         .arg_named("next_neurons", None::<&Buffer<f32>>)
         .arg_named("next_refract_intervals", None::<&Buffer<u8>>)
-        .arg_named("layer_size", 0 as u32)
-        .arg_named("initial_refract_interval", 0 as u8)
-        .arg_named("threshold", 0.0 as f32)
-        .arg_named("gamma", 0.0 as f32)
-        .arg_named("g_0", 0.0 as f32)
+        .arg_named("layer_size", 0_u32)
+        .arg_named("initial_refract_interval", 0_u8)
+        .arg_named("threshold", 0.0_f32)
+        .arg_named("gamma", 0.0_f32)
+        .arg_named("g_0", 0.0_f32)
         .build()?;
 
-    return Ok(CompiledKernel { kernel, pro_que });
+    Ok(CompiledKernel { kernel, pro_que })
 }
 
 pub struct ApplySynapsesResult {
@@ -121,8 +121,8 @@ pub fn apply_synapses(
 
     let next_refract_intervals = Array1::from_vec(vec_next_refract_intervals);
 
-    return Ok(ApplySynapsesResult {
+    Ok(ApplySynapsesResult {
         next_neurons,
         next_refract_intervals,
-    });
+    })
 }

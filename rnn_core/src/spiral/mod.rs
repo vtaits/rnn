@@ -31,17 +31,15 @@ pub fn get_next_field(params: &NetworkParams, field_x: usize, field_y: usize) ->
         } else {
             field_y
         }
-    } else {
-        if field_x == 0 {
-            if field_y == params.layer_height - 1 {
-                0
-            } else {
-                field_y + 1
-            }
+    } else if field_x == 0 {
+        if field_y == params.layer_height - 1 {
+            0
         } else {
-            field_y
+            field_y + 1
         }
+    } else {
+        field_y
     };
 
-    return (layer_2_to_1_x, layer_2_to_1_y);
+    (layer_2_to_1_x, layer_2_to_1_y)
 }

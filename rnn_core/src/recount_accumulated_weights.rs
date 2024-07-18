@@ -9,7 +9,7 @@ pub fn build_recount_accumulated_weights_kernel(layer_size: usize) -> ocl::Resul
     let pro_que = ProQue::builder().src(kernel_source).build()?;
 
     let kernel = Kernel::builder()
-        .program(&pro_que.program())
+        .program(pro_que.program())
         .name("recount_accumulated_weights")
         .queue(pro_que.queue().clone())
         .global_work_size(layer_size)
@@ -18,12 +18,12 @@ pub fn build_recount_accumulated_weights_kernel(layer_size: usize) -> ocl::Resul
         .arg_named("neurons_to", None::<&Buffer<f32>>)
         .arg_named("refract_intervals_to", None::<&Buffer<u8>>)
         .arg_named("next_accumulated_weights", None::<&Buffer<f32>>)
-        .arg_named("layer_size", 0 as u32)
-        .arg_named("g_dec", 0.0 as f32)
-        .arg_named("g_inc", 0.0 as f32)
+        .arg_named("layer_size", 0_u32)
+        .arg_named("g_dec", 0.0_f32)
+        .arg_named("g_inc", 0.0_f32)
         .build()?;
 
-    return Ok(CompiledKernel { kernel, pro_que });
+    Ok(CompiledKernel { kernel, pro_que })
 }
 
 pub fn recount_accumulated_weights(
@@ -97,5 +97,5 @@ pub fn recount_accumulated_weights(
     let next_accumulated_weights =
         Array2::from_shape_vec((layer_size, layer_size), vec_next_accumulated_weights).unwrap();
 
-    return Ok(next_accumulated_weights);
+    Ok(next_accumulated_weights)
 }

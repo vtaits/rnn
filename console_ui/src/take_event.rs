@@ -64,5 +64,5 @@ pub fn take_event<T>(app: &mut App<T>) -> io::Result<bool> {
         }
     }
 
-    return Ok(false);
+    Ok(false)
 }

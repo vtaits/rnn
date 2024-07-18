@@ -68,7 +68,7 @@ fn get_neuron_index(
     let layer_offset = computed_params.row_size * layer_y + computed_params.field_size * layer_x;
     let field_offset = computed_params.field_width * neuron_in_field_y + neuron_in_field_x;
 
-    return layer_offset + field_offset;
+    layer_offset + field_offset
 }
 
 fn get_neuron_coordinates(
@@ -84,10 +84,10 @@ fn get_neuron_coordinates(
     let field_x_offset = neuron_in_field_x;
     let field_y_offset = neuron_in_field_y;
 
-    return (
+    (
         layer_x_offset + field_x_offset,
         layer_y_offset + field_y_offset,
-    );
+    )
 }
 
 fn get_neuron_full_coordinates(
@@ -101,7 +101,7 @@ fn get_neuron_full_coordinates(
     let layer_x = (neuron_x - neuron_in_field_x) / params.field_width;
     let layer_y = (neuron_y - neuron_in_field_y) / params.field_height;
 
-    return (layer_x, layer_y, neuron_in_field_x, neuron_in_field_y);
+    (layer_x, layer_y, neuron_in_field_x, neuron_in_field_y)
 }
 
 fn get_neuron_index_by_coordinates(
@@ -113,13 +113,13 @@ fn get_neuron_index_by_coordinates(
     let (layer_x, layer_y, neuron_in_field_x, neuron_in_field_y) =
         get_neuron_full_coordinates(params, neuron_x, neuron_y);
 
-    return get_neuron_index(
+    get_neuron_index(
         computed_params,
         layer_x,
         layer_y,
         neuron_in_field_x,
         neuron_in_field_y,
-    );
+    )
 }
 
 fn apply_mask(
@@ -187,7 +187,7 @@ fn set_initial_connections(
 
     for layer_y in 0..params.layer_height {
         for layer_x in 0..params.layer_width {
-            let (layer_2_to_1_x, layer_2_to_1_y) = get_next_field(&params, layer_x, layer_y);
+            let (layer_2_to_1_x, layer_2_to_1_y) = get_next_field(params, layer_x, layer_y);
 
             for neuron_in_field_y in 0..params.field_height {
                 for neuron_in_field_x in 0..params.field_width {
@@ -251,12 +251,12 @@ fn set_initial_connections(
         }
     }
 
-    return (
+    (
         distance_weights_1_to_2,
         distance_weights_2_to_1,
         accumulated_weights_1_to_2,
         accumulated_weights_2_to_1,
-    );
+    )
 }
 
 impl<T> Network<T> {
@@ -300,7 +300,7 @@ impl<T> Network<T> {
             build_recount_accumulated_weights_kernel(layer_size).unwrap();
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
-        return Network {
+        Network {
             accumulated_weights_1_to_2,
             accumulated_weights_2_to_1,
             computed_params,
@@ -321,11 +321,11 @@ impl<T> Network<T> {
             refract_intervals_2: Array1::<u8>::zeros(layer_size),
             params,
             synapse_params,
-        };
+        }
     }
 
     pub fn get_params(&self) -> &NetworkParams {
-        return &self.params;
+        &self.params
     }
 
     pub fn tick_binary(&mut self, bit_vec: &Vec<bool>) {
@@ -455,10 +455,10 @@ impl<T> Network<T> {
     }
 
     pub fn get_layer_dimensions(&self) -> (usize, usize) {
-        return (
+        (
             self.computed_params.row_width,
             self.computed_params.column_height,
-        );
+        )
     }
 
     pub fn get_neuron_refract_timeout(
@@ -483,7 +483,7 @@ impl<T> Network<T> {
             neuron_in_field_y,
         );
 
-        return refract_intervals[[neuron_index]];
+        refract_intervals[[neuron_index]]
     }
 
     pub fn get_neuron_full_coordinates(
@@ -491,7 +491,7 @@ impl<T> Network<T> {
         neuron_x: usize,
         neuron_y: usize,
     ) -> (usize, usize, usize, usize) {
-        return get_neuron_full_coordinates(&self.params, neuron_x, neuron_y);
+        get_neuron_full_coordinates(&self.params, neuron_x, neuron_y)
     }
 
     fn get_neuron_weights(
@@ -539,7 +539,7 @@ impl<T> Network<T> {
             }
         }
 
-        return res;
+        res
     }
 
     pub fn get_neuron_accumulated_weights(
@@ -554,7 +554,7 @@ impl<T> Network<T> {
             &self.accumulated_weights_2_to_1
         };
 
-        return self.get_neuron_weights(weights_layer, neuron_x, neuron_y);
+        self.get_neuron_weights(weights_layer, neuron_x, neuron_y)
     }
 
     pub fn get_neuron_distance_weights(
@@ -569,6 +569,6 @@ impl<T> Network<T> {
             &self.distance_weights_2_to_1
         };
 
-        return self.get_neuron_weights(weights_layer, neuron_x, neuron_y);
+        self.get_neuron_weights(weights_layer, neuron_x, neuron_y)
     }
 }

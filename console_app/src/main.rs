@@ -9,21 +9,21 @@ fn number_to_bytes(number: usize, capacity: usize) -> Vec<bool> {
     let mut temp_number = number;
 
     for _ in 0..capacity {
-        result.push(if temp_number % 2 == 1 { true } else { false });
+        result.push(temp_number % 2 == 1);
 
-        temp_number = temp_number / 2;
+        temp_number /= 2;
     }
 
     result.reverse();
 
-    return result;
+    result
 }
 
 fn print_bytes(bytes: &Vec<bool>) {
-    for byte in bytes.into_iter() {
+    for byte in bytes.iter() {
         print!("{}", if *byte { "+" } else { "." });
     }
-    print!("\n");
+    println!();
 }
 
 fn main() {
@@ -50,10 +50,10 @@ fn main() {
 
     let data_adapter = DataAdapter {
         data_to_binary: Box::new(move |number: usize| {
-            return number_to_bytes(number, capacity);
+            number_to_bytes(number, capacity)
         }),
         binary_to_data: Box::new(|_data| {
-            return 0 as usize;
+            0_usize
         }),
     };
 
@@ -130,7 +130,7 @@ fn main() {
     for number in numbers {
         let bytes = number_to_bytes(number, capacity);
 
-        print!("{}\n", number);
+        println!("{}", number);
 
         print_bytes(&bytes);
 

@@ -6,7 +6,7 @@ const MIN_BETA: f32 = 0.001;
 const MAX_OFFSET: usize = 100;
 
 fn get_beta(synapse_params: &SynapseParams, distance: f32) -> f32 {
-    return 1.0 / (1.0 + synapse_params.alpha * distance.powf(1.0 / synapse_params.h as f32));
+    1.0 / (1.0 + synapse_params.alpha * distance.powf(1.0 / synapse_params.h as f32))
 }
 
 fn get_max_offset(synapse_params: &SynapseParams) -> usize {
@@ -18,7 +18,7 @@ fn get_max_offset(synapse_params: &SynapseParams) -> usize {
         }
     }
 
-    return MAX_OFFSET;
+    MAX_OFFSET
 }
 
 pub fn get_synapse_mask(synapse_params: &SynapseParams) -> SynapseMask {
@@ -40,5 +40,5 @@ pub fn get_synapse_mask(synapse_params: &SynapseParams) -> SynapseMask {
         }
     }
 
-    return SynapseMask { mask, offset, size };
+    SynapseMask { mask, offset, size }
 }
