@@ -329,13 +329,13 @@ impl<'a> Network<'a> {
             self.neurons_1[[pos]] = 0.0;
         }
 
-        let neurons_2_next = apply_synapses(
+        let apply_synapses_result_2 = apply_synapses(
             &self.kernel,
             self.layer_size,
             &self.accumulated_weights_1_to_2,
             &self.distance_weights_1_to_2,
             &self.neurons_1,
-            &mut self.refract_intervals_2,
+            &self.refract_intervals_2,
             self.synapse_params.refract_interval,
             self.synapse_params.threshold,
             self.synapse_params.gamma,
@@ -343,13 +343,13 @@ impl<'a> Network<'a> {
         )
         .unwrap();
 
-        let neurons_1_next = apply_synapses(
+        let apply_synapses_result_1 = apply_synapses(
             &self.kernel,
             self.layer_size,
             &self.accumulated_weights_2_to_1,
             &self.distance_weights_2_to_1,
             &self.neurons_2,
-            &mut self.refract_intervals_1,
+            &self.refract_intervals_1,
             self.synapse_params.refract_interval,
             self.synapse_params.threshold,
             self.synapse_params.gamma,
@@ -357,8 +357,10 @@ impl<'a> Network<'a> {
         )
         .unwrap();
 
-        self.neurons_1 = neurons_1_next;
-        self.neurons_2 = neurons_2_next;
+        self.neurons_1 = apply_synapses_result_1.next_neurons;
+        self.refract_intervals_1 = apply_synapses_result_1.next_refract_intervals;
+        self.neurons_2 = apply_synapses_result_2.next_neurons;
+        self.refract_intervals_2 = apply_synapses_result_2.next_refract_intervals;
     }
 
     pub fn print_states(&self) {
