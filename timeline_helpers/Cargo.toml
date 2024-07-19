@@ -1,0 +1,7 @@
+[package]
+name = "timeline_helpers"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+rnn_core = { path = "../rnn_core" }

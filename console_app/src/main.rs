@@ -2,29 +2,7 @@ extern crate rnn_core;
 
 use console_ui::run_console_app;
 use rnn_core::{DataAdapter, Network, NetworkParams, SynapseParams};
-
-fn number_to_bytes(number: usize, capacity: usize) -> Vec<bool> {
-    let mut result = Vec::new();
-
-    let mut temp_number = number;
-
-    for _ in 0..capacity {
-        result.push(temp_number % 2 == 1);
-
-        temp_number /= 2;
-    }
-
-    result.reverse();
-
-    result
-}
-
-fn print_bytes(bytes: &[bool]) {
-    for byte in bytes.iter() {
-        print!("{}", if *byte { "+" } else { "." });
-    }
-    println!();
-}
+use timeline_helpers::{IntegerTimeline, IntegerTimelineParams};
 
 fn main() {
     let params = NetworkParams {
@@ -48,9 +26,16 @@ fn main() {
 
     let capacity = params.field_width * params.field_height;
 
+    let timeline = IntegerTimeline::new(IntegerTimelineParams {
+        min_value: 0,
+        max_value: 10000,
+        capacity: capacity as u8,
+        get_multiplier: None,
+    });
+
     let data_adapter = DataAdapter {
-        data_to_binary: Box::new(move |number: usize| number_to_bytes(number, capacity)),
-        binary_to_data: Box::new(|_data| 0_usize),
+        data_to_binary: Box::new(move |number| timeline.get_bits(number)),
+        binary_to_data: Box::new(|_data| 0_i32),
     };
 
     let mut network = Network::new(params, synapse_params, data_adapter);
@@ -123,15 +108,9 @@ fn main() {
         7873, 7877, 7879, 7883, 7901, 7907, 7919,
     ];
 
-    let numbers = vec![];
+    // let numbers = vec![];
 
     for number in numbers {
-        let bytes = number_to_bytes(number, capacity);
-
-        println!("{}", number);
-
-        print_bytes(&bytes);
-
         network.push_data(number);
     }
 

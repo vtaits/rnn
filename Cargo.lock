@@ -87,6 +87,7 @@ version = "1.0.0"
 dependencies = [
  "console_ui",
  "rnn_core",
+ "timeline_helpers",
 ]
 
 [[package]]
@@ -693,6 +694,13 @@ name = "time-core"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef927ca75afb808a4d64dd374f00a2adf8d0fcff8e7b184af886c3c87ec4a3f3"
+
+[[package]]
+name = "timeline_helpers"
+version = "1.0.0"
+dependencies = [
+ "rnn_core",
+]
 
 [[package]]
 name = "unicode-ident"

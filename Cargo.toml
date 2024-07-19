@@ -4,5 +4,6 @@ resolver = "2"
 members = [
     "console_app",
     "console_ui",
-    "rnn_core"
+    "rnn_core",
+    "timeline_helpers"
 ]
