@@ -77,7 +77,7 @@ pub fn render_accumulated_weights<T>(frame: &mut Frame, area: Rect, app: &App<T>
                 .title("Accumulated weights")
                 .borders(Borders::ALL),
         )
-        .style(Style::default().fg(Color::White));
+        .style(Style::default());
 
     frame.render_widget(table, area);
 }

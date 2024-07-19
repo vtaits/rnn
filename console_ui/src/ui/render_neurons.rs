@@ -80,7 +80,7 @@ pub fn render_neurons<T>(frame: &mut Frame, area: Rect, app: &App<T>) {
                 .title("Refract timeouts")
                 .borders(Borders::ALL),
         )
-        .style(Style::default().fg(Color::White));
+        .style(Style::default());
 
     frame.render_widget(table, area);
 }

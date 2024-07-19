@@ -24,7 +24,7 @@ fn get_title<T>(app: &App<T>) -> Paragraph {
         }
         .fg(Color::LightGreen)
         .to_owned(),
-        Span::styled(" | ", Style::default().fg(Color::White)),
+        Span::styled(" | ", Style::default()),
         match app.current_screen {
             CurrentScreen::Neurons => Span::styled("Neurons", Style::default()),
             CurrentScreen::AccumulatedWeights => Span::styled(
@@ -37,9 +37,9 @@ fn get_title<T>(app: &App<T>) -> Paragraph {
             ),
         }
         .to_owned(),
-        Span::styled(" | ", Style::default().fg(Color::White)),
+        Span::styled(" | ", Style::default()),
         Span::styled("Input: ", Style::default().fg(Color::Gray)),
-        Span::styled(&app.buffer, Style::default().fg(Color::White)),
+        Span::styled(&app.buffer, Style::default()),
     ];
 
     return Paragraph::new(Line::from(text)).block(Block::default().borders(Borders::ALL));
