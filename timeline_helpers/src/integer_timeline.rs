@@ -1,10 +1,11 @@
-use crate::number_to_bits;
+use crate::{bits_to_number, number_to_bits};
 
 pub struct IntegerTimelineParams {
     pub min_value: i32,
     pub max_value: i32,
     pub capacity: u8,
-    pub get_multiplier: Option<Box<dyn Fn(i32) -> f32>>,
+    pub get_multiplier: Option<Box<dyn Fn(f32) -> f32>>,
+    pub get_reverse_multiplier: Option<Box<dyn Fn(f32) -> f32>>,
 }
 
 pub struct IntegerTimeline {
@@ -25,16 +26,17 @@ impl IntegerTimeline {
         }
     }
 
-    fn get_multiplier(&self, value: i32) -> f32 {
+    fn get_multiplier(&self, default_multiplier: f32) -> f32 {
         if let Some(get_multiplier) = &self.params.get_multiplier {
-            return (get_multiplier)(value);
+            return (get_multiplier)(default_multiplier);
         }
 
-        (value - self.params.min_value) as f32 / self.range as f32
+        default_multiplier
     }
 
     fn normalize_value(&self, value: i32) -> usize {
-        let multiplier = self.get_multiplier(value);
+        let multiplier =
+            self.get_multiplier((value - self.params.min_value) as f32 / self.range as f32);
 
         (self.max_normalize_value as f32 * multiplier).round() as usize
     }
@@ -56,6 +58,24 @@ impl IntegerTimeline {
             self.max_normalize_value,
         )
     }
+
+    fn get_reverse_multiplier(&self, multiplier: f32) -> f32 {
+        if let Some(get_reverse_multiplier) = &self.params.get_reverse_multiplier {
+            return (get_reverse_multiplier)(multiplier);
+        }
+
+        multiplier
+    }
+
+    pub fn reverse(&self, bits: &[bool]) -> i32 {
+        let normalized_value = bits_to_number(bits);
+
+        let multiplier = normalized_value as f32 / self.max_normalize_value as f32;
+
+        let reverse_multiplier = self.get_reverse_multiplier(multiplier);
+
+        self.params.min_value + (self.range as f32 * reverse_multiplier).round() as i32
+    }
 }
 
 #[cfg(test)]
@@ -69,6 +89,7 @@ mod tests {
             min_value: 10,
             max_value: 110,
             get_multiplier: None,
+            get_reverse_multiplier: None,
         });
 
         assert_eq!(timeline.normalize_value(16), 2);
@@ -83,6 +104,7 @@ mod tests {
             min_value: 10,
             max_value: 110,
             get_multiplier: None,
+            get_reverse_multiplier: None,
         });
 
         assert_eq!(
@@ -119,11 +141,8 @@ mod tests {
             capacity: 5,
             min_value: 10,
             max_value: 110,
-            get_multiplier: Some(Box::new(|value| {
-                let normalized = (value as f32 - 10.0) / 100.0;
-
-                normalized * normalized
-            })),
+            get_multiplier: Some(Box::new(|value| value * value)),
+            get_reverse_multiplier: None,
         });
 
         assert_eq!(
@@ -152,5 +171,35 @@ mod tests {
             vec![false, true, true, true, false],
             "14"
         );
+    }
+
+    #[test]
+    fn reverse_linear() {
+        let timeline = IntegerTimeline::new(IntegerTimelineParams {
+            capacity: 5,
+            min_value: 10,
+            max_value: 110,
+            get_multiplier: None,
+            get_reverse_multiplier: None,
+        });
+
+        assert_eq!(timeline.reverse(&[false, false, false, true, false]), 16);
+        assert_eq!(timeline.reverse(&[false, true, false, false, true]), 39);
+        assert_eq!(timeline.reverse(&[true, true, true, true, false]), 107);
+    }
+
+    #[test]
+    fn reverse_parabolic() {
+        let timeline = IntegerTimeline::new(IntegerTimelineParams {
+            capacity: 5,
+            min_value: 10,
+            max_value: 110,
+            get_multiplier: None,
+            get_reverse_multiplier: Some(Box::new(|value| value.sqrt())),
+        });
+
+        assert_eq!(timeline.reverse(&[true, true, false, false, true]), 100);
+        assert_eq!(timeline.reverse(&[false, false, false, true, true]), 41);
+        assert_eq!(timeline.reverse(&[false, true, true, true, false]), 77);
     }
 }

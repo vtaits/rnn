@@ -31,6 +31,7 @@ fn main() {
         max_value: 10000,
         capacity: capacity as u8,
         get_multiplier: None,
+        get_reverse_multiplier: None,
     });
 
     let data_adapter = DataAdapter {
