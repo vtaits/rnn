@@ -19,7 +19,7 @@ fn number_to_bytes(number: usize, capacity: usize) -> Vec<bool> {
     result
 }
 
-fn print_bytes(bytes: &Vec<bool>) {
+fn print_bytes(bytes: &[bool]) {
     for byte in bytes.iter() {
         print!("{}", if *byte { "+" } else { "." });
     }
@@ -49,12 +49,8 @@ fn main() {
     let capacity = params.field_width * params.field_height;
 
     let data_adapter = DataAdapter {
-        data_to_binary: Box::new(move |number: usize| {
-            number_to_bytes(number, capacity)
-        }),
-        binary_to_data: Box::new(|_data| {
-            0_usize
-        }),
+        data_to_binary: Box::new(move |number: usize| number_to_bytes(number, capacity)),
+        binary_to_data: Box::new(|_data| 0_usize),
     };
 
     let mut network = Network::new(params, synapse_params, data_adapter);
@@ -127,6 +123,8 @@ fn main() {
         7873, 7877, 7879, 7883, 7901, 7907, 7919,
     ];
 
+    let numbers = vec![];
+
     for number in numbers {
         let bytes = number_to_bytes(number, capacity);
 
@@ -134,7 +132,7 @@ fn main() {
 
         print_bytes(&bytes);
 
-        network.tick(number);
+        network.push_data(number);
     }
 
     network.print_states();

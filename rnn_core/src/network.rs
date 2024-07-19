@@ -328,7 +328,7 @@ impl<T> Network<T> {
         &self.params
     }
 
-    pub fn tick_binary(&mut self, bit_vec: &Vec<bool>) {
+    pub fn tick(&mut self, bit_vec: &[bool]) {
         let data_len = bit_vec.len();
 
         if data_len > self.field_size {
@@ -404,10 +404,26 @@ impl<T> Network<T> {
         self.accumulated_weights_2_to_1 = next_accumulated_weights_2_to_1;
     }
 
-    pub fn tick(&mut self, data: T) {
+    pub fn push_data_binary(&mut self, bit_vec: &[bool]) {
+        let data_len = bit_vec.len();
+
+        let tick_count = if data_len % self.field_size == 0 {
+            data_len / self.field_size
+        } else {
+            (data_len / self.field_size) + 1
+        };
+
+        for i in 0..tick_count {
+            let start = i * self.field_size;
+            let end = std::cmp::min(start + self.field_size, data_len);
+            self.tick(&bit_vec[start..end]);
+        }
+    }
+
+    pub fn push_data(&mut self, data: T) {
         let bit_vec = (self.data_adapter.data_to_binary)(data);
 
-        self.tick_binary(&bit_vec);
+        self.push_data_binary(&bit_vec);
     }
 
     pub fn print_states(&self) {

@@ -50,7 +50,7 @@ impl<T> App<T> {
 
         self.buffer = String::new();
 
-        self.network.tick_binary(&data);
+        self.network.push_data_binary(&data);
     }
 
     pub fn left(&mut self) {
