@@ -1,3 +1,23 @@
+pub fn number_to_bits(number: usize, capacity: u8, max: usize) -> Vec<bool> {
+    let mut result = Vec::new();
+
+    if number > max {
+        return vec![true; capacity as usize];
+    }
+
+    let mut temp_number = number;
+
+    for _ in 0..capacity {
+        result.push(temp_number % 2 == 1);
+
+        temp_number /= 2;
+    }
+
+    result.reverse();
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -37,24 +57,4 @@ mod tests {
             vec![true, true, true, true, true]
         );
     }
-}
-
-pub fn number_to_bits(number: usize, capacity: u8, max: usize) -> Vec<bool> {
-    let mut result = Vec::new();
-
-    if number > max {
-        return vec![true; capacity as usize];
-    }
-
-    let mut temp_number = number;
-
-    for _ in 0..capacity {
-        result.push(temp_number % 2 == 1);
-
-        temp_number /= 2;
-    }
-
-    result.reverse();
-
-    result
 }
