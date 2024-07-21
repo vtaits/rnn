@@ -30,9 +30,7 @@ impl<T> EnumTimeline<T> {
     pub fn reverse(&self, bits: &[bool]) -> T {
         let number = bits_to_number(bits);
 
-        let option = (self.params.to_option)(number);
-
-        option
+        (self.params.to_option)(number)
     }
 
     pub fn get_capacity(&self) -> &u8 {

@@ -186,9 +186,9 @@ mod tests {
             get_reverse_multiplier: None,
         });
 
-        assert!(timeline.reverse(&[false, false, false, true, false]) - 16.4 < 0.1);
-        assert!(timeline.reverse(&[false, true, false, false, true]) - 39.0 < 0.1);
-        assert!(timeline.reverse(&[true, true, true, true, false]) - 106.7 < 0.1);
+        assert!((timeline.reverse(&[false, false, false, true, false]) - 16.4).abs() < 0.1);
+        assert!((timeline.reverse(&[false, true, false, false, true]) - 39.0).abs() < 0.1);
+        assert!((timeline.reverse(&[true, true, true, true, false]) - 106.7).abs() < 0.1);
     }
 
     #[test]
@@ -201,8 +201,8 @@ mod tests {
             get_reverse_multiplier: Some(Box::new(|value| value.sqrt())),
         });
 
-        assert!(timeline.reverse(&[true, true, false, false, true]) - 100.3 < 0.1);
-        assert!(timeline.reverse(&[false, false, false, true, true]) - 41.1 < 0.1);
-        assert!(timeline.reverse(&[false, true, true, true, false]) - 77.2 < 0.1);
+        assert!((timeline.reverse(&[true, true, false, false, true]) - 99.8).abs() < 0.1);
+        assert!((timeline.reverse(&[false, false, false, true, true]) - 41.1).abs() < 0.1);
+        assert!((timeline.reverse(&[false, true, true, true, false]) - 77.2).abs() < 0.1);
     }
 }
