@@ -34,6 +34,10 @@ impl<T> EnumTimeline<T> {
 
         option
     }
+
+    pub fn get_capacity(&self) -> &u8 {
+        &self.params.capacity
+    }
 }
 
 #[cfg(test)]

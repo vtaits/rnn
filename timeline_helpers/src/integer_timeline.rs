@@ -76,6 +76,10 @@ impl IntegerTimeline {
 
         self.params.min_value + (self.range as f32 * reverse_multiplier).round() as i32
     }
+
+    pub fn get_capacity(&self) -> &u8 {
+        &self.params.capacity
+    }
 }
 
 #[cfg(test)]

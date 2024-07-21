@@ -75,6 +75,10 @@ impl FloatTimeline {
 
         self.params.min_value + self.range * reverse_multiplier
     }
+
+    pub fn get_capacity(&self) -> &u8 {
+        &self.params.capacity
+    }
 }
 
 #[cfg(test)]
