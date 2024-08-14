@@ -637,6 +637,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rnn_instance"
+version = "1.0.0"
+dependencies = [
+ "console_ui",
+ "data_streams",
+ "rnn_core",
+ "timeline_helpers",
+]
+
+[[package]]
 name = "rustc_version"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -6,5 +6,6 @@ members = [
     "console_ui",
     "data_streams",
     "rnn_core",
+    "rnn_instance",
     "timeline_helpers"
 ]

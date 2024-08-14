@@ -1,0 +1,10 @@
+[package]
+name = "rnn_instance"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+console_ui = { path = "../console_ui" }
+rnn_core = { path = "../rnn_core" }
+data_streams = { path = "../data_streams" }
+timeline_helpers = { path = "../timeline_helpers" }
