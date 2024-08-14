@@ -421,9 +421,11 @@ impl<T> Network<T> {
     }
 
     pub fn push_data(&mut self, data: T) {
-        let bit_vec = (self.data_adapter.data_to_binary)(data);
+        let bit_vec_result = (self.data_adapter.data_to_binary)(data);
 
-        self.push_data_binary(&bit_vec);
+        if let Ok(bit_vec) = bit_vec_result {
+            self.push_data_binary(&bit_vec);
+        }
     }
 
     pub fn print_states(&self) {

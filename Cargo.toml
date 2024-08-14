@@ -4,7 +4,7 @@ resolver = "2"
 members = [
     "console_app",
     "console_ui",
-    "csv_stream",
+    "data_streams",
     "rnn_core",
     "timeline_helpers"
 ]

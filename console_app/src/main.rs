@@ -35,8 +35,8 @@ fn main() {
     });
 
     let data_adapter = DataAdapter {
-        data_to_binary: Box::new(move |number| timeline.get_bits(number)),
-        binary_to_data: Box::new(|_data| 0_i32),
+        data_to_binary: Box::new(move |number| Ok(timeline.get_bits(number))),
+        binary_to_data: Box::new(|_data| Ok(0_i32)),
     };
 
     let mut network = Network::new(params, synapse_params, data_adapter);

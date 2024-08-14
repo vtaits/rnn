@@ -1,8 +1,11 @@
 [package]
-name = "csv_stream"
+name = "data_streams"
 version = "1.0.0"
 edition = "2021"
 
 [dependencies]
+chrono = "0.4.38"
 csv = "1.3.0"
+rnn_core = { path = "../rnn_core" }
 serde = { version = "1.0.204", features = ["serde_derive"] }
+timeline_helpers = { path = "../timeline_helpers" }

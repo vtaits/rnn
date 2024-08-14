@@ -7,8 +7,8 @@ pub struct CompiledKernel {
 }
 
 pub struct DataAdapter<T> {
-    pub binary_to_data: Box<dyn Fn(Vec<bool>) -> T>,
-    pub data_to_binary: Box<dyn Fn(T) -> Vec<bool>>,
+    pub binary_to_data: Box<dyn Fn(Vec<bool>) -> Result<T, ()>>,
+    pub data_to_binary: Box<dyn Fn(T) -> Result<Vec<bool>, ()>>,
 }
 
 pub struct SynapseParams {
