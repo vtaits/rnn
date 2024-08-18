@@ -10,7 +10,7 @@ pub fn init_network(
     timelines: Vec<ComplexTimelineItem>,
     streams: Vec<Box<dyn TrainingStream>>,
 ) -> Network<Vec<ComplexTimelineValue>> {
-    let complex_stream = ComplexStream::new(streams);
+    let mut complex_stream = ComplexStream::new(streams);
 
     let complex_timeline = Rc::new(ComplexTimeline::new(timelines));
 
@@ -29,7 +29,7 @@ pub fn init_network(
 
     let mut network = Network::new(params, synapse_params, data_adapter);
 
-    train_network(&mut network, &complex_stream);
+    train_network(&mut network, &mut complex_stream);
 
     network
 }

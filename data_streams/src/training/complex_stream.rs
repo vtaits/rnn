@@ -31,7 +31,7 @@ impl ComplexStream {
             }
         }
 
-        return false;
+        return true;
     }
 
     fn get_min_next_date(&self) -> Option<NaiveDateTime> {

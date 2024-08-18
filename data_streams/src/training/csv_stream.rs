@@ -3,12 +3,13 @@ extern crate chrono;
 use chrono::{NaiveDateTime, ParseResult};
 use csv::{Error, Reader};
 use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
 use timeline_helpers::ComplexTimelineValue;
 
 use super::structures::TrainingStream;
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde_derive::Deserialize)]
 struct Record {
     Date: String,
     Value: f32,
@@ -25,12 +26,15 @@ pub struct CsvStream {
     next_date: Option<NaiveDateTime>,
     value: f32,
     next_value: f32,
-    reader: Reader<File>,
+    reader: Reader<BufReader<File>>,
 }
 
 impl CsvStream {
-    pub fn new<P: AsRef<Path>>(path: P) -> Result<CsvStream, Error> {
-        let mut reader = Reader::from_path(path)?;
+    pub fn new<P: AsRef<Path>>(file_path: P) -> Result<CsvStream, Error> {
+        let file = File::open(file_path)?;
+        let mut reader = csv::ReaderBuilder::new()
+            .delimiter(b';') // Устанавливаем разделитель на ';'
+            .from_reader(BufReader::new(file));
 
         let first = reader.deserialize().next();
         let second = reader.deserialize().next();
@@ -111,7 +115,7 @@ impl CsvStream {
     fn is_date_in_interval(&self, date: NaiveDateTime) -> bool {
         match self.next_date {
             Some(next_date) => next_date > date,
-            None => false,
+            None => true,
         }
     }
 }
@@ -141,5 +145,87 @@ impl TrainingStream for CsvStream {
 
     fn is_finish(&self) -> bool {
         self.next_date.is_none()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stream_file() -> Result<(), Error> {
+        let mut csv_stream = CsvStream::new("./src/training/csv_stream_test.csv")?;
+
+        assert!(!csv_stream.is_finish());
+
+        match csv_stream.get_date() {
+            Some(date) => {
+                assert_eq!(format!("{}", date.format(FORMAT)), "2024-05-04 23:00:00");
+            }
+            _ => {
+                panic!("Date is not setted type");
+            }
+        }
+
+        match csv_stream.get_next_date() {
+            Some(date) => {
+                assert_eq!(format!("{}", date.format(FORMAT)), "2024-05-05 00:00:00");
+            }
+            _ => {
+                panic!("Date is not setted type");
+            }
+        }
+
+        match csv_stream.get_value() {
+            ComplexTimelineValue::Float(value) => {
+                assert!((value - 12.452).abs() < 0.01);
+            }
+            _ => {
+                panic!("Wrong result type");
+            }
+        }
+
+        csv_stream.set_date(parse_date("2024-05-04 23:30:00").unwrap());
+
+        assert!(!csv_stream.is_finish());
+
+        match csv_stream.get_value() {
+            ComplexTimelineValue::Float(value) => {
+                assert!((value - 12.452).abs() < 0.01);
+            }
+            _ => {
+                panic!("Wrong result type");
+            }
+        }
+
+        csv_stream.set_date(parse_date("2024-05-05 00:00:00").unwrap());
+
+        assert!(!csv_stream.is_finish());
+
+        match csv_stream.get_value() {
+            ComplexTimelineValue::Float(value) => {
+                assert!((value - 10.311).abs() < 0.01);
+            }
+            _ => {
+                panic!("Wrong result type");
+            }
+        }
+
+        csv_stream.set_date(parse_date("2024-05-05 01:00:00").unwrap());
+
+        assert!(csv_stream.is_finish());
+
+        match csv_stream.get_value() {
+            ComplexTimelineValue::Float(value) => {
+                assert!((value - 8.257).abs() < 0.01);
+            }
+            _ => {
+                panic!("Wrong result type");
+            }
+        }
+
+        assert!(csv_stream.get_next_date().is_none());
+
+        Ok(())
     }
 }

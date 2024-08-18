@@ -35,6 +35,7 @@ fn main() {
     ))];
 
     let streams: Vec<Box<dyn TrainingStream>> = vec![Box::new(
+        // CsvStream::new("../data_streams/src/training/csv_stream_test.csv").unwrap(),
         CsvStream::new("../media/csv/-2024-08-02.csv").unwrap(),
     )];
 
