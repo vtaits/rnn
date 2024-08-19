@@ -1,12 +1,12 @@
 extern crate rnn_core;
 
 use console_ui::run_console_app;
-use rnn_core::{DataAdapter, Network, NetworkParams, SynapseParams};
+use rnn_core::{DataAdapter, LayerParams, Network, SynapseParams};
 use timeline_helpers::Timeline;
 use timeline_helpers::{ComplexTimelineValue, IntegerTimeline, IntegerTimelineParams};
 
 fn main() {
-    let params = NetworkParams {
+    let params = LayerParams {
         field_width: 5,
         field_height: 4,
         layer_width: 5,

@@ -2,6 +2,7 @@ extern crate chrono;
 
 use chrono::{NaiveDateTime, ParseResult};
 use csv::{Error, Reader};
+use serde_derive::Deserialize;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -9,7 +10,7 @@ use timeline_helpers::ComplexTimelineValue;
 
 use super::structures::TrainingStream;
 
-#[derive(Debug, serde_derive::Deserialize)]
+#[derive(Debug, Deserialize)]
 struct Record {
     Date: String,
     Value: f32,
@@ -29,7 +30,16 @@ pub struct CsvStream {
     reader: Reader<BufReader<File>>,
 }
 
+#[derive(Deserialize)]
+pub struct  CsvStreamConfig {
+    path: String,
+}
+
 impl CsvStream {
+    pub fn from_config(config: &CsvStreamConfig) -> Self {
+        CsvStream::new(&config.path).unwrap()
+    }
+
     pub fn new<P: AsRef<Path>>(file_path: P) -> Result<CsvStream, Error> {
         let file = File::open(file_path)?;
         let mut reader = csv::ReaderBuilder::new()

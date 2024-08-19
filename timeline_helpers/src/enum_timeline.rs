@@ -1,4 +1,14 @@
+use std::collections::HashMap;
+
+use serde_derive::Deserialize;
+
 use crate::{bits_to_number, number_to_bits, ComplexTimelineValue, Timeline};
+
+#[derive(Deserialize)]
+pub struct EnumTimelineConfig {
+    pub capacity: u8,
+    pub options: Vec<String>,
+}
 
 pub struct EnumTimelineParams<T> {
     pub capacity: u8,
@@ -19,6 +29,40 @@ impl<T> EnumTimeline<T> {
             max_normalize_value,
             params,
         }
+    }
+}
+
+impl EnumTimeline<String> {
+    pub fn from_config(config: &EnumTimelineConfig) -> Self {
+        let EnumTimelineConfig { capacity, options } = config;
+        let mut option_to_index: HashMap<String, usize> = HashMap::new();
+
+        for (index, option) in options.iter().enumerate() {
+            option_to_index.insert(String::from(option), index);
+        }
+
+        EnumTimeline::new(EnumTimelineParams {
+            capacity: *capacity,
+            to_number: Box::new(move |option| {
+                let index_option = option_to_index.get(&option);
+
+                match index_option {
+                    Some(index) => *index,
+                    _ => 0,
+                }
+            }),
+            to_option: {
+                let options = options.clone();
+                
+                Box::new(move |index| {
+                    if options.len() <= index {
+                        return options[index].clone();
+                    }
+
+                    return options[0].clone();
+                })
+            },
+        })
     }
 }
 

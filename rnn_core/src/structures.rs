@@ -1,5 +1,6 @@
 use ndarray::Array2;
 use ocl::{Kernel, ProQue};
+use serde_derive::Deserialize;
 
 pub struct CompiledKernel {
     pub kernel: Kernel,
@@ -11,6 +12,7 @@ pub struct DataAdapter<T> {
     pub data_to_binary: Box<dyn Fn(T) -> Result<Vec<bool>, ()>>,
 }
 
+#[derive(Deserialize)]
 pub struct SynapseParams {
     pub alpha: f32,
     pub gamma: f32,
@@ -23,7 +25,8 @@ pub struct SynapseParams {
     pub refract_interval: u8,
 }
 
-pub struct NetworkParams {
+#[derive(Deserialize)]
+pub struct LayerParams {
     /// Width in neurons of one field
     pub field_width: usize,
     /// Height in neurons of one field

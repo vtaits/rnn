@@ -1,5 +1,15 @@
 use chrono::NaiveDateTime;
+use serde_derive::Deserialize;
 use timeline_helpers::ComplexTimelineValue;
+
+use super::csv_stream::CsvStreamConfig;
+
+#[derive(Deserialize)]
+#[serde(tag = "type")]
+
+pub enum TrainingStreamConfig {
+    Csv(CsvStreamConfig),
+}
 
 pub trait TrainingStream {
     fn get_value(&self) -> ComplexTimelineValue;

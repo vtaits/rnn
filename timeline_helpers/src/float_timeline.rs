@@ -1,4 +1,13 @@
+use serde_derive::Deserialize;
+
 use crate::{bits_to_number, number_to_bits, ComplexTimelineValue, Timeline};
+
+#[derive(Deserialize)]
+pub struct FloatTimelineConfig {
+    pub min_value: f32,
+    pub max_value: f32,
+    pub capacity: u8,
+}
 
 pub struct FloatTimelineParams {
     pub min_value: f32,
@@ -24,6 +33,24 @@ impl FloatTimeline {
             params,
             range,
         }
+    }
+
+    pub fn from_config(config: &FloatTimelineConfig) -> Self {
+        let FloatTimelineConfig {
+            min_value,
+            max_value,
+            capacity,
+        } = config;
+
+        let params = FloatTimelineParams {
+            min_value: *min_value,
+            max_value: *max_value,
+            capacity: *capacity,
+            get_multiplier: None,
+            get_reverse_multiplier: None,
+        };
+
+        FloatTimeline::new(params)
     }
 
     fn get_multiplier(&self, default_multiplier: f32) -> f32 {
@@ -95,55 +122,73 @@ mod tests {
 
     #[test]
     fn normaize_linear_value() {
-        let timeline = FloatTimeline::new(FloatTimelineParams {
-            capacity: 5,
-            min_value: 10.0,
-            max_value: 110.0,
-            get_multiplier: None,
-            get_reverse_multiplier: None,
-        });
+        let timelines = vec![
+            FloatTimeline::from_config(&FloatTimelineConfig {
+                capacity: 5,
+                min_value: 10.0,
+                max_value: 110.0,
+            }),
+            FloatTimeline::new(FloatTimelineParams {
+                capacity: 5,
+                min_value: 10.0,
+                max_value: 110.0,
+                get_multiplier: None,
+                get_reverse_multiplier: None,
+            }),
+        ];
 
-        assert_eq!(timeline.normalize_value(16.4), 2);
-        assert_eq!(timeline.normalize_value(39.0), 9);
-        assert_eq!(timeline.normalize_value(106.7), 30);
+        for timeline in timelines {
+            assert_eq!(timeline.normalize_value(16.4), 2);
+            assert_eq!(timeline.normalize_value(39.0), 9);
+            assert_eq!(timeline.normalize_value(106.7), 30);
+        }
     }
 
     #[test]
     fn get_linear_value_bits() {
-        let timeline = FloatTimeline::new(FloatTimelineParams {
-            capacity: 5,
-            min_value: 10.0,
-            max_value: 110.0,
-            get_multiplier: None,
-            get_reverse_multiplier: None,
-        });
+        let timelines = vec![
+            FloatTimeline::from_config(&FloatTimelineConfig {
+                capacity: 5,
+                min_value: 10.0,
+                max_value: 110.0,
+            }),
+            FloatTimeline::new(FloatTimelineParams {
+                capacity: 5,
+                min_value: 10.0,
+                max_value: 110.0,
+                get_multiplier: None,
+                get_reverse_multiplier: None,
+            }),
+        ];
 
-        assert_eq!(
-            timeline.get_bits(&ComplexTimelineValue::Float(5.0)),
-            vec![false, false, false, false, false],
-            "too small value"
-        );
-        assert_eq!(
-            timeline.get_bits(&ComplexTimelineValue::Float(115.0)),
-            vec![true, true, true, true, true],
-            "too big value"
-        );
+        for timeline in timelines {
+            assert_eq!(
+                timeline.get_bits(&ComplexTimelineValue::Float(5.0)),
+                vec![false, false, false, false, false],
+                "too small value"
+            );
+            assert_eq!(
+                timeline.get_bits(&ComplexTimelineValue::Float(115.0)),
+                vec![true, true, true, true, true],
+                "too big value"
+            );
 
-        assert_eq!(
-            timeline.get_bits(&ComplexTimelineValue::Float(16.4)),
-            vec![false, false, false, true, false],
-            "2"
-        );
-        assert_eq!(
-            timeline.get_bits(&ComplexTimelineValue::Float(39.0)),
-            vec![false, true, false, false, true],
-            "9"
-        );
-        assert_eq!(
-            timeline.get_bits(&ComplexTimelineValue::Float(106.7)),
-            vec![true, true, true, true, false],
-            "30"
-        );
+            assert_eq!(
+                timeline.get_bits(&ComplexTimelineValue::Float(16.4)),
+                vec![false, false, false, true, false],
+                "2"
+            );
+            assert_eq!(
+                timeline.get_bits(&ComplexTimelineValue::Float(39.0)),
+                vec![false, true, false, false, true],
+                "9"
+            );
+            assert_eq!(
+                timeline.get_bits(&ComplexTimelineValue::Float(106.7)),
+                vec![true, true, true, true, false],
+                "30"
+            );
+        }
     }
 
     #[test]

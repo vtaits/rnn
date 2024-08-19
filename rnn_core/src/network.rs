@@ -7,7 +7,7 @@ use crate::{
         build_recount_accumulated_weights_kernel, recount_accumulated_weights,
     },
     spiral::get_next_field,
-    structures::{CompiledKernel, DataAdapter, NetworkParams, SynapseMask, SynapseParams},
+    structures::{CompiledKernel, DataAdapter, LayerParams, SynapseMask, SynapseParams},
 };
 
 struct ComputedParams {
@@ -54,7 +54,7 @@ pub struct Network<T> {
     refract_intervals_1: Array1<u8>,
     // timeouts of neuron refract states of the second layer
     refract_intervals_2: Array1<u8>,
-    params: NetworkParams,
+    params: LayerParams,
     synapse_params: SynapseParams,
 }
 
@@ -72,7 +72,7 @@ fn get_neuron_index(
 }
 
 fn get_neuron_coordinates(
-    params: &NetworkParams,
+    params: &LayerParams,
     layer_x: usize,
     layer_y: usize,
     neuron_in_field_x: usize,
@@ -91,7 +91,7 @@ fn get_neuron_coordinates(
 }
 
 fn get_neuron_full_coordinates(
-    params: &NetworkParams,
+    params: &LayerParams,
     neuron_x: usize,
     neuron_y: usize,
 ) -> (usize, usize, usize, usize) {
@@ -105,7 +105,7 @@ fn get_neuron_full_coordinates(
 }
 
 fn get_neuron_index_by_coordinates(
-    params: &NetworkParams,
+    params: &LayerParams,
     computed_params: &ComputedParams,
     neuron_x: usize,
     neuron_y: usize,
@@ -123,7 +123,7 @@ fn get_neuron_index_by_coordinates(
 }
 
 fn apply_mask(
-    params: &NetworkParams,
+    params: &LayerParams,
     computed_params: &ComputedParams,
     base_neuron_index: usize,
     distance_weights: &mut Array2<f32>,
@@ -164,7 +164,7 @@ fn apply_mask(
 fn set_initial_connections(
     computed_params: &ComputedParams,
     synapse_params: &SynapseParams,
-    params: &NetworkParams,
+    params: &LayerParams,
     mask: &SynapseMask,
 ) -> (
     // distance_weights of synapses from the first layer to the second layer
@@ -261,11 +261,11 @@ fn set_initial_connections(
 
 impl<T> Network<T> {
     pub fn new(
-        params: NetworkParams,
+        params: LayerParams,
         synapse_params: SynapseParams,
         data_adapter: DataAdapter<T>,
     ) -> Network<T> {
-        let NetworkParams {
+        let LayerParams {
             field_width,
             field_height,
             layer_width,
@@ -324,7 +324,7 @@ impl<T> Network<T> {
         }
     }
 
-    pub fn get_params(&self) -> &NetworkParams {
+    pub fn get_params(&self) -> &LayerParams {
         &self.params
     }
 

@@ -6,4 +6,4 @@ mod spiral;
 mod structures;
 
 pub use network::Network;
-pub use structures::{DataAdapter, NetworkParams, SynapseParams};
+pub use structures::{DataAdapter, LayerParams, SynapseParams};

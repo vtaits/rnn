@@ -1,6 +1,6 @@
-use crate::structures::NetworkParams;
+use crate::structures::LayerParams;
 
-pub fn get_next_field(params: &NetworkParams, field_x: usize, field_y: usize) -> (usize, usize) {
+pub fn get_next_field(params: &LayerParams, field_x: usize, field_y: usize) -> (usize, usize) {
     let layer_2_to_1_x = if field_y % 2 == 0 {
         // last field in row
         if field_x == params.layer_width - 1 {
