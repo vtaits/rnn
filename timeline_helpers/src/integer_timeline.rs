@@ -1,4 +1,4 @@
-use crate::{bits_to_number, number_to_bits};
+use crate::{bits_to_number, number_to_bits, ComplexTimelineValue, Timeline};
 
 pub struct IntegerTimelineParams {
     pub min_value: i32,
@@ -41,24 +41,6 @@ impl IntegerTimeline {
         (self.max_normalize_value as f32 * multiplier).round() as usize
     }
 
-    pub fn get_bits(&self, value: i32) -> Vec<bool> {
-        if value > self.params.max_value {
-            return vec![true; self.params.capacity as usize];
-        }
-
-        if value < self.params.min_value {
-            return vec![false; self.params.capacity as usize];
-        }
-
-        let normalized_value = self.normalize_value(value);
-
-        number_to_bits(
-            normalized_value,
-            self.params.capacity,
-            self.max_normalize_value,
-        )
-    }
-
     fn get_reverse_multiplier(&self, multiplier: f32) -> f32 {
         if let Some(get_reverse_multiplier) = &self.params.get_reverse_multiplier {
             return (get_reverse_multiplier)(multiplier);
@@ -66,19 +48,46 @@ impl IntegerTimeline {
 
         multiplier
     }
+}
 
-    pub fn reverse(&self, bits: &[bool]) -> i32 {
+impl Timeline for IntegerTimeline {
+    fn reverse(&self, bits: &[bool]) -> ComplexTimelineValue {
         let normalized_value = bits_to_number(bits);
 
         let multiplier = normalized_value as f32 / self.max_normalize_value as f32;
 
         let reverse_multiplier = self.get_reverse_multiplier(multiplier);
 
-        self.params.min_value + (self.range as f32 * reverse_multiplier).round() as i32
+        let result =
+            self.params.min_value + (self.range as f32 * reverse_multiplier).round() as i32;
+
+        ComplexTimelineValue::Integer(result)
     }
 
-    pub fn get_capacity(&self) -> &u8 {
+    fn get_capacity(&self) -> &u8 {
         &self.params.capacity
+    }
+
+    fn get_bits(&self, timeline_value: &ComplexTimelineValue) -> Vec<bool> {
+        if let ComplexTimelineValue::Integer(value) = timeline_value {
+            if *value > self.params.max_value {
+                return vec![true; self.params.capacity as usize];
+            }
+
+            if *value < self.params.min_value {
+                return vec![false; self.params.capacity as usize];
+            }
+
+            let normalized_value = self.normalize_value(*value);
+
+            return number_to_bits(
+                normalized_value,
+                self.params.capacity,
+                self.max_normalize_value,
+            );
+        }
+
+        panic!("Invalid value of integer timeline");
     }
 }
 
@@ -112,28 +121,28 @@ mod tests {
         });
 
         assert_eq!(
-            timeline.get_bits(5),
+            timeline.get_bits(&ComplexTimelineValue::Integer(5)),
             vec![false, false, false, false, false],
             "too small value"
         );
         assert_eq!(
-            timeline.get_bits(115),
+            timeline.get_bits(&ComplexTimelineValue::Integer(115)),
             vec![true, true, true, true, true],
             "too big value"
         );
 
         assert_eq!(
-            timeline.get_bits(16),
+            timeline.get_bits(&ComplexTimelineValue::Integer(16)),
             vec![false, false, false, true, false],
             "2"
         );
         assert_eq!(
-            timeline.get_bits(39),
+            timeline.get_bits(&ComplexTimelineValue::Integer(39)),
             vec![false, true, false, false, true],
             "9"
         );
         assert_eq!(
-            timeline.get_bits(106),
+            timeline.get_bits(&ComplexTimelineValue::Integer(106)),
             vec![true, true, true, true, false],
             "30"
         );
@@ -150,28 +159,28 @@ mod tests {
         });
 
         assert_eq!(
-            timeline.get_bits(5),
+            timeline.get_bits(&ComplexTimelineValue::Integer(5)),
             vec![false, false, false, false, false],
             "too small value"
         );
         assert_eq!(
-            timeline.get_bits(115),
+            timeline.get_bits(&ComplexTimelineValue::Integer(115)),
             vec![true, true, true, true, true],
             "too big value"
         );
 
         assert_eq!(
-            timeline.get_bits(100),
+            timeline.get_bits(&ComplexTimelineValue::Integer(100)),
             vec![true, true, false, false, true],
             "25"
         );
         assert_eq!(
-            timeline.get_bits(39),
+            timeline.get_bits(&ComplexTimelineValue::Integer(39)),
             vec![false, false, false, true, true],
             "9"
         );
         assert_eq!(
-            timeline.get_bits(77),
+            timeline.get_bits(&ComplexTimelineValue::Integer(77)),
             vec![false, true, true, true, false],
             "14"
         );
@@ -187,9 +196,18 @@ mod tests {
             get_reverse_multiplier: None,
         });
 
-        assert_eq!(timeline.reverse(&[false, false, false, true, false]), 16);
-        assert_eq!(timeline.reverse(&[false, true, false, false, true]), 39);
-        assert_eq!(timeline.reverse(&[true, true, true, true, false]), 107);
+        assert_eq!(
+            timeline.reverse(&[false, false, false, true, false]),
+            ComplexTimelineValue::Integer(16)
+        );
+        assert_eq!(
+            timeline.reverse(&[false, true, false, false, true]),
+            ComplexTimelineValue::Integer(39)
+        );
+        assert_eq!(
+            timeline.reverse(&[true, true, true, true, false]),
+            ComplexTimelineValue::Integer(107)
+        );
     }
 
     #[test]
@@ -202,8 +220,17 @@ mod tests {
             get_reverse_multiplier: Some(Box::new(|value| value.sqrt())),
         });
 
-        assert_eq!(timeline.reverse(&[true, true, false, false, true]), 100);
-        assert_eq!(timeline.reverse(&[false, false, false, true, true]), 41);
-        assert_eq!(timeline.reverse(&[false, true, true, true, false]), 77);
+        assert_eq!(
+            timeline.reverse(&[true, true, false, false, true]),
+            ComplexTimelineValue::Integer(100)
+        );
+        assert_eq!(
+            timeline.reverse(&[false, false, false, true, true]),
+            ComplexTimelineValue::Integer(41)
+        );
+        assert_eq!(
+            timeline.reverse(&[false, true, true, true, false]),
+            ComplexTimelineValue::Integer(77)
+        );
     }
 }

@@ -2,12 +2,12 @@ use std::rc::Rc;
 
 use data_streams::{train_network, ComplexStream, TrainingStream};
 use rnn_core::{DataAdapter, Network, NetworkParams, SynapseParams};
-use timeline_helpers::{ComplexTimeline, ComplexTimelineItem, ComplexTimelineValue};
+use timeline_helpers::{ComplexTimeline, ComplexTimelineValue, Timeline};
 
 pub fn init_network(
     params: NetworkParams,
     synapse_params: SynapseParams,
-    timelines: Vec<ComplexTimelineItem>,
+    timelines: Vec<Box<dyn Timeline>>,
     streams: Vec<Box<dyn TrainingStream>>,
 ) -> Network<Vec<ComplexTimelineValue>> {
     let mut complex_stream = ComplexStream::new(streams);

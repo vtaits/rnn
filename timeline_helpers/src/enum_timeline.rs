@@ -1,4 +1,4 @@
-use crate::{bits_to_number, number_to_bits};
+use crate::{bits_to_number, number_to_bits, ComplexTimelineValue, Timeline};
 
 pub struct EnumTimelineParams<T> {
     pub capacity: u8,
@@ -20,20 +20,26 @@ impl<T> EnumTimeline<T> {
             params,
         }
     }
+}
 
-    pub fn get_bits(&self, value: T) -> Vec<bool> {
-        let number = (self.params.to_number)(value);
+impl Timeline for EnumTimeline<String> {
+    fn get_bits(&self, timeline_value: &ComplexTimelineValue) -> Vec<bool> {
+        if let ComplexTimelineValue::Enum(value) = timeline_value {
+            let number = (self.params.to_number)(value.clone());
 
-        number_to_bits(number, self.params.capacity, self.max_normalize_value)
+            return number_to_bits(number, self.params.capacity, self.max_normalize_value);
+        }
+
+        panic!("Invalid value of float timeline");
     }
 
-    pub fn reverse(&self, bits: &[bool]) -> T {
+    fn reverse(&self, bits: &[bool]) -> ComplexTimelineValue {
         let number = bits_to_number(bits);
 
-        (self.params.to_option)(number)
+        ComplexTimelineValue::Enum((self.params.to_option)(number))
     }
 
-    pub fn get_capacity(&self) -> &u8 {
+    fn get_capacity(&self) -> &u8 {
         &self.params.capacity
     }
 }
@@ -46,7 +52,7 @@ mod tests {
     fn get_value_bits() {
         let timeline = EnumTimeline::new(EnumTimelineParams {
             capacity: 3,
-            to_number: Box::new(|value: &str| match value {
+            to_number: Box::new(|value: String| match &value[..] {
                 "one" => 1,
                 "two" => 2,
                 "three" => 3,
@@ -55,33 +61,51 @@ mod tests {
                 _ => 0,
             }),
             to_option: Box::new(|value| match value {
-                1 => "one",
-                2 => "two",
-                3 => "three",
-                4 => "four",
-                5 => "five",
-                _ => "zero",
+                1 => String::from("one"),
+                2 => String::from("two"),
+                3 => String::from("three"),
+                4 => String::from("four"),
+                5 => String::from("five"),
+                _ => String::from("zero"),
             }),
         });
 
-        assert_eq!(timeline.get_bits("one"), vec![false, false, true],);
+        assert_eq!(
+            timeline.get_bits(&ComplexTimelineValue::Enum(String::from("one"))),
+            vec![false, false, true],
+        );
 
-        assert_eq!(timeline.get_bits("two"), vec![false, true, false],);
+        assert_eq!(
+            timeline.get_bits(&ComplexTimelineValue::Enum(String::from("two"))),
+            vec![false, true, false],
+        );
 
-        assert_eq!(timeline.get_bits("three"), vec![false, true, true],);
+        assert_eq!(
+            timeline.get_bits(&ComplexTimelineValue::Enum(String::from("three"))),
+            vec![false, true, true],
+        );
 
-        assert_eq!(timeline.get_bits("four"), vec![true, false, false],);
+        assert_eq!(
+            timeline.get_bits(&ComplexTimelineValue::Enum(String::from("four"))),
+            vec![true, false, false],
+        );
 
-        assert_eq!(timeline.get_bits("five"), vec![true, false, true],);
+        assert_eq!(
+            timeline.get_bits(&ComplexTimelineValue::Enum(String::from("five"))),
+            vec![true, false, true],
+        );
 
-        assert_eq!(timeline.get_bits("zero"), vec![false, false, false],);
+        assert_eq!(
+            timeline.get_bits(&ComplexTimelineValue::Enum(String::from("zero"))),
+            vec![false, false, false],
+        );
     }
 
     #[test]
     fn reverse() {
         let timeline = EnumTimeline::new(EnumTimelineParams {
             capacity: 3,
-            to_number: Box::new(|value: &str| match value {
+            to_number: Box::new(|value: String| match &value[..] {
                 "one" => 1,
                 "two" => 2,
                 "three" => 3,
@@ -90,25 +114,49 @@ mod tests {
                 _ => 0,
             }),
             to_option: Box::new(|value| match value {
-                1 => "one",
-                2 => "two",
-                3 => "three",
-                4 => "four",
-                5 => "five",
-                _ => "zero",
+                1 => String::from("one"),
+                2 => String::from("two"),
+                3 => String::from("three"),
+                4 => String::from("four"),
+                5 => String::from("five"),
+                _ => String::from("zero"),
             }),
         });
 
-        assert_eq!(timeline.reverse(&[false, false, true]), "one",);
+        if let ComplexTimelineValue::Enum(result) = timeline.reverse(&[false, false, true]) {
+            assert_eq!(result, "one",);
+        } else {
+            panic!("Wrong result type");
+        }
 
-        assert_eq!(timeline.reverse(&[false, true, false]), "two",);
+        if let ComplexTimelineValue::Enum(result) = timeline.reverse(&[false, true, false]) {
+            assert_eq!(result, "two",);
+        } else {
+            panic!("Wrong result type");
+        }
 
-        assert_eq!(timeline.reverse(&[false, true, true]), "three",);
+        if let ComplexTimelineValue::Enum(result) = timeline.reverse(&[false, true, true]) {
+            assert_eq!(result, "three",);
+        } else {
+            panic!("Wrong result type");
+        }
 
-        assert_eq!(timeline.reverse(&[true, false, false]), "four",);
+        if let ComplexTimelineValue::Enum(result) = timeline.reverse(&[true, false, false]) {
+            assert_eq!(result, "four",);
+        } else {
+            panic!("Wrong result type");
+        }
 
-        assert_eq!(timeline.reverse(&[true, false, true]), "five",);
+        if let ComplexTimelineValue::Enum(result) = timeline.reverse(&[true, false, true]) {
+            assert_eq!(result, "five",);
+        } else {
+            panic!("Wrong result type");
+        }
 
-        assert_eq!(timeline.reverse(&[false, false, false]), "zero",);
+        if let ComplexTimelineValue::Enum(result) = timeline.reverse(&[false, false, false]) {
+            assert_eq!(result, "zero",);
+        } else {
+            panic!("Wrong result type");
+        }
     }
 }

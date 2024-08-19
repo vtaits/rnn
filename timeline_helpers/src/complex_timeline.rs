@@ -1,24 +1,11 @@
-use crate::{EnumTimeline, FloatTimeline, IntegerTimeline};
-
-pub enum ComplexTimelineItem {
-    Float(FloatTimeline),
-    Integer(IntegerTimeline),
-    Enum(EnumTimeline<String>),
-}
-
-#[derive(PartialEq, Debug)]
-pub enum ComplexTimelineValue {
-    Float(f32),
-    Integer(i32),
-    Enum(String),
-}
+use crate::{ComplexTimelineValue, Timeline};
 
 pub struct ComplexTimeline {
-    items: Vec<ComplexTimelineItem>,
+    items: Vec<Box<dyn Timeline>>,
 }
 
 impl ComplexTimeline {
-    pub fn new(items: Vec<ComplexTimelineItem>) -> Self {
+    pub fn new(items: Vec<Box<dyn Timeline>>) -> Self {
         ComplexTimeline { items }
     }
 
@@ -28,32 +15,7 @@ impl ComplexTimeline {
         for (index, item) in value.iter().enumerate() {
             let timeline_item = &self.items[index];
 
-            let bits = match item {
-                ComplexTimelineValue::Float(float_value) => match timeline_item {
-                    ComplexTimelineItem::Float(float_timeline) => {
-                        float_timeline.get_bits(*float_value)
-                    }
-                    _ => {
-                        return Result::Err(());
-                    }
-                },
-                ComplexTimelineValue::Integer(integer_value) => match timeline_item {
-                    ComplexTimelineItem::Integer(integer_timeline) => {
-                        integer_timeline.get_bits(*integer_value)
-                    }
-                    _ => {
-                        return Result::Err(());
-                    }
-                },
-                ComplexTimelineValue::Enum(enum_value) => match timeline_item {
-                    ComplexTimelineItem::Enum(integer_timeline) => {
-                        integer_timeline.get_bits(enum_value.clone())
-                    }
-                    _ => {
-                        return Result::Err(());
-                    }
-                },
-            };
+            let bits = timeline_item.get_bits(item);
 
             for bit in bits {
                 result.push(bit);
@@ -68,27 +30,13 @@ impl ComplexTimeline {
         let mut offset = 0;
 
         for timeline_item in &self.items {
-            let capacity = match timeline_item {
-                ComplexTimelineItem::Float(float_timeline) => float_timeline.get_capacity(),
-                ComplexTimelineItem::Integer(integer_timeline) => integer_timeline.get_capacity(),
-                ComplexTimelineItem::Enum(enum_timeline) => enum_timeline.get_capacity(),
-            };
+            let capacity = timeline_item.get_capacity();
 
             let next_offset = offset + *capacity as usize;
 
             let timeline_bits = &bits[offset..next_offset];
 
-            let res_item = match timeline_item {
-                ComplexTimelineItem::Float(float_timeline) => {
-                    ComplexTimelineValue::Float(float_timeline.reverse(timeline_bits))
-                }
-                ComplexTimelineItem::Integer(integer_timeline) => {
-                    ComplexTimelineValue::Integer(integer_timeline.reverse(timeline_bits))
-                }
-                ComplexTimelineItem::Enum(enum_timeline) => {
-                    ComplexTimelineValue::Enum(enum_timeline.reverse(timeline_bits))
-                }
-            };
+            let res_item = timeline_item.reverse(timeline_bits);
 
             res.push(res_item);
 
@@ -101,28 +49,31 @@ impl ComplexTimeline {
 
 #[cfg(test)]
 mod tests {
-    use crate::{EnumTimelineParams, FloatTimelineParams, IntegerTimelineParams};
+    use crate::{
+        EnumTimeline, EnumTimelineParams, FloatTimeline, FloatTimelineParams, IntegerTimeline,
+        IntegerTimelineParams,
+    };
 
     use super::*;
 
     #[test]
     fn get_value_bits() {
         let timeline = ComplexTimeline::new(vec![
-            ComplexTimelineItem::Float(FloatTimeline::new(FloatTimelineParams {
+            Box::new(FloatTimeline::new(FloatTimelineParams {
                 capacity: 5,
                 min_value: 10.0,
                 max_value: 110.0,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
             })),
-            ComplexTimelineItem::Integer(IntegerTimeline::new(IntegerTimelineParams {
+            Box::new(IntegerTimeline::new(IntegerTimelineParams {
                 capacity: 5,
                 min_value: 10,
                 max_value: 110,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
             })),
-            ComplexTimelineItem::Enum(EnumTimeline::new(EnumTimelineParams {
+            Box::new(EnumTimeline::<String>::new(EnumTimelineParams {
                 capacity: 3,
                 to_number: Box::new(|value| match &value[..] {
                     "one" => 1,
@@ -160,21 +111,21 @@ mod tests {
     #[test]
     fn reverse() {
         let timeline = ComplexTimeline::new(vec![
-            ComplexTimelineItem::Float(FloatTimeline::new(FloatTimelineParams {
+            Box::new(FloatTimeline::new(FloatTimelineParams {
                 capacity: 5,
                 min_value: 10.0,
                 max_value: 110.0,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
             })),
-            ComplexTimelineItem::Integer(IntegerTimeline::new(IntegerTimelineParams {
+            Box::new(IntegerTimeline::new(IntegerTimelineParams {
                 capacity: 5,
                 min_value: 10,
                 max_value: 110,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
             })),
-            ComplexTimelineItem::Enum(EnumTimeline::new(EnumTimelineParams {
+            Box::new(EnumTimeline::<String>::new(EnumTimelineParams {
                 capacity: 3,
                 to_number: Box::new(|value| match &value[..] {
                     "one" => 1,

@@ -2,7 +2,8 @@ extern crate rnn_core;
 
 use console_ui::run_console_app;
 use rnn_core::{DataAdapter, Network, NetworkParams, SynapseParams};
-use timeline_helpers::{IntegerTimeline, IntegerTimelineParams};
+use timeline_helpers::Timeline;
+use timeline_helpers::{ComplexTimelineValue, IntegerTimeline, IntegerTimelineParams};
 
 fn main() {
     let params = NetworkParams {
@@ -35,7 +36,9 @@ fn main() {
     });
 
     let data_adapter = DataAdapter {
-        data_to_binary: Box::new(move |number| Ok(timeline.get_bits(number))),
+        data_to_binary: Box::new(move |number| {
+            Ok(timeline.get_bits(&ComplexTimelineValue::Integer(number)))
+        }),
         binary_to_data: Box::new(|_data| Ok(0_i32)),
     };
 

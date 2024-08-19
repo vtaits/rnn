@@ -2,12 +2,12 @@ use console_ui::run_console_app;
 use data_streams::{CsvStream, TrainingStream};
 use rnn_core::{NetworkParams, SynapseParams};
 use rnn_instance::init_network;
-use timeline_helpers::{ComplexTimelineItem, FloatTimeline, FloatTimelineParams};
+use timeline_helpers::{FloatTimeline, FloatTimelineParams, Timeline};
 
 fn main() {
     let params = NetworkParams {
-        field_width: 5,
-        field_height: 4,
+        field_width: 6,
+        field_height: 6,
         layer_width: 5,
         layer_height: 5,
     };
@@ -24,21 +24,27 @@ fn main() {
         threshold: 0.9,
     };
 
-    let timelines: Vec<ComplexTimelineItem> = vec![ComplexTimelineItem::Float(FloatTimeline::new(
-        FloatTimelineParams {
+    let timelines: Vec<Box<dyn Timeline>> = vec![
+        Box::new(FloatTimeline::new(FloatTimelineParams {
             min_value: 0.0,
             max_value: 30.0,
             capacity: 16,
             get_multiplier: None,
             get_reverse_multiplier: None,
-        },
-    ))];
+        })),
+        Box::new(FloatTimeline::new(FloatTimelineParams {
+            min_value: 0.0,
+            max_value: 30000.0,
+            capacity: 16,
+            get_multiplier: None,
+            get_reverse_multiplier: None,
+        })),
+    ];
 
-    let streams: Vec<Box<dyn TrainingStream>> = vec![Box::new(
-        // CsvStream::new("../data_streams/src/training/csv_stream_test.csv").unwrap(),
-        CsvStream::new("../media/csv/-2024-08-02.csv").unwrap(),
-    )];
-
+    let streams: Vec<Box<dyn TrainingStream>> = vec![
+        Box::new(CsvStream::new("../media/csv/cpu_small.csv").unwrap()),
+        Box::new(CsvStream::new("../media/csv/disk_busy_small.csv").unwrap()),
+    ];
     let network = init_network(params, synapse_params, timelines, streams);
 
     let _ = run_console_app(Box::new(network));
