@@ -9,7 +9,7 @@ use crate::app::{App, Layer};
 
 pub fn render_accumulated_weights<T>(frame: &mut Frame, area: Rect, app: &App<T>) {
     let network = app.get_network();
-    let network_params = network.get_params();
+    let layer_params = network.get_layer_params();
 
     let layer_index = match app.layer {
         Layer::Layer1 => 1,
@@ -20,8 +20,8 @@ pub fn render_accumulated_weights<T>(frame: &mut Frame, area: Rect, app: &App<T>
 
     let mut widths: Vec<u16> = vec![];
 
-    for _ in 0..network_params.layer_width {
-        for _ in 0..network_params.field_width {
+    for _ in 0..layer_params.layer_width {
+        for _ in 0..layer_params.field_width {
             widths.push(5);
         }
 
@@ -52,14 +52,14 @@ pub fn render_accumulated_weights<T>(frame: &mut Frame, area: Rect, app: &App<T>
 
             cells.push(cell);
 
-            if (x + 1) % network_params.field_width == 0 {
+            if (x + 1) % layer_params.field_width == 0 {
                 cells.push(Cell::from(String::from("|")));
             }
         }
 
         rows.push(Row::new(cells));
 
-        if (y + 1) % network_params.field_height == 0 {
+        if (y + 1) % layer_params.field_height == 0 {
             let mut dash_cells: Vec<String> = Vec::new();
             for width in widths.iter() {
                 let cell_content = "-".repeat(*width as usize);

@@ -9,7 +9,7 @@ use crate::app::{App, Layer};
 
 pub fn render_neurons<T>(frame: &mut Frame, area: Rect, app: &App<T>) {
     let network = app.get_network();
-    let network_params = network.get_params();
+    let layer_params = network.get_layer_params();
 
     let layer_index = match app.layer {
         Layer::Layer1 => 1,
@@ -18,8 +18,8 @@ pub fn render_neurons<T>(frame: &mut Frame, area: Rect, app: &App<T>) {
 
     let mut widths = vec![];
 
-    for _ in 0..network_params.layer_width {
-        for _ in 0..network_params.field_width {
+    for _ in 0..layer_params.layer_width {
+        for _ in 0..layer_params.field_width {
             widths.push(1);
         }
 
@@ -33,12 +33,12 @@ pub fn render_neurons<T>(frame: &mut Frame, area: Rect, app: &App<T>) {
     let (target_layer_x, target_layer_y, target_neuron_in_field_x, target_neuron_in_field_y) =
         network.get_neuron_full_coordinates(app.neuron_x, app.neuron_y);
 
-    for layer_y in 0..network_params.layer_height {
-        for neuron_in_field_y in 0..network_params.field_height {
+    for layer_y in 0..layer_params.layer_height {
+        for neuron_in_field_y in 0..layer_params.field_height {
             let mut cells: Vec<Cell> = Vec::new();
 
-            for layer_x in 0..network_params.layer_width {
-                for neuron_in_field_x in 0..network_params.field_width {
+            for layer_x in 0..layer_params.layer_width {
+                for neuron_in_field_x in 0..layer_params.field_width {
                     let refract_timeout = network.get_neuron_refract_timeout(
                         layer_index,
                         layer_x,

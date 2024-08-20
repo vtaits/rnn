@@ -13,7 +13,6 @@ use crate::{
 struct ComputedParams {
     // number of neurons in one field
     field_size: usize,
-    field_width: usize,
     // number of neurons in one row of fields
     row_size: usize,
     // number of neurons in one row of neurons
@@ -34,8 +33,6 @@ pub struct Network<T> {
     distance_weights_1_to_2: Array2<f32>,
     // distance weights of synapses from the second layer to the first layer
     distance_weights_2_to_1: Array2<f32>,
-    field_width: usize,
-    field_height: usize,
     // compiled kernel for recount accumulated weights with opencl
     kernel_accumulated_weights: CompiledKernel,
     // compiled kernel for recount neurons and refract intervals with opencl
@@ -54,11 +51,12 @@ pub struct Network<T> {
     refract_intervals_1: Array1<u8>,
     // timeouts of neuron refract states of the second layer
     refract_intervals_2: Array1<u8>,
-    params: LayerParams,
+    layer_params: LayerParams,
     synapse_params: SynapseParams,
 }
 
 fn get_neuron_index(
+    layer_params: &LayerParams,
     computed_params: &ComputedParams,
     layer_x: usize,
     layer_y: usize,
@@ -66,7 +64,7 @@ fn get_neuron_index(
     neuron_in_field_y: usize,
 ) -> usize {
     let layer_offset = computed_params.row_size * layer_y + computed_params.field_size * layer_x;
-    let field_offset = computed_params.field_width * neuron_in_field_y + neuron_in_field_x;
+    let field_offset = layer_params.field_width * neuron_in_field_y + neuron_in_field_x;
 
     layer_offset + field_offset
 }
@@ -105,15 +103,16 @@ fn get_neuron_full_coordinates(
 }
 
 fn get_neuron_index_by_coordinates(
-    params: &LayerParams,
+    layer_params: &LayerParams,
     computed_params: &ComputedParams,
     neuron_x: usize,
     neuron_y: usize,
 ) -> usize {
     let (layer_x, layer_y, neuron_in_field_x, neuron_in_field_y) =
-        get_neuron_full_coordinates(params, neuron_x, neuron_y);
+        get_neuron_full_coordinates(layer_params, neuron_x, neuron_y);
 
     get_neuron_index(
+        layer_params,
         computed_params,
         layer_x,
         layer_y,
@@ -123,7 +122,7 @@ fn get_neuron_index_by_coordinates(
 }
 
 fn apply_mask(
-    params: &LayerParams,
+    layer_params: &LayerParams,
     computed_params: &ComputedParams,
     base_neuron_index: usize,
     distance_weights: &mut Array2<f32>,
@@ -148,7 +147,7 @@ fn apply_mask(
             }
 
             let target_neuron_index = get_neuron_index_by_coordinates(
-                params,
+                layer_params,
                 computed_params,
                 neuron_x as usize,
                 neuron_y as usize,
@@ -162,9 +161,9 @@ fn apply_mask(
 }
 
 fn set_initial_connections(
+    layer_params: &LayerParams,
     computed_params: &ComputedParams,
     synapse_params: &SynapseParams,
-    params: &LayerParams,
     mask: &SynapseMask,
 ) -> (
     // distance_weights of synapses from the first layer to the second layer
@@ -177,7 +176,7 @@ fn set_initial_connections(
     Array2<f32>,
 ) {
     let layer_size =
-        params.field_width * params.field_height * params.layer_width * params.layer_height;
+    layer_params.field_width * layer_params.field_height * layer_params.layer_width * layer_params.layer_height;
 
     let mut distance_weights_1_to_2 = Array2::<f32>::zeros([layer_size, layer_size]);
     let mut distance_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);
@@ -185,13 +184,14 @@ fn set_initial_connections(
     let mut accumulated_weights_1_to_2 = Array2::<f32>::zeros([layer_size, layer_size]);
     let mut accumulated_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);
 
-    for layer_y in 0..params.layer_height {
-        for layer_x in 0..params.layer_width {
-            let (layer_2_to_1_x, layer_2_to_1_y) = get_next_field(params, layer_x, layer_y);
+    for layer_y in 0..layer_params.layer_height {
+        for layer_x in 0..layer_params.layer_width {
+            let (layer_2_to_1_x, layer_2_to_1_y) = get_next_field(layer_params, layer_x, layer_y);
 
-            for neuron_in_field_y in 0..params.field_height {
-                for neuron_in_field_x in 0..params.field_width {
+            for neuron_in_field_y in 0..layer_params.field_height {
+                for neuron_in_field_x in 0..layer_params.field_width {
                     let neuron_index = get_neuron_index(
+                        layer_params,
                         computed_params,
                         layer_x,
                         layer_y,
@@ -199,6 +199,7 @@ fn set_initial_connections(
                         neuron_in_field_y,
                     );
                     let neuron_2_to_1_index = get_neuron_index(
+                        layer_params,
                         computed_params,
                         layer_2_to_1_x,
                         layer_2_to_1_y,
@@ -212,7 +213,7 @@ fn set_initial_connections(
                         synapse_params.initial_strong_g;
 
                     let (x, y) = get_neuron_coordinates(
-                        params,
+                        layer_params,
                         layer_x,
                         layer_y,
                         neuron_in_field_x,
@@ -220,7 +221,7 @@ fn set_initial_connections(
                     );
 
                     apply_mask(
-                        params,
+                        layer_params,
                         computed_params,
                         neuron_index,
                         &mut distance_weights_1_to_2,
@@ -230,7 +231,7 @@ fn set_initial_connections(
                     );
 
                     let (x_2_to_1, y_2_to_1) = get_neuron_coordinates(
-                        params,
+                        layer_params,
                         layer_2_to_1_x,
                         layer_2_to_1_y,
                         neuron_in_field_x,
@@ -238,7 +239,7 @@ fn set_initial_connections(
                     );
 
                     apply_mask(
-                        params,
+                        layer_params,
                         computed_params,
                         neuron_index,
                         &mut distance_weights_2_to_1,
@@ -259,9 +260,34 @@ fn set_initial_connections(
     )
 }
 
+fn get_computed_params(layer_params: &LayerParams) -> ComputedParams {
+    let LayerParams {
+        field_width,
+        field_height,
+        layer_width,
+        layer_height,
+    } = layer_params;
+
+    let field_size = field_width * field_height;
+    let row_size = field_size * layer_width;
+    let row_width = field_width * layer_width;
+    let column_height = field_height * layer_height;
+
+    ComputedParams {
+        field_size,
+        row_size,
+        row_width,
+        column_height,
+    }
+}
+
+fn get_layer_size(layer_params: &LayerParams, computed_params: &ComputedParams) -> usize {
+    computed_params.field_size * layer_params.layer_width * layer_params.layer_height
+}
+
 impl<T> Network<T> {
     pub fn new(
-        params: LayerParams,
+        layer_params: LayerParams,
         synapse_params: SynapseParams,
         data_adapter: DataAdapter<T>,
     ) -> Network<T> {
@@ -270,22 +296,13 @@ impl<T> Network<T> {
             field_height,
             layer_width,
             layer_height,
-        } = params;
+        } = layer_params;
 
         let field_size = field_width * field_height;
-        let row_size = field_size * layer_width;
-        let row_width = field_width * layer_width;
-        let column_height = field_height * layer_height;
+        
+        let computed_params = get_computed_params(&layer_params);
 
-        let layer_size = field_size * layer_width * layer_height;
-
-        let computed_params = ComputedParams {
-            field_size,
-            field_width,
-            row_size,
-            row_width,
-            column_height,
-        };
+        let layer_size = get_layer_size(&layer_params, &computed_params);
 
         let mask = get_synapse_mask(&synapse_params);
 
@@ -294,7 +311,7 @@ impl<T> Network<T> {
             distance_weights_2_to_1,
             accumulated_weights_1_to_2,
             accumulated_weights_2_to_1,
-        ) = set_initial_connections(&computed_params, &synapse_params, &params, &mask);
+        ) = set_initial_connections(&layer_params, &computed_params, &synapse_params, &mask);
 
         let kernel_accumulated_weights =
             build_recount_accumulated_weights_kernel(layer_size).unwrap();
@@ -307,8 +324,6 @@ impl<T> Network<T> {
             data_adapter,
             distance_weights_1_to_2,
             distance_weights_2_to_1,
-            field_width,
-            field_height,
             kernel_accumulated_weights,
             kernel_synapses,
             layer_width,
@@ -319,13 +334,13 @@ impl<T> Network<T> {
             neurons_2: Array1::<f32>::zeros(layer_size),
             refract_intervals_1: Array1::<u8>::zeros(layer_size),
             refract_intervals_2: Array1::<u8>::zeros(layer_size),
-            params,
+            layer_params,
             synapse_params,
         }
     }
 
-    pub fn get_params(&self) -> &LayerParams {
-        &self.params
+    pub fn get_layer_params(&self) -> &LayerParams {
+        &self.layer_params
     }
 
     pub fn tick(&mut self, bit_vec: &[bool]) {
@@ -441,10 +456,11 @@ impl<T> Network<T> {
 
     fn print_state(&self, layer: &Array1<f32>) {
         for layer_y in 0..self.layer_height {
-            for neuron_in_field_y in 0..self.field_height {
+            for neuron_in_field_y in 0..self.layer_params.field_height {
                 for layer_x in 0..self.layer_width {
-                    for neuron_in_field_x in 0..self.field_width {
+                    for neuron_in_field_x in 0..self.layer_params.field_width {
                         let neuron_index = get_neuron_index(
+                            &self.layer_params,
                             &self.computed_params,
                             layer_x,
                             layer_y,
@@ -494,6 +510,7 @@ impl<T> Network<T> {
         };
 
         let neuron_index = get_neuron_index(
+            &self.layer_params,
             &self.computed_params,
             layer_x,
             layer_y,
@@ -509,7 +526,7 @@ impl<T> Network<T> {
         neuron_x: usize,
         neuron_y: usize,
     ) -> (usize, usize, usize, usize) {
-        get_neuron_full_coordinates(&self.params, neuron_x, neuron_y)
+        get_neuron_full_coordinates(&self.layer_params, neuron_x, neuron_y)
     }
 
     fn get_neuron_weights(
@@ -524,17 +541,18 @@ impl<T> Network<T> {
         ]);
 
         let neuron_index = get_neuron_index_by_coordinates(
-            &self.params,
+            &self.layer_params,
             &self.computed_params,
             neuron_x,
             neuron_y,
         );
 
         for layer_y in 0..self.layer_height {
-            for neuron_in_field_y in 0..self.field_height {
+            for neuron_in_field_y in 0..self.layer_params.field_height {
                 for layer_x in 0..self.layer_width {
-                    for neuron_in_field_x in 0..self.field_width {
+                    for neuron_in_field_x in 0..self.layer_params.field_width {
                         let target_neuron_index = get_neuron_index(
+                            &self.layer_params,
                             &self.computed_params,
                             layer_x,
                             layer_y,
@@ -543,7 +561,7 @@ impl<T> Network<T> {
                         );
 
                         let (target_x, target_y) = get_neuron_coordinates(
-                            &self.params,
+                            &self.layer_params,
                             layer_x,
                             layer_y,
                             neuron_in_field_x,
