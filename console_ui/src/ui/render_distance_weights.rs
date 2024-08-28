@@ -7,16 +7,17 @@ use ratatui::{
 
 use crate::app::{App, Layer};
 
-pub fn render_distance_weights<T>(frame: &mut Frame, area: Rect, app: &App<T>) {
-    let network = app.get_network();
-    let layer_params = network.get_layer_params();
+pub fn render_distance_weights(frame: &mut Frame, area: Rect, app: &App) {
+    let network_rc = app.get_network();
+    let network_ref = network_rc.borrow();
+    let layer_params = network_ref.get_layer_params();
 
     let layer_index = match app.layer {
         Layer::Layer1 => 1,
         Layer::Layer2 => 2,
     };
 
-    let weights = network.get_neuron_distance_weights(layer_index, app.neuron_x, app.neuron_y);
+    let weights = network_ref.get_neuron_distance_weights(layer_index, app.neuron_x, app.neuron_y);
 
     let mut widths: Vec<u16> = vec![];
 

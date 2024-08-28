@@ -1,7 +1,10 @@
 extern crate rnn_core;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use console_ui::run_console_app;
-use rnn_core::{DataAdapter, LayerParams, Network, SynapseParams};
+use rnn_core::{DataLayer, DataLayerParams, LayerParams, Network, SynapseParams};
 use timeline_helpers::Timeline;
 use timeline_helpers::{ComplexTimelineValue, IntegerTimeline, IntegerTimelineParams};
 
@@ -35,14 +38,17 @@ fn main() {
         get_reverse_multiplier: None,
     });
 
-    let data_adapter = DataAdapter {
-        data_to_binary: Box::new(move |number| {
-            Ok(timeline.get_bits(&ComplexTimelineValue::Integer(number)))
-        }),
-        binary_to_data: Box::new(|_data| Ok(0_i32)),
-    };
+    let network = Rc::new(RefCell::new(Network::new(params, synapse_params)));
 
-    let mut network = Network::new(params, synapse_params, data_adapter);
+    let mut data_layer = DataLayer::new(
+        DataLayerParams {
+            data_to_binary: Box::new(move |number| {
+                Ok(timeline.get_bits(&ComplexTimelineValue::Integer(number)))
+            }),
+            binary_to_data: Box::new(|_data| Ok(0_i32)),
+        },
+        Rc::clone(&network),
+    );
 
     let numbers = vec![
         2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89,
@@ -115,10 +121,8 @@ fn main() {
     // let numbers = vec![];
 
     for number in numbers {
-        network.push_data(number);
+        data_layer.push_data(number);
     }
 
-    network.print_states();
-
-    let _ = run_console_app(Box::new(network));
+    let _ = run_console_app(Rc::clone(&network));
 }

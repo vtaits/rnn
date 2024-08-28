@@ -7,7 +7,7 @@ use crate::{
         build_recount_accumulated_weights_kernel, recount_accumulated_weights,
     },
     spiral::get_next_field,
-    structures::{CompiledKernel, DataAdapter, LayerParams, SynapseMask, SynapseParams},
+    structures::{CompiledKernel, LayerParams, SynapseMask, SynapseParams},
 };
 
 struct ComputedParams {
@@ -22,13 +22,12 @@ struct ComputedParams {
 }
 
 // TO DO: bit-vec / bitfield
-pub struct Network<T> {
+pub struct Network {
     computed_params: ComputedParams,
     // acumulated weights of synapses from the first layer to the second layer
     accumulated_weights_1_to_2: Array2<f32>,
     // acumulated weights of synapses from the second layer to the first layer
     accumulated_weights_2_to_1: Array2<f32>,
-    data_adapter: DataAdapter<T>,
     // distance weights of synapses from the first layer to the second layer
     distance_weights_1_to_2: Array2<f32>,
     // distance weights of synapses from the second layer to the first layer
@@ -175,8 +174,10 @@ fn set_initial_connections(
     // accumulated of synapses from the second layer to the first layer
     Array2<f32>,
 ) {
-    let layer_size =
-    layer_params.field_width * layer_params.field_height * layer_params.layer_width * layer_params.layer_height;
+    let layer_size = layer_params.field_width
+        * layer_params.field_height
+        * layer_params.layer_width
+        * layer_params.layer_height;
 
     let mut distance_weights_1_to_2 = Array2::<f32>::zeros([layer_size, layer_size]);
     let mut distance_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);
@@ -285,12 +286,8 @@ fn get_layer_size(layer_params: &LayerParams, computed_params: &ComputedParams) 
     computed_params.field_size * layer_params.layer_width * layer_params.layer_height
 }
 
-impl<T> Network<T> {
-    pub fn new(
-        layer_params: LayerParams,
-        synapse_params: SynapseParams,
-        data_adapter: DataAdapter<T>,
-    ) -> Network<T> {
+impl Network {
+    pub fn new(layer_params: LayerParams, synapse_params: SynapseParams) -> Self {
         let LayerParams {
             field_width,
             field_height,
@@ -299,7 +296,7 @@ impl<T> Network<T> {
         } = layer_params;
 
         let field_size = field_width * field_height;
-        
+
         let computed_params = get_computed_params(&layer_params);
 
         let layer_size = get_layer_size(&layer_params, &computed_params);
@@ -321,7 +318,6 @@ impl<T> Network<T> {
             accumulated_weights_1_to_2,
             accumulated_weights_2_to_1,
             computed_params,
-            data_adapter,
             distance_weights_1_to_2,
             distance_weights_2_to_1,
             kernel_accumulated_weights,
@@ -432,14 +428,6 @@ impl<T> Network<T> {
             let start = i * self.field_size;
             let end = std::cmp::min(start + self.field_size, data_len);
             self.tick(&bit_vec[start..end]);
-        }
-    }
-
-    pub fn push_data(&mut self, data: T) {
-        let bit_vec_result = (self.data_adapter.data_to_binary)(data);
-
-        if let Ok(bit_vec) = bit_vec_result {
-            self.push_data_binary(&bit_vec);
         }
     }
 

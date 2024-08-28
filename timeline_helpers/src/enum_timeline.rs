@@ -53,7 +53,7 @@ impl EnumTimeline<String> {
             }),
             to_option: {
                 let options = options.clone();
-                
+
                 Box::new(move |index| {
                     if options.len() <= index {
                         return options[index].clone();

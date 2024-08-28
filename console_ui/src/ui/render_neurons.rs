@@ -7,9 +7,10 @@ use ratatui::{
 
 use crate::app::{App, Layer};
 
-pub fn render_neurons<T>(frame: &mut Frame, area: Rect, app: &App<T>) {
-    let network = app.get_network();
-    let layer_params = network.get_layer_params();
+pub fn render_neurons(frame: &mut Frame, area: Rect, app: &App) {
+    let network_rc = app.get_network();
+    let network_ref = network_rc.borrow();
+    let layer_params = network_ref.get_layer_params();
 
     let layer_index = match app.layer {
         Layer::Layer1 => 1,
@@ -31,7 +32,7 @@ pub fn render_neurons<T>(frame: &mut Frame, area: Rect, app: &App<T>) {
     let highlight_style = Style::default().bg(Color::Blue);
 
     let (target_layer_x, target_layer_y, target_neuron_in_field_x, target_neuron_in_field_y) =
-        network.get_neuron_full_coordinates(app.neuron_x, app.neuron_y);
+        network_ref.get_neuron_full_coordinates(app.neuron_x, app.neuron_y);
 
     for layer_y in 0..layer_params.layer_height {
         for neuron_in_field_y in 0..layer_params.field_height {
@@ -39,7 +40,7 @@ pub fn render_neurons<T>(frame: &mut Frame, area: Rect, app: &App<T>) {
 
             for layer_x in 0..layer_params.layer_width {
                 for neuron_in_field_x in 0..layer_params.field_width {
-                    let refract_timeout = network.get_neuron_refract_timeout(
+                    let refract_timeout = network_ref.get_neuron_refract_timeout(
                         layer_index,
                         layer_x,
                         layer_y,

@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use rnn_core::Network;
 
 pub enum CurrentScreen {
@@ -11,17 +13,17 @@ pub enum Layer {
     Layer2,
 }
 
-pub struct App<T> {
+pub struct App {
     pub buffer: String,
     pub current_screen: CurrentScreen,
     pub layer: Layer,
     pub neuron_x: usize,
     pub neuron_y: usize,
-    network: Box<Network<T>>,
+    network: Rc<RefCell<Network>>,
 }
 
-impl<T> App<T> {
-    pub fn new(network: Box<Network<T>>) -> Self {
+impl App {
+    pub fn new(network: Rc<RefCell<Network>>) -> Self {
         App {
             buffer: String::new(),
             current_screen: CurrentScreen::Neurons,
@@ -32,8 +34,8 @@ impl<T> App<T> {
         }
     }
 
-    pub fn get_network(&self) -> &Network<T> {
-        return self.network.as_ref();
+    pub fn get_network(&self) -> Rc<RefCell<Network>> {
+        Rc::clone(&self.network)
     }
 
     pub fn tick_buffer(&mut self) {
@@ -50,7 +52,7 @@ impl<T> App<T> {
 
         self.buffer = String::new();
 
-        self.network.push_data_binary(&data);
+        self.network.borrow_mut().push_data_binary(&data);
     }
 
     pub fn left(&mut self) {
@@ -60,7 +62,7 @@ impl<T> App<T> {
     }
 
     pub fn right(&mut self) {
-        let (row_width, _) = self.network.get_layer_dimensions();
+        let (row_width, _) = self.network.borrow().get_layer_dimensions();
 
         if self.neuron_x < row_width - 1 {
             self.neuron_x += 1;
@@ -74,7 +76,7 @@ impl<T> App<T> {
     }
 
     pub fn down(&mut self) {
-        let (_, column_height) = self.network.get_layer_dimensions();
+        let (_, column_height) = self.network.borrow().get_layer_dimensions();
 
         if self.neuron_y < column_height - 1 {
             self.neuron_y += 1;

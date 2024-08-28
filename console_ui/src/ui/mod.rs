@@ -16,7 +16,7 @@ use crate::app::{App, CurrentScreen, Layer};
 use render_accumulated_weights::render_accumulated_weights;
 use render_neurons::render_neurons;
 
-fn get_title<T>(app: &App<T>) -> Paragraph {
+fn get_title(app: &App) -> Paragraph {
     let text = vec![
         match app.layer {
             Layer::Layer1 => Span::styled("Layer 1", Style::default()),
@@ -45,7 +45,7 @@ fn get_title<T>(app: &App<T>) -> Paragraph {
     return Paragraph::new(Line::from(text)).block(Block::default().borders(Borders::ALL));
 }
 
-fn get_keys_hint<T>(app: &App<T>) -> Paragraph {
+fn get_keys_hint(app: &App) -> Paragraph {
     let current_keys_hint = {
         match app.current_screen {
               CurrentScreen::Neurons => Span::styled(
@@ -67,7 +67,7 @@ fn get_keys_hint<T>(app: &App<T>) -> Paragraph {
         .block(Block::default().borders(Borders::ALL));
 }
 
-pub fn ui<T>(f: &mut Frame, app: &mut App<T>) {
+pub fn ui(f: &mut Frame, app: &mut App) {
     // Create the layout sections.
     let chunks = Layout::default()
         .direction(Direction::Vertical)

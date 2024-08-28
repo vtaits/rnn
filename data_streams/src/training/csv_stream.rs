@@ -31,7 +31,7 @@ pub struct CsvStream {
 }
 
 #[derive(Deserialize)]
-pub struct  CsvStreamConfig {
+pub struct CsvStreamConfig {
     path: String,
 }
 

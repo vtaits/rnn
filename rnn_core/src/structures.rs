@@ -7,11 +7,6 @@ pub struct CompiledKernel {
     pub pro_que: ProQue,
 }
 
-pub struct DataAdapter<T> {
-    pub binary_to_data: Box<dyn Fn(Vec<bool>) -> Result<T, ()>>,
-    pub data_to_binary: Box<dyn Fn(T) -> Result<Vec<bool>, ()>>,
-}
-
 #[derive(Deserialize)]
 pub struct SynapseParams {
     pub alpha: f32,
