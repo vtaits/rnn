@@ -7,7 +7,7 @@ use crate::{
         build_recount_accumulated_weights_kernel, recount_accumulated_weights,
     },
     spiral::get_next_field,
-    structures::{CompiledKernel, LayerParams, SynapseMask, SynapseParams},
+    structures::{CompiledKernel, LayerParams, NetworkDump, SynapseMask, SynapseParams},
 };
 
 struct ComputedParams {
@@ -332,6 +332,21 @@ impl Network {
             refract_intervals_2: Array1::<u8>::zeros(layer_size),
             layer_params,
             synapse_params,
+        }
+    }
+
+    pub fn get_dump(&self) -> NetworkDump {
+        NetworkDump {
+            accumulated_weights_1_to_2: self.accumulated_weights_1_to_2,
+            accumulated_weights_2_to_1: self.accumulated_weights_2_to_1,
+            distance_weights_1_to_2: self.distance_weights_1_to_2,
+            distance_weights_2_to_1: self.distance_weights_2_to_1,
+            neurons_1: self.neurons_1,
+            neurons_2: self.neurons_2,
+            refract_intervals_1: self.refract_intervals_1,
+            refract_intervals_2: self.refract_intervals_2,
+            layer_params: self.layer_params,
+            synapse_params: self.synapse_params,
         }
     }
 
