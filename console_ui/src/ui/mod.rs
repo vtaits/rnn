@@ -49,15 +49,15 @@ fn get_keys_hint(app: &App) -> Paragraph {
     let current_keys_hint = {
         match app.current_screen {
               CurrentScreen::Neurons => Span::styled(
-                  "(Tab) to switch layer / (q) to quit / arrows to select neuron / (a) to show accumulated weights for neuron / (d) to show distance weights for neuron",
+                  "(Tab) to switch layer / (q) to quit / arrows to select neuron / (a) to show accumulated weights for neuron / (d) to show distance weights for neuron / (s) to save network state into file",
                   Style::default().fg(Color::Red),
               ),
               CurrentScreen::AccumulatedWeights => Span::styled(
-                  "(Tab) to switch layer / (q) to quit / (n) to state of the layer / (d) to show distance weights for neuron",
+                  "(Tab) to switch layer / (q) to quit / (n) to state of the layer / (d) to show distance weights for neuron / (s) to save network state into file",
                   Style::default().fg(Color::Red),
               ),
               CurrentScreen::DistanceWeights => Span::styled(
-                  "(Tab) to switch layer / (q) to quit / (n) to state of the layer / (a) to show accumulated weights for neuron",
+                  "(Tab) to switch layer / (q) to quit / (n) to state of the layer / (a) to show accumulated weights for neuron / (s) to save network state into file",
                   Style::default().fg(Color::Red),
               ),
           }

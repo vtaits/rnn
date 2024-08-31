@@ -1,3 +1,6 @@
+use chrono::Local;
+use std::fs::File;
+use std::io::Write;
 use std::{cell::RefCell, rc::Rc};
 
 use rnn_core::Network;
@@ -81,5 +84,19 @@ impl App {
         if self.neuron_y < column_height - 1 {
             self.neuron_y += 1;
         }
+    }
+
+    pub fn save_state(&self) -> std::io::Result<()> {
+        let json_str = self.network.borrow().get_dump();
+
+        let now = Local::now();
+
+        let filename = format!("dump_{}.json", now.format("%Y-%m-%d_%H-%M-%S"));
+
+        let mut file = File::create(&filename)?;
+
+        file.write_all(json_str.as_bytes())?;
+
+        Ok(())
     }
 }

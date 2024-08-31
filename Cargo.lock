@@ -138,6 +138,7 @@ dependencies = [
 name = "console_ui"
 version = "1.0.0"
 dependencies = [
+ "chrono",
  "ratatui",
  "rnn_core",
 ]

@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 rnn_core = { path = "../rnn_core" }
 ratatui = { version = "0.27.0", features = ["all-widgets"]}
+chrono = "0.4.38"

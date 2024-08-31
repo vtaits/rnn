@@ -22,6 +22,9 @@ pub fn take_event(app: &mut App) -> io::Result<bool> {
             KeyCode::Char('d') => {
                 app.current_screen = CurrentScreen::DistanceWeights;
             }
+            KeyCode::Char('s') => {
+                let _ = app.save_state();
+            }
             KeyCode::Backspace => {
                 app.buffer.pop();
             }
