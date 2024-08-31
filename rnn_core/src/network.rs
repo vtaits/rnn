@@ -7,7 +7,10 @@ use crate::{
         build_recount_accumulated_weights_kernel, recount_accumulated_weights,
     },
     spiral::get_next_field,
-    structures::{CompiledKernel, LayerParams, NetworkDump, SynapseMask, SynapseParams},
+    structures::{
+        CompiledKernel, LayerParams, NetworkDumpDeserialize, NetworkDumpSerialize, SynapseMask,
+        SynapseParams,
+    },
 };
 
 struct ComputedParams {
@@ -335,19 +338,64 @@ impl Network {
         }
     }
 
-    pub fn get_dump(&self) -> NetworkDump {
-        NetworkDump {
-            accumulated_weights_1_to_2: self.accumulated_weights_1_to_2,
-            accumulated_weights_2_to_1: self.accumulated_weights_2_to_1,
-            distance_weights_1_to_2: self.distance_weights_1_to_2,
-            distance_weights_2_to_1: self.distance_weights_2_to_1,
-            neurons_1: self.neurons_1,
-            neurons_2: self.neurons_2,
-            refract_intervals_1: self.refract_intervals_1,
-            refract_intervals_2: self.refract_intervals_2,
-            layer_params: self.layer_params,
-            synapse_params: self.synapse_params,
-        }
+    pub fn from_dump(dump: &str) -> Result<Self, serde_json::Error> {
+        let parsed_dump: NetworkDumpDeserialize = serde_json::from_str(dump)?;
+
+        let LayerParams {
+            field_width,
+            field_height,
+            layer_width,
+            layer_height,
+        } = parsed_dump.layer_params;
+
+        let field_size = field_width * field_height;
+
+        let computed_params = get_computed_params(&parsed_dump.layer_params);
+
+        let layer_size = get_layer_size(&parsed_dump.layer_params, &computed_params);
+
+        let kernel_accumulated_weights =
+            build_recount_accumulated_weights_kernel(layer_size).unwrap();
+        let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
+
+        let network = Network {
+            accumulated_weights_1_to_2: parsed_dump.accumulated_weights_1_to_2,
+            accumulated_weights_2_to_1: parsed_dump.accumulated_weights_2_to_1,
+            computed_params,
+            distance_weights_1_to_2: parsed_dump.distance_weights_1_to_2,
+            distance_weights_2_to_1: parsed_dump.distance_weights_2_to_1,
+            kernel_accumulated_weights,
+            kernel_synapses,
+            layer_width,
+            layer_height,
+            field_size,
+            layer_size,
+            neurons_1: parsed_dump.neurons_1,
+            neurons_2: parsed_dump.neurons_2,
+            refract_intervals_1: parsed_dump.refract_intervals_1,
+            refract_intervals_2: parsed_dump.refract_intervals_2,
+            layer_params: parsed_dump.layer_params,
+            synapse_params: parsed_dump.synapse_params,
+        };
+
+        Ok(network)
+    }
+
+    pub fn get_dump(&self) -> String {
+        let dump = NetworkDumpSerialize {
+            accumulated_weights_1_to_2: &self.accumulated_weights_1_to_2,
+            accumulated_weights_2_to_1: &self.accumulated_weights_2_to_1,
+            distance_weights_1_to_2: &self.distance_weights_1_to_2,
+            distance_weights_2_to_1: &self.distance_weights_2_to_1,
+            neurons_1: &self.neurons_1,
+            neurons_2: &self.neurons_2,
+            refract_intervals_1: &self.refract_intervals_1,
+            refract_intervals_2: &self.refract_intervals_2,
+            layer_params: &self.layer_params,
+            synapse_params: &self.synapse_params,
+        };
+
+        serde_json::to_string(&dump).unwrap()
     }
 
     pub fn get_layer_params(&self) -> &LayerParams {

@@ -186,49 +186,40 @@ mod tests {
 
     #[test]
     fn get_parabolic_value_bits() {
-        let timelines = vec![
-            IntegerTimeline::new(IntegerTimelineParams {
-                capacity: 5,
-                min_value: 10,
-                max_value: 110,
-                get_multiplier: None,
-                get_reverse_multiplier: None,
-            }),
-            IntegerTimeline::from_config(&IntegerTimelineConfig {
-                capacity: 5,
-                min_value: 10,
-                max_value: 110,
-            }),
-        ];
+        let timeline = IntegerTimeline::new(IntegerTimelineParams {
+            capacity: 5,
+            min_value: 10,
+            max_value: 110,
+            get_multiplier: Some(Box::new(|value| value * value)),
+            get_reverse_multiplier: None,
+        });
 
-        for timeline in timelines {
-            assert_eq!(
-                timeline.get_bits(&ComplexTimelineValue::Integer(5)),
-                vec![false, false, false, false, false],
-                "too small value"
-            );
-            assert_eq!(
-                timeline.get_bits(&ComplexTimelineValue::Integer(115)),
-                vec![true, true, true, true, true],
-                "too big value"
-            );
+        assert_eq!(
+            timeline.get_bits(&ComplexTimelineValue::Integer(5)),
+            vec![false, false, false, false, false],
+            "too small value"
+        );
+        assert_eq!(
+            timeline.get_bits(&ComplexTimelineValue::Integer(115)),
+            vec![true, true, true, true, true],
+            "too big value"
+        );
 
-            assert_eq!(
-                timeline.get_bits(&ComplexTimelineValue::Integer(100)),
-                vec![true, true, false, false, true],
-                "25"
-            );
-            assert_eq!(
-                timeline.get_bits(&ComplexTimelineValue::Integer(39)),
-                vec![false, false, false, true, true],
-                "9"
-            );
-            assert_eq!(
-                timeline.get_bits(&ComplexTimelineValue::Integer(77)),
-                vec![false, true, true, true, false],
-                "14"
-            );
-        }
+        assert_eq!(
+            timeline.get_bits(&ComplexTimelineValue::Integer(100)),
+            vec![true, true, false, false, true],
+            "25"
+        );
+        assert_eq!(
+            timeline.get_bits(&ComplexTimelineValue::Integer(39)),
+            vec![false, false, false, true, true],
+            "9"
+        );
+        assert_eq!(
+            timeline.get_bits(&ComplexTimelineValue::Integer(77)),
+            vec![false, true, true, true, false],
+            "14"
+        );
     }
 
     #[test]
