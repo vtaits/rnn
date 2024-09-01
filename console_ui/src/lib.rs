@@ -13,11 +13,11 @@ use ratatui::{
     Terminal,
 };
 use rnn_core::Network;
-use std::{cell::RefCell, error::Error, io, rc::Rc};
+use std::{sync::RwLock, error::Error, io, sync::Arc};
 use take_event::take_event;
 use ui::ui;
 
-pub fn run_console_app(network: Rc<RefCell<Network>>) -> Result<(), Box<dyn Error>> {
+pub fn run_console_app(network: Arc<RwLock<Network>>) -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
     let mut stderr = io::stderr(); // This is a special case. Normally using stdout is fine

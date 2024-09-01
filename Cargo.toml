@@ -2,6 +2,7 @@
 resolver = "2"
 
 members = [
+    "actix_server",
     "console_app",
     "console_ui",
     "data_streams",

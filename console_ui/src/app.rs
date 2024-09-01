@@ -1,7 +1,7 @@
 use chrono::Local;
 use std::fs::File;
 use std::io::Write;
-use std::{cell::RefCell, rc::Rc};
+use std::{sync::RwLock, sync::Arc};
 
 use rnn_core::Network;
 
@@ -22,11 +22,11 @@ pub struct App {
     pub layer: Layer,
     pub neuron_x: usize,
     pub neuron_y: usize,
-    network: Rc<RefCell<Network>>,
+    network: Arc<RwLock<Network>>,
 }
 
 impl App {
-    pub fn new(network: Rc<RefCell<Network>>) -> Self {
+    pub fn new(network: Arc<RwLock<Network>>) -> Self {
         App {
             buffer: String::new(),
             current_screen: CurrentScreen::Neurons,
@@ -37,8 +37,8 @@ impl App {
         }
     }
 
-    pub fn get_network(&self) -> Rc<RefCell<Network>> {
-        Rc::clone(&self.network)
+    pub fn get_network(&self) -> Arc<RwLock<Network>> {
+        Arc::clone(&self.network)
     }
 
     pub fn tick_buffer(&mut self) {
@@ -55,7 +55,7 @@ impl App {
 
         self.buffer = String::new();
 
-        self.network.borrow_mut().push_data_binary(&data);
+        self.network.write().unwrap().push_data_binary(&data);
     }
 
     pub fn left(&mut self) {
@@ -65,7 +65,7 @@ impl App {
     }
 
     pub fn right(&mut self) {
-        let (row_width, _) = self.network.borrow().get_layer_dimensions();
+        let (row_width, _) = self.network.read().unwrap().get_layer_dimensions();
 
         if self.neuron_x < row_width - 1 {
             self.neuron_x += 1;

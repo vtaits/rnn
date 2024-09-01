@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{sync::RwLock, sync::Arc};
 
 use data_streams::{train_network, ComplexStream, TrainingStream};
 use rnn_core::{DataLayer, DataLayerParams, LayerParams, Network, SynapseParams};
@@ -12,24 +12,24 @@ pub fn init_data_layer(
 ) -> DataLayer<Vec<ComplexTimelineValue>> {
     let mut complex_stream = ComplexStream::new(training_streams);
 
-    let complex_timeline = Rc::new(ComplexTimeline::new(timelines));
+    let complex_timeline = Arc::new(ComplexTimeline::new(timelines));
 
     let network = Network::new(layer_params, synapse_params);
 
     let mut data_layer = DataLayer::new(
         DataLayerParams {
             data_to_binary: {
-                let complex_timeline = Rc::clone(&complex_timeline);
+                let complex_timeline = Arc::clone(&complex_timeline);
 
                 Box::new(move |data: Vec<ComplexTimelineValue>| complex_timeline.get_bits(&data))
             },
             binary_to_data: {
-                let complex_timeline = Rc::clone(&complex_timeline);
+                let complex_timeline = Arc::clone(&complex_timeline);
 
                 Box::new(move |binary| Ok(complex_timeline.reverse(&binary)))
             },
         },
-        Rc::new(RefCell::new(network)),
+        Arc::new(RwLock::new(network)),
     );
 
     train_network(&mut data_layer, &mut complex_stream);

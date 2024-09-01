@@ -1,0 +1,13 @@
+[package]
+name = "actix_server"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+actix-cors = "0.7.0"
+actix-web = "4.9.0"
+rnn_core = { path = "../rnn_core" }
+rnn_instance = { path = "../rnn_instance" }
+serde = "1.0.209"
+serde_derive = "1.0.209"
+timeline_helpers = { path = "../timeline_helpers" }

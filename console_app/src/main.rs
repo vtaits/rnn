@@ -1,15 +1,15 @@
 extern crate rnn_core;
 
-use std::cell::RefCell;
+use std::sync::RwLock;
 use std::env;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use console_ui::run_console_app;
 use rnn_core::{DataLayer, DataLayerParams, LayerParams, Network, SynapseParams};
 use timeline_helpers::Timeline;
 use timeline_helpers::{ComplexTimelineValue, IntegerTimeline, IntegerTimelineParams};
 
-fn init_from_scratch() -> Rc<RefCell<Network>> {
+fn init_from_scratch() -> Arc<RwLock<Network>> {
     let params = LayerParams {
         field_width: 5,
         field_height: 4,
@@ -39,7 +39,7 @@ fn init_from_scratch() -> Rc<RefCell<Network>> {
         get_reverse_multiplier: None,
     });
 
-    let network = Rc::new(RefCell::new(Network::new(params, synapse_params)));
+    let network = Arc::new(RwLock::new(Network::new(params, synapse_params)));
 
     let mut data_layer = DataLayer::new(
         DataLayerParams {
@@ -48,7 +48,7 @@ fn init_from_scratch() -> Rc<RefCell<Network>> {
             }),
             binary_to_data: Box::new(|_data| Ok(0_i32)),
         },
-        Rc::clone(&network),
+        Arc::clone(&network),
     );
 
     let numbers = vec![
@@ -125,15 +125,15 @@ fn init_from_scratch() -> Rc<RefCell<Network>> {
         data_layer.push_data(number);
     }
 
-    Rc::clone(&network)
+    Arc::clone(&network)
 }
 
-fn init_from_dump(file_name: &str) -> Rc<RefCell<Network>> {
+fn init_from_dump(file_name: &str) -> Arc<RwLock<Network>> {
     let dump = std::fs::read_to_string(file_name).unwrap();
 
     let network = Network::from_dump(&dump).unwrap();
 
-    Rc::new(RefCell::new(network))
+    Arc::new(RwLock::new(network))
 }
 
 fn main() {
@@ -144,5 +144,5 @@ fn main() {
         _ => init_from_scratch(),
     };
 
-    let _ = run_console_app(Rc::clone(&network));
+    let _ = run_console_app(Arc::clone(&network));
 }

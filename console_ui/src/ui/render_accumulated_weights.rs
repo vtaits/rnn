@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::sync::RwLock;
 
 use ratatui::{
     layout::Rect,
@@ -11,7 +11,7 @@ use crate::app::{App, Layer};
 
 pub fn render_accumulated_weights(frame: &mut Frame, area: Rect, app: &App) {
     let network_rc = app.get_network();
-    let network_ref = RefCell::borrow(&network_rc);
+    let network_ref = RwLock::borrow(&network_rc);
 
     let layer_params = network_ref.get_layer_params();
 
