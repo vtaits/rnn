@@ -16,7 +16,7 @@ struct Record {
     Value: f32,
 }
 
-const FORMAT: &'static str = "%Y-%m-%d %H:%M:%S";
+const FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 
 fn parse_date(date_str: &str) -> ParseResult<NaiveDateTime> {
     NaiveDateTime::parse_from_str(date_str, FORMAT)

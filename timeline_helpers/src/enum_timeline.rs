@@ -59,7 +59,7 @@ impl EnumTimeline<String> {
                         return options[index].clone();
                     }
 
-                    return options[0].clone();
+                    options[0].clone()
                 })
             },
         })

@@ -23,13 +23,13 @@ pub fn init_by_toml<P: AsRef<Path>>(file_path: P) -> DataLayer<Vec<ComplexTimeli
     let timelines = config
         .timelines
         .iter()
-        .map(|timeline_config| init_timeline_by_config(timeline_config))
+        .map(init_timeline_by_config)
         .collect();
 
     let training_streams = config
         .training_streams
         .iter()
-        .map(|training_stream_config| init_training_stream_by_config(training_stream_config))
+        .map(init_training_stream_by_config)
         .collect();
 
     init_data_layer(

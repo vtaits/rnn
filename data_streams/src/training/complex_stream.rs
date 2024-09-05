@@ -21,7 +21,7 @@ impl ComplexStream {
             result.push(value)
         }
 
-        return result;
+        result
     }
 
     pub fn is_finish(&self) -> bool {
@@ -31,7 +31,7 @@ impl ComplexStream {
             }
         }
 
-        return true;
+        true
     }
 
     fn get_min_next_date(&self) -> Option<NaiveDateTime> {
@@ -41,7 +41,7 @@ impl ComplexStream {
             let next_date_option = stream.get_next_date();
 
             if let Some(next_date_ref) = next_date_option {
-                let next_date = next_date_ref.clone();
+                let next_date = *next_date_ref;
 
                 if let Some(current_result) = result {
                     if current_result > next_date {
@@ -53,7 +53,7 @@ impl ComplexStream {
             }
         }
 
-        return result;
+        result
     }
 
     pub fn step(&mut self) {
