@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use ndarray::{Array1, Array2};
 use ocl::{Buffer, Kernel, ProQue};
 
@@ -23,7 +25,10 @@ pub fn build_recount_accumulated_weights_kernel(layer_size: usize) -> ocl::Resul
         .arg_named("g_inc", 0.0_f32)
         .build()?;
 
-    Ok(CompiledKernel { kernel, pro_que })
+    Ok(CompiledKernel {
+        kernel: Arc::new(Mutex::new(kernel)),
+        pro_que,
+    })
 }
 
 pub fn recount_accumulated_weights(
@@ -65,28 +70,18 @@ pub fn recount_accumulated_weights(
         .len(accumulated_weights.len())
         .build()?;
 
+    let kernel = compiled_kernel.kernel.lock().unwrap();
+
     unsafe {
-        compiled_kernel
-            .kernel
-            .set_arg("accumulated_weights", &buffer_accumulated_weights)?;
-        compiled_kernel
-            .kernel
-            .set_arg("neurons_from", &buffer_neurons_from)?;
-        compiled_kernel
-            .kernel
-            .set_arg("neurons_to", &buffer_neurons_to)?;
-        compiled_kernel
-            .kernel
-            .set_arg("refract_intervals_to", &buffer_refract_intervals_to)?;
-        compiled_kernel
-            .kernel
-            .set_arg("next_accumulated_weights", &buffer_next_accumulated_weights)?;
-        compiled_kernel
-            .kernel
-            .set_arg("layer_size", layer_size as u32)?;
-        compiled_kernel.kernel.set_arg("g_dec", g_dec)?;
-        compiled_kernel.kernel.set_arg("g_inc", g_inc)?;
-        compiled_kernel.kernel.enq()?;
+        kernel.set_arg("accumulated_weights", &buffer_accumulated_weights)?;
+        kernel.set_arg("neurons_from", &buffer_neurons_from)?;
+        kernel.set_arg("neurons_to", &buffer_neurons_to)?;
+        kernel.set_arg("refract_intervals_to", &buffer_refract_intervals_to)?;
+        kernel.set_arg("next_accumulated_weights", &buffer_next_accumulated_weights)?;
+        kernel.set_arg("layer_size", layer_size as u32)?;
+        kernel.set_arg("g_dec", g_dec)?;
+        kernel.set_arg("g_inc", g_inc)?;
+        kernel.enq()?;
     }
 
     let mut vec_next_accumulated_weights = vec![0.0f32; layer_size * layer_size];

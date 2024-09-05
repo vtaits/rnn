@@ -13,7 +13,7 @@ use ratatui::{
     Terminal,
 };
 use rnn_core::Network;
-use std::{sync::RwLock, error::Error, io, sync::Arc};
+use std::{error::Error, io, sync::Arc, sync::RwLock};
 use take_event::take_event;
 use ui::ui;
 

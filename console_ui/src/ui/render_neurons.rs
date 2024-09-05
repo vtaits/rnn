@@ -9,7 +9,7 @@ use crate::app::{App, Layer};
 
 pub fn render_neurons(frame: &mut Frame, area: Rect, app: &App) {
     let network_rc = app.get_network();
-    let network_ref = network_rc.borrow();
+    let network_ref = network_rc.read().unwrap();
     let layer_params = network_ref.get_layer_params();
 
     let layer_index = match app.layer {

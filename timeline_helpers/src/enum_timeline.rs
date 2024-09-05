@@ -12,8 +12,8 @@ pub struct EnumTimelineConfig {
 
 pub struct EnumTimelineParams<T> {
     pub capacity: u8,
-    pub to_number: Box<dyn Fn(T) -> usize>,
-    pub to_option: Box<dyn Fn(usize) -> T>,
+    pub to_number: Box<dyn Fn(T) -> usize + Send + Sync>,
+    pub to_option: Box<dyn Fn(usize) -> T + Send + Sync>,
 }
 
 pub struct EnumTimeline<T> {

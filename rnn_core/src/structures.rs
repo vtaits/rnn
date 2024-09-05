@@ -1,9 +1,11 @@
+use std::sync::{Arc, Mutex};
+
 use ndarray::{Array1, Array2};
 use ocl::{Kernel, ProQue};
 use serde_derive::{Deserialize, Serialize};
 
 pub struct CompiledKernel {
-    pub kernel: Kernel,
+    pub kernel: Arc<Mutex<Kernel>>,
     pub pro_que: ProQue,
 }
 

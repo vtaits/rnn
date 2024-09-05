@@ -1,10 +1,10 @@
-use std::{sync::RwLock, sync::Arc};
+use std::{sync::Arc, sync::RwLock};
 
 use crate::Network;
 
 pub struct DataLayerParams<T> {
-    pub binary_to_data: Box<dyn Fn(Vec<bool>) -> Result<T, ()>>,
-    pub data_to_binary: Box<dyn Fn(T) -> Result<Vec<bool>, ()>>,
+    pub binary_to_data: Box<dyn Fn(Vec<bool>) -> Result<T, ()> + Send + Sync>,
+    pub data_to_binary: Box<dyn Fn(T) -> Result<Vec<bool>, ()> + Send + Sync>,
 }
 
 pub struct DataLayer<T> {

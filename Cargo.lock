@@ -201,19 +201,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actix_server"
-version = "1.0.0"
-dependencies = [
- "actix-cors",
- "actix-web",
- "rnn_core",
- "rnn_instance",
- "serde",
- "serde_derive",
- "timeline_helpers",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1774,6 +1761,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c06d3da6113f116aaee68e4d601191614c9053067f9ab7f6edbcb161237daa54"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "training_server"
+version = "1.0.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "rnn_core",
+ "rnn_instance",
+ "serde",
+ "serde_derive",
+ "timeline_helpers",
 ]
 
 [[package]]

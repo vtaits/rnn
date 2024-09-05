@@ -1,7 +1,7 @@
 use chrono::Local;
 use std::fs::File;
 use std::io::Write;
-use std::{sync::RwLock, sync::Arc};
+use std::{sync::Arc, sync::RwLock};
 
 use rnn_core::Network;
 
@@ -79,7 +79,7 @@ impl App {
     }
 
     pub fn down(&mut self) {
-        let (_, column_height) = self.network.borrow().get_layer_dimensions();
+        let (_, column_height) = self.network.read().unwrap().get_layer_dimensions();
 
         if self.neuron_y < column_height - 1 {
             self.neuron_y += 1;
@@ -87,7 +87,7 @@ impl App {
     }
 
     pub fn save_state(&self) -> std::io::Result<()> {
-        let json_str = self.network.borrow().get_dump();
+        let json_str = self.network.read().unwrap().get_dump();
 
         let now = Local::now();
 

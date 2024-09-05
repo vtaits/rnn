@@ -1,4 +1,4 @@
-use std::{sync::RwLock, sync::Arc};
+use std::{sync::Arc, sync::RwLock};
 
 use data_streams::{train_network, ComplexStream, TrainingStream};
 use rnn_core::{DataLayer, DataLayerParams, LayerParams, Network, SynapseParams};

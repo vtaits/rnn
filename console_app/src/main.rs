@@ -1,8 +1,8 @@
 extern crate rnn_core;
 
-use std::sync::RwLock;
 use std::env;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 use console_ui::run_console_app;
 use rnn_core::{DataLayer, DataLayerParams, LayerParams, Network, SynapseParams};

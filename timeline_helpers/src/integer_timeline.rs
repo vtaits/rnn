@@ -13,8 +13,8 @@ pub struct IntegerTimelineParams {
     pub min_value: i32,
     pub max_value: i32,
     pub capacity: u8,
-    pub get_multiplier: Option<Box<dyn Fn(f32) -> f32>>,
-    pub get_reverse_multiplier: Option<Box<dyn Fn(f32) -> f32>>,
+    pub get_multiplier: Option<Box<dyn Fn(f32) -> f32 + Send + Sync>>,
+    pub get_reverse_multiplier: Option<Box<dyn Fn(f32) -> f32 + Send + Sync>>,
 }
 
 pub struct IntegerTimeline {

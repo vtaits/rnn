@@ -1,16 +1,13 @@
-use std::env;
+use std::{env, sync::Mutex};
 
 use actix_cors::Cors;
-use actix_web::{cookie, get, http, post, web, App, Error, HttpResponse, HttpServer, Responder};
+use actix_web::{http, post, web, App, HttpResponse, HttpServer, Responder};
 use rnn_core::DataLayer;
 use rnn_instance::init_by_toml;
-use serde_derive::{Deserialize, Serialize};
-use timeline_helpers::{ComplexTimeline, ComplexTimelineValue, Timeline};
-
-const NUMBER_OF_OPTIONS: usize = 4;
+use timeline_helpers::ComplexTimelineValue;
 
 struct AppState {
-    data_layer: DataLayer<Vec<ComplexTimelineValue>>,
+    data_layer: Mutex<DataLayer<Vec<ComplexTimelineValue>>>,
 }
 
 #[post("/push_data")]
@@ -18,7 +15,11 @@ async fn push_data(
     req_body: web::Json<Vec<ComplexTimelineValue>>,
     data: web::Data<AppState>,
 ) -> impl Responder {
-    data.data_layer.push_data(req_body.to_vec());
+    let timeline_data = req_body.into_inner();
+
+    let mut data_layer = data.data_layer.lock().unwrap();
+
+    data_layer.push_data(timeline_data);
 
     HttpResponse::Ok().finish()
 }
@@ -29,9 +30,9 @@ async fn main() -> std::io::Result<()> {
 
     let data_layer = init_by_toml(config_path);
 
-    let filename = std::env::args().nth(1).expect("no filename given");
-
-    let app_data = web::Data::new(AppState { data_layer });
+    let app_data = web::Data::new(AppState {
+        data_layer: Mutex::new(data_layer),
+    });
 
     HttpServer::new(move || {
         let cors = Cors::default()
@@ -49,7 +50,7 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .wrap(cors)
-            .app_data(app_data)
+            .app_data(app_data.clone())
             .service(push_data)
     })
     .bind(("127.0.0.1", 8000))?

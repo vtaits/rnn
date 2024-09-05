@@ -5,7 +5,7 @@ use crate::{
     integer_timeline::IntegerTimelineConfig,
 };
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Deserialize)]
 pub enum ComplexTimelineValue {
     Float(f32),
     Integer(i32),
@@ -20,7 +20,7 @@ pub enum TimelineConfig {
     Enum(EnumTimelineConfig),
 }
 
-pub trait Timeline {
+pub trait Timeline: Send + Sync {
     fn get_bits(&self, value: &ComplexTimelineValue) -> Vec<bool>;
 
     fn get_capacity(&self) -> &u8;

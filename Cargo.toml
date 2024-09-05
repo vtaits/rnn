@@ -2,11 +2,11 @@
 resolver = "2"
 
 members = [
-    "actix_server",
     "console_app",
     "console_ui",
     "data_streams",
     "rnn_core",
     "rnn_instance",
-    "timeline_helpers"
+    "timeline_helpers",
+    "training_server"
 ]

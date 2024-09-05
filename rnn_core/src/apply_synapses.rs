@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use ndarray::{Array1, Array2};
 use ocl::{Buffer, Kernel, ProQue};
 
@@ -26,7 +28,10 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
         .arg_named("g_0", 0.0_f32)
         .build()?;
 
-    Ok(CompiledKernel { kernel, pro_que })
+    Ok(CompiledKernel {
+        kernel: Arc::new(Mutex::new(kernel)),
+        pro_que,
+    })
 }
 
 pub struct ApplySynapsesResult {
@@ -80,33 +85,21 @@ pub fn apply_synapses(
         .len(layer_size)
         .build()?;
 
+    let kernel = compiled_kernel.kernel.lock().unwrap();
+
     unsafe {
-        compiled_kernel
-            .kernel
-            .set_arg("accumulated_weights", &buffer_accumulated_weights)?;
-        compiled_kernel
-            .kernel
-            .set_arg("distance_weights", &buffer_distance_weights)?;
-        compiled_kernel.kernel.set_arg("neurons", &buffer_neurons)?;
-        compiled_kernel
-            .kernel
-            .set_arg("refract_intervals", &buffer_refract_intervals)?;
-        compiled_kernel
-            .kernel
-            .set_arg("next_neurons", &buffer_next_neurons)?;
-        compiled_kernel
-            .kernel
-            .set_arg("next_refract_intervals", &buffer_next_refract_intervals)?;
-        compiled_kernel
-            .kernel
-            .set_arg("layer_size", layer_size as u32)?;
-        compiled_kernel
-            .kernel
-            .set_arg("initial_refract_interval", initial_refract_interval)?;
-        compiled_kernel.kernel.set_arg("threshold", threshold)?;
-        compiled_kernel.kernel.set_arg("gamma", gamma)?;
-        compiled_kernel.kernel.set_arg("g_0", g_0)?;
-        compiled_kernel.kernel.enq()?;
+        kernel.set_arg("accumulated_weights", &buffer_accumulated_weights)?;
+        kernel.set_arg("distance_weights", &buffer_distance_weights)?;
+        kernel.set_arg("neurons", &buffer_neurons)?;
+        kernel.set_arg("refract_intervals", &buffer_refract_intervals)?;
+        kernel.set_arg("next_neurons", &buffer_next_neurons)?;
+        kernel.set_arg("next_refract_intervals", &buffer_next_refract_intervals)?;
+        kernel.set_arg("layer_size", layer_size as u32)?;
+        kernel.set_arg("initial_refract_interval", initial_refract_interval)?;
+        kernel.set_arg("threshold", threshold)?;
+        kernel.set_arg("gamma", gamma)?;
+        kernel.set_arg("g_0", g_0)?;
+        kernel.enq()?;
     }
 
     let mut vec_next_neurons = vec![0.0f32; layer_size];

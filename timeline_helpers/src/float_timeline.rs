@@ -13,8 +13,8 @@ pub struct FloatTimelineParams {
     pub min_value: f32,
     pub max_value: f32,
     pub capacity: u8,
-    pub get_multiplier: Option<Box<dyn Fn(f32) -> f32>>,
-    pub get_reverse_multiplier: Option<Box<dyn Fn(f32) -> f32>>,
+    pub get_multiplier: Option<Box<dyn Fn(f32) -> f32 + Send + Sync>>,
+    pub get_reverse_multiplier: Option<Box<dyn Fn(f32) -> f32 + Send + Sync>>,
 }
 
 pub struct FloatTimeline {
