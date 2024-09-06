@@ -1,5 +1,5 @@
 [package]
-name = "training_server"
+name = "prediction_server"
 version = "1.0.0"
 edition = "2021"
 

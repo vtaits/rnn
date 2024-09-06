@@ -1,4 +1,9 @@
+use std::io::Write;
+use std::io::prelude::*;
+
 use ndarray::{Array1, Array2};
+use flate2::{read::GzDecoder, write::ZlibEncoder};
+use flate2::Compression;
 
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
@@ -289,6 +294,19 @@ fn get_layer_size(layer_params: &LayerParams, computed_params: &ComputedParams) 
     computed_params.field_size * layer_params.layer_width * layer_params.layer_height
 }
 
+#[derive(Debug)]
+pub enum ParseError {
+    JSON(serde_json::Error),
+    Gz(std::io::Error),
+}
+
+fn parse_json_dump(dump: &str) -> Result<NetworkDumpDeserialize, ParseError> {
+    match serde_json::from_str::<NetworkDumpDeserialize>(dump) {
+        Ok(json) => Ok(json),
+        Err(error) => Err(ParseError::JSON(error)),
+    }
+}
+
 impl Network {
     pub fn new(layer_params: LayerParams, synapse_params: SynapseParams) -> Self {
         let LayerParams {
@@ -338,8 +356,8 @@ impl Network {
         }
     }
 
-    pub fn from_dump(dump: &str) -> Result<Self, serde_json::Error> {
-        let parsed_dump: NetworkDumpDeserialize = serde_json::from_str(dump)?;
+    pub fn from_json_dump(dump: &str) -> Result<Self, ParseError> {
+        let parsed_dump = parse_json_dump(dump)?;
 
         let LayerParams {
             field_width,
@@ -381,7 +399,18 @@ impl Network {
         Ok(network)
     }
 
-    pub fn get_dump(&self) -> String {
+    pub fn from_gzip_dump(dump: &str) -> Result<Self, ParseError> {
+        let mut decoder = GzDecoder::new(dump.as_bytes());
+        let mut json = String::new();
+
+        if let Err(gz_err) = decoder.read_to_string(&mut json) {
+            return Err(ParseError::Gz(gz_err));
+        }
+
+        Network::from_json_dump(&json)
+    }
+
+    pub fn get_json_dump(&self) -> String {
         let dump = NetworkDumpSerialize {
             accumulated_weights_1_to_2: &self.accumulated_weights_1_to_2,
             accumulated_weights_2_to_1: &self.accumulated_weights_2_to_1,
@@ -396,6 +425,16 @@ impl Network {
         };
 
         serde_json::to_string(&dump).unwrap()
+    }
+
+    pub fn get_gzip_dump(&self) -> Result<Vec<u8>, std::io::Error> {
+        let json_dump = self.get_json_dump();
+
+        let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+        encoder.write_all(json_dump.as_bytes())?;
+        let compressed_data = encoder.finish()?;
+
+        Ok(compressed_data)
     }
 
     pub fn get_layer_params(&self) -> &LayerParams {

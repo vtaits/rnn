@@ -17,7 +17,7 @@ use std::{error::Error, io, sync::Arc, sync::RwLock};
 use take_event::take_event;
 use ui::ui;
 
-pub fn run_console_app(network: Arc<RwLock<Network>>) -> Result<(), Box<dyn Error>> {
+pub async fn run_console_app(network: Arc<RwLock<Network>>) -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
     let mut stderr = io::stderr(); // This is a special case. Normally using stdout is fine

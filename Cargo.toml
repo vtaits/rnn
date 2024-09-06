@@ -5,6 +5,7 @@ members = [
     "console_app",
     "console_ui",
     "data_streams",
+    "prediction_server",
     "rnn_core",
     "rnn_instance",
     "timeline_helpers",

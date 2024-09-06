@@ -4,6 +4,8 @@ version = "1.0.0"
 edition = "2021"
 
 [dependencies]
+flate2 = { version = "1.0.33", features = ["rust_backend", "libz-sys", "zlib"] }
+libz-sys = "1.1.20"
 ndarray = { version = "0.15.6", features = ["serde"] }
 ocl = "0.19.7"
 serde = "1.0.208"

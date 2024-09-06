@@ -131,7 +131,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
 fn init_from_dump(file_name: &str) -> Arc<RwLock<Network>> {
     let dump = std::fs::read_to_string(file_name).unwrap();
 
-    let network = Network::from_dump(&dump).unwrap();
+    let network = Network::from_json_dump(&dump).unwrap();
 
     Arc::new(RwLock::new(network))
 }
