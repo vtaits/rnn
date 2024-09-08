@@ -1692,6 +1692,7 @@ dependencies = [
 name = "timeline_helpers"
 version = "1.0.0"
 dependencies = [
+ "chrono",
  "rnn_core",
  "serde",
  "serde_derive",

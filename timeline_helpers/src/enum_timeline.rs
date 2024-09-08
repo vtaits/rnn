@@ -74,7 +74,7 @@ impl Timeline for EnumTimeline<String> {
             return number_to_bits(number, self.params.capacity, self.max_normalize_value);
         }
 
-        panic!("Invalid value of float timeline");
+        panic!("Invalid value of enum timeline");
     }
 
     fn reverse(&self, bits: &[bool]) -> ComplexTimelineValue {
