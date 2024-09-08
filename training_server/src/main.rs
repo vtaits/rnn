@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, env, sync::{Arc, Mutex}, time::Duration};
+use std::{env, sync::{Arc, Mutex}, time::Duration};
 
 use actix_cors::Cors;
 use actix_web::{http, post, web, App, HttpResponse, HttpServer, Responder};
