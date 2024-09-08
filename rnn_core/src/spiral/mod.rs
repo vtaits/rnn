@@ -43,3 +43,7 @@ pub fn get_next_field(params: &LayerParams, field_x: usize, field_y: usize) -> (
 
     (layer_2_to_1_x, layer_2_to_1_y)
 }
+
+pub fn get_last_field(params: &LayerParams) -> (usize, usize) {
+    (if params.layer_height % 2 == 0 { 0 } else { params.layer_height - 1 }, params.layer_height - 1)
+}

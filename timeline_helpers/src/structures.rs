@@ -1,11 +1,11 @@
-use serde_derive::Deserialize;
+use serde_derive::{Deserialize, Serialize};
 
 use crate::{
     enum_timeline::EnumTimelineConfig, float_timeline::FloatTimelineConfig,
     integer_timeline::IntegerTimelineConfig,
 };
 
-#[derive(PartialEq, Debug, Deserialize)]
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub enum ComplexTimelineValue {
     Float(f32),
     Integer(i32),

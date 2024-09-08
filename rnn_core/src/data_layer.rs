@@ -32,4 +32,14 @@ impl<T> DataLayer<T> {
             self.network.write().unwrap().push_data_binary(&bit_vec);
         }
     }
+
+    pub fn predict(&mut self, data: T) -> Result<T, ()> {
+        let bit_vec = (self.params.data_to_binary)(data)?;
+
+        let binary_result = self.network.write().unwrap().predict(&bit_vec);
+
+        let data_result = (self.params.binary_to_data)(binary_result);
+
+        data_result
+    }
 }

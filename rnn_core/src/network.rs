@@ -11,7 +11,7 @@ use crate::{
     recount_accumulated_weights::{
         build_recount_accumulated_weights_kernel, recount_accumulated_weights,
     },
-    spiral::get_next_field,
+    spiral::{get_last_field, get_next_field},
     structures::{
         CompiledKernel, LayerParams, NetworkDumpDeserialize, NetworkDumpSerialize, SynapseMask,
         SynapseParams,
@@ -19,6 +19,8 @@ use crate::{
 };
 
 struct ComputedParams {
+    // number of fields in both layers
+    field_count: usize,
     // number of neurons in one field
     field_size: usize,
     // number of neurons in one row of fields
@@ -44,6 +46,8 @@ pub struct Network {
     kernel_accumulated_weights: CompiledKernel,
     // compiled kernel for recount neurons and refract intervals with opencl
     kernel_synapses: CompiledKernel,
+    // computed array of indexes of neurons in last field to receive prediction data
+    last_field_indexes: Vec<usize>,
     layer_width: usize,
     layer_height: usize,
     // number of neurons
@@ -74,6 +78,32 @@ fn get_neuron_index(
     let field_offset = layer_params.field_width * neuron_in_field_y + neuron_in_field_x;
 
     layer_offset + field_offset
+}
+
+fn get_last_field_indexes(
+    layer_params: &LayerParams,
+    computed_params: &ComputedParams,
+) -> Vec<usize> {
+    let mut res = vec![];
+        
+    let (last_field_x, last_field_y) = get_last_field(layer_params);
+
+    for neuron_in_field_x in 0..layer_params.field_width {
+        for neuron_in_field_y in 0..layer_params.field_height {
+            res.push(
+                get_neuron_index(
+                    layer_params,
+                    computed_params,
+                    last_field_x,
+                    last_field_y,
+                    neuron_in_field_x,
+                    neuron_in_field_y,
+                ),
+            );
+        }
+    }
+
+    res
 }
 
 fn get_neuron_coordinates(
@@ -281,9 +311,11 @@ fn get_computed_params(layer_params: &LayerParams) -> ComputedParams {
     let row_size = field_size * layer_width;
     let row_width = field_width * layer_width;
     let column_height = field_height * layer_height;
+    let field_count = layer_width * layer_height * 2;
 
     ComputedParams {
         field_size,
+        field_count,
         row_size,
         row_width,
         column_height,
@@ -335,6 +367,8 @@ impl Network {
             build_recount_accumulated_weights_kernel(layer_size).unwrap();
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
+        let last_field_indexes = get_last_field_indexes(&layer_params, &computed_params);
+
         Network {
             accumulated_weights_1_to_2,
             accumulated_weights_2_to_1,
@@ -343,6 +377,7 @@ impl Network {
             distance_weights_2_to_1,
             kernel_accumulated_weights,
             kernel_synapses,
+            last_field_indexes,
             layer_width,
             layer_height,
             field_size,
@@ -376,6 +411,8 @@ impl Network {
             build_recount_accumulated_weights_kernel(layer_size).unwrap();
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
+        let last_field_indexes = get_last_field_indexes(&parsed_dump.layer_params, &computed_params);
+
         let network = Network {
             accumulated_weights_1_to_2: parsed_dump.accumulated_weights_1_to_2,
             accumulated_weights_2_to_1: parsed_dump.accumulated_weights_2_to_1,
@@ -384,6 +421,7 @@ impl Network {
             distance_weights_2_to_1: parsed_dump.distance_weights_2_to_1,
             kernel_accumulated_weights,
             kernel_synapses,
+            last_field_indexes,
             layer_width,
             layer_height,
             field_size,
@@ -399,8 +437,14 @@ impl Network {
         Ok(network)
     }
 
-    pub fn from_gzip_dump(dump: &str) -> Result<Self, ParseError> {
-        let mut decoder = GzDecoder::new(dump.as_bytes());
+    pub fn from_gzip_dump_str(dump: &str) -> Result<Self, ParseError> {
+        let bytes = dump.as_bytes();
+
+        Network::from_gzip_dump_bytes(bytes)
+    }
+
+    pub fn from_gzip_dump_bytes(bytes: &[u8]) -> Result<Self, ParseError> {
+        let mut decoder = GzDecoder::new(bytes);
         let mut json = String::new();
 
         if let Err(gz_err) = decoder.read_to_string(&mut json) {
@@ -531,6 +575,50 @@ impl Network {
             let end = std::cmp::min(start + self.field_size, data_len);
             self.tick(&bit_vec[start..end]);
         }
+    }
+
+    pub fn predict(&mut self, bit_vec: &[bool]) -> Vec<bool> {
+        let data_len = bit_vec.len();
+
+        let tick_count = if data_len % self.field_size == 0 {
+            data_len / self.field_size
+        } else {
+            (data_len / self.field_size) + 1
+        };
+
+        for i in 0..tick_count {
+            let start = i * self.field_size;
+            let end = std::cmp::min(start + self.field_size, data_len);
+            self.tick(&bit_vec[start..end]);
+        }
+
+        for _ in tick_count..self.computed_params.field_count - 1 {
+            self.tick(&vec![]);
+        }
+
+        let mut res = vec![];
+
+        for _ in 0..tick_count {
+            self.tick(&vec![]);
+
+            let last_field_state = self.get_last_field_state();
+
+            for neuron_value in last_field_state {
+                res.push(neuron_value);
+            }
+        }
+
+        res
+    }
+
+    pub fn get_last_field_state(&self) -> Vec<bool> {
+        let mut res = vec![];
+        
+        for field_index in self.last_field_indexes.iter() {
+            res.push(if self.neurons_2[*field_index] > 0.5 { true } else { false });
+        }
+
+        res
     }
 
     pub fn print_states(&self) {
