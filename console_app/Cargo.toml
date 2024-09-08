@@ -7,3 +7,4 @@ edition = "2021"
 console_ui = { path = "../console_ui" }
 rnn_core = { path = "../rnn_core" }
 timeline_helpers = { path = "../timeline_helpers" }
+tokio = { version = "1.40.0", features = ["full"] }

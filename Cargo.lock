@@ -450,6 +450,7 @@ dependencies = [
  "console_ui",
  "rnn_core",
  "timeline_helpers",
+ "tokio",
 ]
 
 [[package]]

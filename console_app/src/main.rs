@@ -1,3 +1,4 @@
+use tokio;
 extern crate rnn_core;
 
 use std::env;
@@ -136,7 +137,8 @@ fn init_from_dump(file_name: &str) -> Arc<RwLock<Network>> {
     Arc::new(RwLock::new(network))
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let file_name = env::var("DUMP_PATH");
 
     let network = match file_name {
@@ -144,5 +146,5 @@ fn main() {
         _ => init_from_scratch(),
     };
 
-    let _ = run_console_app(Arc::clone(&network));
+    let _ = run_console_app(Arc::clone(&network)).await;
 }
