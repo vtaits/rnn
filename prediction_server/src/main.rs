@@ -99,6 +99,7 @@ async fn main() -> std::io::Result<()> {
             App::new()
                 .wrap(Logger::default())
                 .wrap(cors)
+                .app_data(web::PayloadConfig::new(100 * 1024 * 1024))
                 .app_data(app_data.clone())
                 .service(predict)
                 .service(update_network)
