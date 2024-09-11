@@ -1,4 +1,7 @@
-use crate::{structures::TimelineConfig, DatetimeTimeline, EnumTimeline, FloatTimeline, IntegerTimeline, Timeline};
+use crate::{
+    structures::TimelineConfig, DatetimeTimeline, EnumTimeline, FloatTimeline, IntegerTimeline,
+    Timeline,
+};
 
 pub fn init_timeline_by_config(config: &TimelineConfig) -> Box<dyn Timeline> {
     match config {

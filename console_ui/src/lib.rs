@@ -37,7 +37,6 @@ pub async fn run_console_app(network: Arc<RwLock<Network>>) -> Result<(), Box<dy
     )?;
     terminal.show_cursor()?;
 
-
     Ok(())
 }
 

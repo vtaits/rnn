@@ -8,6 +8,7 @@ members = [
     "prediction_server",
     "rnn_core",
     "rnn_instance",
+    "scheduler",
     "timeline_helpers",
     "training_server"
 ]

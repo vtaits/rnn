@@ -7,6 +7,7 @@ edition = "2021"
 actix-cors = "0.7.0"
 actix-web = "4.9.0"
 console_ui = { path = "../console_ui" }
+env_logger = "0.11.5"
 rnn_core = { path = "../rnn_core" }
 rnn_instance = { path = "../rnn_instance" }
 serde = "1.0.209"

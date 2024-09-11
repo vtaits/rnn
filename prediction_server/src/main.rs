@@ -1,11 +1,16 @@
-use std::{env, sync::{Arc, Mutex, RwLock}};
+use std::{
+    env,
+    sync::{Arc, Mutex, RwLock},
+};
 
 use actix_cors::Cors;
+use actix_web::middleware::Logger;
 use actix_web::{http, post, web, App, HttpResponse, HttpServer, Responder};
+use console_ui::run_console_app;
+use env_logger::Env;
 use rnn_core::{DataLayer, Network};
 use rnn_instance::init_by_toml;
 use timeline_helpers::ComplexTimelineValue;
-use console_ui::run_console_app;
 
 struct AppState {
     data_layer: Mutex<DataLayer<Vec<ComplexTimelineValue>>>,
@@ -32,10 +37,7 @@ async fn predict(
 }
 
 #[post("/update_network")]
-async fn update_network(
-    bytes: web::Bytes,
-    data: web::Data<AppState>,
-) -> impl Responder {
+async fn update_network(bytes: web::Bytes, data: web::Data<AppState>) -> impl Responder {
     let mut data_layer = data.data_layer.lock().unwrap();
 
     let dump: Vec<u8> = bytes.to_vec();
@@ -44,7 +46,7 @@ async fn update_network(
 
     if let Ok(network) = next_network {
         data_layer.replace_network(Arc::new(RwLock::new(network)));
-        return  HttpResponse::Ok().finish();
+        return HttpResponse::Ok().finish();
     }
 
     HttpResponse::BadRequest().finish()
@@ -61,13 +63,15 @@ async fn main() -> std::io::Result<()> {
         _ => 8001,
     };
 
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
+
     let mut data_layer = init_by_toml(config_path);
 
     if let Ok(dump_path) = env::var("DUMP_PATH") {
         let dump = std::fs::read_to_string(dump_path).unwrap();
 
         let network = Network::from_json_dump(&dump).unwrap();
-    
+
         data_layer.replace_network(Arc::new(RwLock::new(network)));
     }
 
@@ -91,8 +95,9 @@ async fn main() -> std::io::Result<()> {
                     http::header::CONTENT_TYPE,
                 ])
                 .supports_credentials();
-    
+
             App::new()
+                .wrap(Logger::default())
                 .wrap(cors)
                 .app_data(app_data.clone())
                 .service(predict)
@@ -100,7 +105,6 @@ async fn main() -> std::io::Result<()> {
         })
         .bind(("127.0.0.1", port))?
         .run(),
-
         run_console_app(Arc::clone(&network)),
     );
 

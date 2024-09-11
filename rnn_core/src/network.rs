@@ -1,9 +1,9 @@
-use std::io::Write;
 use std::io::prelude::*;
+use std::io::Write;
 
-use ndarray::{Array1, Array2};
-use flate2::{read::GzDecoder, write::ZlibEncoder};
 use flate2::Compression;
+use flate2::{read::GzDecoder, write::ZlibEncoder};
+use ndarray::{Array1, Array2};
 
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
@@ -85,21 +85,19 @@ fn get_last_field_indexes(
     computed_params: &ComputedParams,
 ) -> Vec<usize> {
     let mut res = vec![];
-        
+
     let (last_field_x, last_field_y) = get_last_field(layer_params);
 
     for neuron_in_field_x in 0..layer_params.field_width {
         for neuron_in_field_y in 0..layer_params.field_height {
-            res.push(
-                get_neuron_index(
-                    layer_params,
-                    computed_params,
-                    last_field_x,
-                    last_field_y,
-                    neuron_in_field_x,
-                    neuron_in_field_y,
-                ),
-            );
+            res.push(get_neuron_index(
+                layer_params,
+                computed_params,
+                last_field_x,
+                last_field_y,
+                neuron_in_field_x,
+                neuron_in_field_y,
+            ));
         }
     }
 
@@ -411,7 +409,8 @@ impl Network {
             build_recount_accumulated_weights_kernel(layer_size).unwrap();
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
-        let last_field_indexes = get_last_field_indexes(&parsed_dump.layer_params, &computed_params);
+        let last_field_indexes =
+            get_last_field_indexes(&parsed_dump.layer_params, &computed_params);
 
         let network = Network {
             accumulated_weights_1_to_2: parsed_dump.accumulated_weights_1_to_2,
@@ -613,9 +612,13 @@ impl Network {
 
     pub fn get_last_field_state(&self) -> Vec<bool> {
         let mut res = vec![];
-        
+
         for field_index in self.last_field_indexes.iter() {
-            res.push(if self.neurons_2[*field_index] > 0.5 { true } else { false });
+            res.push(if self.neurons_2[*field_index] > 0.5 {
+                true
+            } else {
+                false
+            });
         }
 
         res
