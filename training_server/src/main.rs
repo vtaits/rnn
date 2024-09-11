@@ -47,7 +47,11 @@ async fn send_data_to_receiver(
     let response = client.post(receiver).body(data.to_vec()).send().await;
 
     match response {
-        Ok(res) => println!("Request sent, response: {:?}", res),
+        Ok(res) => {
+            println!("Request sent, response: {:?}", res);
+            let response_text = res.text().await;
+            println!("Response body: {:?}", response_text);
+        },
         Err(err) => eprintln!("Error sending request: {:?}", err),
     }
 

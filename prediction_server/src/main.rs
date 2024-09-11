@@ -4,13 +4,19 @@ use std::{
 };
 
 use actix_cors::Cors;
-use actix_web::middleware::Logger;
+use actix_web::{middleware::Logger};
 use actix_web::{http, post, web, App, HttpResponse, HttpServer, Responder};
 use console_ui::run_console_app;
 use env_logger::Env;
-use rnn_core::{DataLayer, Network};
+use rnn_core::{DataLayer, Network, NetworkParseError};
 use rnn_instance::init_by_toml;
+use serde_derive::Serialize;
 use timeline_helpers::ComplexTimelineValue;
+
+#[derive(Serialize)]
+struct ErrorResponse {
+    error: String,
+}
 
 struct AppState {
     data_layer: Mutex<DataLayer<Vec<ComplexTimelineValue>>>,
@@ -42,14 +48,22 @@ async fn update_network(bytes: web::Bytes, data: web::Data<AppState>) -> impl Re
 
     let dump: Vec<u8> = bytes.to_vec();
 
-    let next_network = Network::from_gzip_dump_bytes(&dump);
-
-    if let Ok(network) = next_network {
-        data_layer.replace_network(Arc::new(RwLock::new(network)));
-        return HttpResponse::Ok().finish();
+    match Network::from_gzip_dump_bytes(&dump) {
+        Ok(network) => {
+            data_layer.replace_network(Arc::new(RwLock::new(network)));
+            return HttpResponse::Ok().finish()
+        },
+        Err(error) => {
+            match error {
+                NetworkParseError::Gz(error) => HttpResponse::BadRequest().json(ErrorResponse {
+                    error: error.to_string(),
+                }),
+                NetworkParseError::JSON(error) => HttpResponse::BadRequest().json(ErrorResponse {
+                    error: error.to_string(),
+                }),
+            }
+        },
     }
-
-    HttpResponse::BadRequest().finish()
 }
 
 #[actix_web::main]

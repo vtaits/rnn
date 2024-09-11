@@ -7,5 +7,5 @@ mod spiral;
 mod structures;
 
 pub use data_layer::{DataLayer, DataLayerParams};
-pub use network::Network;
+pub use network::{Network, NetworkParseError};
 pub use structures::{LayerParams, SynapseParams};

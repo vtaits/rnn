@@ -2,7 +2,7 @@ use std::io::prelude::*;
 use std::io::Write;
 
 use flate2::Compression;
-use flate2::{read::GzDecoder, write::ZlibEncoder};
+use flate2::{read::GzDecoder, write::GzEncoder};
 use ndarray::{Array1, Array2};
 
 use crate::{
@@ -325,15 +325,15 @@ fn get_layer_size(layer_params: &LayerParams, computed_params: &ComputedParams) 
 }
 
 #[derive(Debug)]
-pub enum ParseError {
+pub enum NetworkParseError {
     JSON(serde_json::Error),
     Gz(std::io::Error),
 }
 
-fn parse_json_dump(dump: &str) -> Result<NetworkDumpDeserialize, ParseError> {
+fn parse_json_dump(dump: &str) -> Result<NetworkDumpDeserialize, NetworkParseError> {
     match serde_json::from_str::<NetworkDumpDeserialize>(dump) {
         Ok(json) => Ok(json),
-        Err(error) => Err(ParseError::JSON(error)),
+        Err(error) => Err(NetworkParseError::JSON(error)),
     }
 }
 
@@ -389,7 +389,7 @@ impl Network {
         }
     }
 
-    pub fn from_json_dump(dump: &str) -> Result<Self, ParseError> {
+    pub fn from_json_dump(dump: &str) -> Result<Self, NetworkParseError> {
         let parsed_dump = parse_json_dump(dump)?;
 
         let LayerParams {
@@ -436,18 +436,18 @@ impl Network {
         Ok(network)
     }
 
-    pub fn from_gzip_dump_str(dump: &str) -> Result<Self, ParseError> {
+    pub fn from_gzip_dump_str(dump: &str) -> Result<Self, NetworkParseError> {
         let bytes = dump.as_bytes();
 
         Network::from_gzip_dump_bytes(bytes)
     }
 
-    pub fn from_gzip_dump_bytes(bytes: &[u8]) -> Result<Self, ParseError> {
+    pub fn from_gzip_dump_bytes(bytes: &[u8]) -> Result<Self, NetworkParseError> {
         let mut decoder = GzDecoder::new(bytes);
         let mut json = String::new();
 
         if let Err(gz_err) = decoder.read_to_string(&mut json) {
-            return Err(ParseError::Gz(gz_err));
+            return Err(NetworkParseError::Gz(gz_err));
         }
 
         Network::from_json_dump(&json)
@@ -473,7 +473,7 @@ impl Network {
     pub fn get_gzip_dump(&self) -> Result<Vec<u8>, std::io::Error> {
         let json_dump = self.get_json_dump();
 
-        let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
         encoder.write_all(json_dump.as_bytes())?;
         let compressed_data = encoder.finish()?;
 
