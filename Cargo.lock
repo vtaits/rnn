@@ -2503,6 +2503,7 @@ dependencies = [
  "actix-web",
  "console_ui",
  "env_logger",
+ "reqwest",
  "rnn_core",
  "rnn_instance",
  "serde",

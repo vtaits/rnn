@@ -9,6 +9,7 @@ use actix_web::middleware::Logger;
 use actix_web::{http, post, web, App, HttpResponse, HttpServer, Responder};
 use console_ui::run_console_app;
 use env_logger::Env;
+use reqwest::Client;
 use rnn_core::DataLayer;
 use rnn_instance::init_by_toml;
 use timeline_helpers::ComplexTimelineValue;
@@ -16,6 +17,7 @@ use tokio::sync::Semaphore;
 use tokio::{io::AsyncWriteExt, net::TcpStream, time::timeout};
 
 struct AppState {
+    client: Arc<Client>,
     data_layer: Mutex<DataLayer<Vec<ComplexTimelineValue>>>,
     receivers: Vec<String>,
 }
@@ -35,27 +37,19 @@ async fn push_data(
 }
 
 async fn send_data_to_receiver(
+    client: &Client,
     receiver: &str,
     data: Arc<Vec<u8>>,
     semaphore: Arc<Semaphore>,
 ) -> tokio::io::Result<()> {
     let permit = semaphore.acquire().await.unwrap();
 
-    let mut stream = TcpStream::connect(receiver).await?;
+    let response = client.post(receiver).body(data.to_vec()).send().await;
 
-    let request = format!(
-        "POST {} HTTP/1.1\r\n\
-         Host: localhost\r\n\
-         Content-Length: {}\r\n\
-         Content-Type: application/octet-stream\r\n\
-         Connection: close\r\n\
-         \r\n",
-        receiver,
-        data.len()
-    );
-
-    stream.write_all(request.as_bytes()).await?;
-    stream.write_all(&data).await?;
+    match response {
+        Ok(res) => println!("Request sent, response: {:?}", res),
+        Err(err) => eprintln!("Error sending request: {:?}", err),
+    }
 
     drop(permit);
 
@@ -81,13 +75,14 @@ async fn update_receivers(data: web::Data<AppState>) -> impl Responder {
 
     for receiver in &data.receivers {
         let receiver = receiver.clone();
+        let client = Arc::clone(&data.client);
         let data_for_send = Arc::clone(&data_for_send);
         let semaphore = Arc::clone(&semaphore);
 
         let task = tokio::spawn(async move {
             timeout(
                 Duration::from_secs(5),
-                send_data_to_receiver(&receiver, data_for_send, semaphore),
+                send_data_to_receiver(&client, &receiver, data_for_send, semaphore),
             )
             .await
         });
@@ -126,7 +121,10 @@ async fn main() -> std::io::Result<()> {
 
     let network = data_layer.get_network();
 
+    let client = Client::new();
+
     let app_data = web::Data::new(AppState {
+        client: Arc::new(client),
         receivers,
         data_layer: Mutex::new(data_layer),
     });
