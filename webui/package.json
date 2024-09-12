@@ -1,0 +1,37 @@
+{
+  "name": "webui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "biome check src",
+    "lint:fix": "biome check src --write --unsafe",
+    "format": "biome format src --write",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vtaits/form-schema": "^2.3.0-alpha.7",
+    "@vtaits/react-form-schema-base-ui": "^1.0.0-alpha.8",
+    "@vtaits/react-form-schema-ui-antd": "^1.0.0-alpha.8",
+    "@vtaits/react-hook-form-schema": "^1.2.0-alpha.11",
+    "antd": "^5.20.6",
+    "axios": "^1.7.7",
+    "krustykrab": "^1.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.53.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.8.3",
+    "@iarna/toml": "^2.2.5",
+    "@types/node": "^22.5.4",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "globals": "^15.9.0",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.1"
+  }
+}
