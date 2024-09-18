@@ -26,7 +26,7 @@ __kernel void apply_synapses(
     int row = get_global_id(0);
 
     if (refract_intervals[row] > 0) {
-        next_neurons[row] = 1.0;
+        next_neurons[row] = 0.0;
         next_refract_intervals[row] = refract_intervals[row] - 1;
         return;
     }

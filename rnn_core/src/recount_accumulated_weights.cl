@@ -22,10 +22,10 @@ __kernel void recount_accumulated_weights(
     for (int col = 0; col < layer_size; ++col) {
         unsigned int index_to = row * layer_size + col;
 
-        if (refract_intervals_to[index_to] > 0) {
-            next_accumulated_weights[index_to] = accumulated_weights[index_to] - g_dec;
-        } else if (neurons_from[row] > 0.5) {
+        if (neurons_from[row] > 0.5) {
             next_accumulated_weights[index_to] = accumulated_weights[index_to] + g_inc;
+        } else if (refract_intervals_to[index_to] > 0) {
+            next_accumulated_weights[index_to] = accumulated_weights[index_to] - g_dec;
         } else {
             next_accumulated_weights[index_to] = accumulated_weights[index_to];
         }
