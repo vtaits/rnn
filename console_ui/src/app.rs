@@ -9,6 +9,7 @@ pub enum CurrentScreen {
     Neurons,
     AccumulatedWeights,
     DistanceWeights,
+    RefractTimeouts,
 }
 
 pub enum Layer {

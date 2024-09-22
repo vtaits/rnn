@@ -1,6 +1,7 @@
 mod render_accumulated_weights;
 mod render_distance_weights;
 mod render_neurons;
+mod render_refract_intervals;
 
 use ratatui::{
     layout::{Constraint, Direction, Layout},
@@ -15,6 +16,7 @@ use crate::app::{App, CurrentScreen, Layer};
 
 use render_accumulated_weights::render_accumulated_weights;
 use render_neurons::render_neurons;
+use render_refract_intervals::render_refract_intervals;
 
 fn get_title(app: &App) -> Paragraph {
     let text = vec![
@@ -35,6 +37,7 @@ fn get_title(app: &App) -> Paragraph {
                 format!("Distances for {}, {}", app.neuron_x, app.neuron_y),
                 Style::default(),
             ),
+            CurrentScreen::RefractTimeouts => Span::styled("Reract timeouts", Style::default()),
         }
         .to_owned(),
         Span::styled(" | ", Style::default()),
@@ -49,17 +52,21 @@ fn get_keys_hint(app: &App) -> Paragraph {
     let current_keys_hint = {
         match app.current_screen {
               CurrentScreen::Neurons => Span::styled(
-                  "(Tab) to switch layer / (q) to quit / arrows to select neuron / (a) to show accumulated weights for neuron / (d) to show distance weights for neuron / (s) to save network state into file",
+                  "(Tab) to switch layer / (q) to quit / arrows to select neuron / (a) to show accumulated weights / (d) to show distance weights / (r) to show refract timeouts / (s) to save network state into file",
                   Style::default().fg(Color::Red),
               ),
               CurrentScreen::AccumulatedWeights => Span::styled(
-                  "(Tab) to switch layer / (q) to quit / (n) to state of the layer / (d) to show distance weights for neuron / (s) to save network state into file",
+                  "(Tab) to switch layer / (q) to quit / arrows to select neuron / (n) to state of the layer / (d) to show distance weights / (r) to show refract timeouts / (s) to save network state into file",
                   Style::default().fg(Color::Red),
               ),
               CurrentScreen::DistanceWeights => Span::styled(
-                  "(Tab) to switch layer / (q) to quit / (n) to state of the layer / (a) to show accumulated weights for neuron / (s) to save network state into file",
+                  "(Tab) to switch layer / (q) to quit / arrows to select neuron / (n) to state of the layer / (a) to show accumulated weights / (r) to show refract timeouts / (s) to save network state into file",
                   Style::default().fg(Color::Red),
               ),
+              CurrentScreen::RefractTimeouts => Span::styled(
+                "(Tab) to switch layer / (q) to quit / arrows to select neuron / (n) to state of the layer / (a) to show accumulated weights / (d) to show distance weights / (s) to save network state into file",
+                Style::default().fg(Color::Red),
+            ),
           }
     };
 
@@ -91,6 +98,9 @@ pub fn ui(f: &mut Frame, app: &mut App) {
         }
         CurrentScreen::Neurons => {
             render_neurons(f, chunks[1], app);
+        }
+        CurrentScreen::RefractTimeouts => {
+            render_refract_intervals(f, chunks[1], app);
         }
     }
 

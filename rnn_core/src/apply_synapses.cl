@@ -13,10 +13,9 @@ float get_weight_coefficient(
 __kernel void apply_synapses(
     __global float* accumulated_weights,
     __global float* distance_weights,
-    __global float* neurons,
-    __global unsigned char* refract_intervals,
-    __global float* next_neurons,
-    __global unsigned char* next_refract_intervals,
+    __global float* neurons_from,
+    __global unsigned char* refract_intervals_to,
+    __global float* next_neurons_to,
     const unsigned int layer_size,
     const uchar initial_refract_interval,
     const float threshold,
@@ -25,22 +24,20 @@ __kernel void apply_synapses(
 ) {
     int row = get_global_id(0);
 
-    if (refract_intervals[row] > 0) {
-        next_neurons[row] = 0.0;
-        next_refract_intervals[row] = refract_intervals[row] - 1;
+    if (refract_intervals_to[row] > 0) {
+        next_neurons_to[row] = 0.0;
         return;
     }
 
     float sum = 0.0;
     for (int col = 0; col < layer_size; ++col) {
-        sum += get_weight_coefficient(gamma, accumulated_weights[row * layer_size + col], g_0) * distance_weights[row * layer_size + col] * neurons[col];
+        sum += get_weight_coefficient(gamma, accumulated_weights[row * layer_size + col], g_0) * distance_weights[row * layer_size + col] * neurons_from[col];
 
         if (sum > threshold) {
-            next_neurons[row] = 1.0;
-            next_refract_intervals[row] = initial_refract_interval;
+            next_neurons_to[row] = 1.0;
             return;
         }
     }
 
-    next_neurons[row] = 0.0;
+    next_neurons_to[row] = 0.0;
 }

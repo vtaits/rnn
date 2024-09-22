@@ -4,7 +4,7 @@ use std::{
 };
 
 use actix_cors::Cors;
-use actix_web::{middleware::Logger};
+use actix_web::middleware::Logger;
 use actix_web::{http, post, web, App, HttpResponse, HttpServer, Responder};
 use console_ui::run_console_app;
 use env_logger::Env;
@@ -51,17 +51,15 @@ async fn update_network(bytes: web::Bytes, data: web::Data<AppState>) -> impl Re
     match Network::from_gzip_dump_bytes(&dump) {
         Ok(network) => {
             data_layer.replace_network(Arc::new(RwLock::new(network)));
-            return HttpResponse::Ok().finish()
-        },
-        Err(error) => {
-            match error {
-                NetworkParseError::Gz(error) => HttpResponse::BadRequest().json(ErrorResponse {
-                    error: error.to_string(),
-                }),
-                NetworkParseError::JSON(error) => HttpResponse::BadRequest().json(ErrorResponse {
-                    error: error.to_string(),
-                }),
-            }
+            return HttpResponse::Ok().finish();
+        }
+        Err(error) => match error {
+            NetworkParseError::Gz(error) => HttpResponse::BadRequest().json(ErrorResponse {
+                error: error.to_string(),
+            }),
+            NetworkParseError::JSON(error) => HttpResponse::BadRequest().json(ErrorResponse {
+                error: error.to_string(),
+            }),
         },
     }
 }
@@ -111,7 +109,7 @@ async fn main() -> std::io::Result<()> {
                 .supports_credentials();
 
             App::new()
-                .wrap(Logger::default())
+                // .wrap(Logger::default())
                 .wrap(cors)
                 .app_data(web::PayloadConfig::new(100 * 1024 * 1024))
                 .app_data(app_data.clone())

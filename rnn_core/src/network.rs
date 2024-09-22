@@ -5,6 +5,7 @@ use flate2::Compression;
 use flate2::{read::GzDecoder, write::GzEncoder};
 use ndarray::{Array1, Array2};
 
+use crate::recount_refract_intervals::recount_refract_intervals;
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
     get_synapse_mask::get_synapse_mask,
@@ -484,7 +485,7 @@ impl Network {
         &self.layer_params
     }
 
-    pub fn tick(&mut self, bit_vec: &[bool]) {
+    fn shift(&mut self, bit_vec: &[bool]) {
         let data_len = bit_vec.len();
 
         if data_len > self.field_size {
@@ -499,7 +500,7 @@ impl Network {
             self.neurons_1[[pos]] = 0.0;
         }
 
-        let apply_synapses_result_2 = apply_synapses(
+        let next_neurons_2 = apply_synapses(
             &self.kernel_synapses,
             self.layer_size,
             &self.accumulated_weights_1_to_2,
@@ -513,7 +514,29 @@ impl Network {
         )
         .unwrap();
 
-        let apply_synapses_result_1 = apply_synapses(
+        let next_accumulated_weights_1_to_2 = recount_accumulated_weights(
+            &self.kernel_accumulated_weights,
+            self.layer_size,
+            &self.accumulated_weights_1_to_2,
+            &self.neurons_1,
+            &next_neurons_2,
+            &self.refract_intervals_2,
+            self.synapse_params.g_dec,
+            self.synapse_params.g_inc,
+        )
+        .unwrap();
+
+        let next_refract_intervals_1 = recount_refract_intervals(
+            &self.neurons_1,
+            &self.refract_intervals_1,
+            &self.synapse_params.refract_interval,
+        );
+
+        self.neurons_2 = next_neurons_2;
+        self.refract_intervals_1 = next_refract_intervals_1;
+        self.accumulated_weights_1_to_2 = next_accumulated_weights_1_to_2;
+
+        let next_neurons_1 = apply_synapses(
             &self.kernel_synapses,
             self.layer_size,
             &self.accumulated_weights_2_to_1,
@@ -527,37 +550,35 @@ impl Network {
         )
         .unwrap();
 
-        let next_accumulated_weights_1_to_2 = recount_accumulated_weights(
-            &self.kernel_accumulated_weights,
-            self.layer_size,
-            &self.accumulated_weights_1_to_2,
-            &apply_synapses_result_1.next_neurons,
-            &apply_synapses_result_2.next_neurons,
-            &self.refract_intervals_2,
-            self.synapse_params.g_dec,
-            self.synapse_params.g_inc,
-        )
-        .unwrap();
-
         let next_accumulated_weights_2_to_1 = recount_accumulated_weights(
             &self.kernel_accumulated_weights,
             self.layer_size,
             &self.accumulated_weights_2_to_1,
-            &apply_synapses_result_2.next_neurons,
-            &apply_synapses_result_1.next_neurons,
+            &self.neurons_2,
+            &next_neurons_1,
             &self.refract_intervals_1,
             self.synapse_params.g_dec,
             self.synapse_params.g_inc,
         )
         .unwrap();
 
-        self.neurons_1 = apply_synapses_result_1.next_neurons;
-        self.refract_intervals_1 = apply_synapses_result_1.next_refract_intervals;
-        self.accumulated_weights_1_to_2 = next_accumulated_weights_1_to_2;
+        let next_refract_intervals_2 = recount_refract_intervals(
+            &self.neurons_2,
+            &self.refract_intervals_2,
+            &self.synapse_params.refract_interval,
+        );
 
-        self.neurons_2 = apply_synapses_result_2.next_neurons;
-        self.refract_intervals_2 = apply_synapses_result_2.next_refract_intervals;
+        self.neurons_1 = next_neurons_1;
+        self.refract_intervals_2 = next_refract_intervals_2;
         self.accumulated_weights_2_to_1 = next_accumulated_weights_2_to_1;
+    }
+
+    pub fn tick(&mut self, bit_vec: &[bool]) {
+        self.shift(bit_vec);
+
+        for _ in 0..self.synapse_params.refract_interval {
+            self.shift(&vec![]);
+        }
     }
 
     pub fn push_data_binary(&mut self, bit_vec: &[bool]) {
@@ -700,6 +721,32 @@ impl Network {
         );
 
         refract_intervals[[neuron_index]]
+    }
+
+    pub fn get_neuron_state(
+        &self,
+        layer_index: u8,
+        layer_x: usize,
+        layer_y: usize,
+        neuron_in_field_x: usize,
+        neuron_in_field_y: usize,
+    ) -> f32 {
+        let neurons = if layer_index == 1 {
+            &self.neurons_1
+        } else {
+            &self.neurons_2
+        };
+
+        let neuron_index = get_neuron_index(
+            &self.layer_params,
+            &self.computed_params,
+            layer_x,
+            layer_y,
+            neuron_in_field_x,
+            neuron_in_field_y,
+        );
+
+        neurons[[neuron_index]]
     }
 
     pub fn get_neuron_full_coordinates(

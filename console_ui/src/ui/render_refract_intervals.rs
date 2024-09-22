@@ -7,7 +7,7 @@ use ratatui::{
 
 use crate::app::{App, Layer};
 
-pub fn render_neurons(frame: &mut Frame, area: Rect, app: &App) {
+pub fn render_refract_intervals(frame: &mut Frame, area: Rect, app: &App) {
     let network_rc = app.get_network();
     let network_ref = network_rc.read().unwrap();
     let layer_params = network_ref.get_layer_params();
@@ -40,7 +40,7 @@ pub fn render_neurons(frame: &mut Frame, area: Rect, app: &App) {
 
             for layer_x in 0..layer_params.layer_width {
                 for neuron_in_field_x in 0..layer_params.field_width {
-                    let neuron_state = network_ref.get_neuron_state(
+                    let refract_timeout = network_ref.get_neuron_refract_timeout(
                         layer_index,
                         layer_x,
                         layer_y,
@@ -48,8 +48,8 @@ pub fn render_neurons(frame: &mut Frame, area: Rect, app: &App) {
                         neuron_in_field_y,
                     );
 
-                    let cell_content = if neuron_state > 0.5 {
-                        String::from("+")
+                    let cell_content = if refract_timeout > 0 {
+                        format!("{}", refract_timeout)
                     } else {
                         String::from("·")
                     };
@@ -78,7 +78,7 @@ pub fn render_neurons(frame: &mut Frame, area: Rect, app: &App) {
     let table: Table = Table::new(rows, widths)
         .block(
             Block::default()
-                .title("Neuron states")
+                .title("Refract timeouts")
                 .borders(Borders::ALL),
         )
         .style(Style::default());
