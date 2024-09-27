@@ -222,69 +222,74 @@ fn set_initial_connections(
     let mut accumulated_weights_1_to_2 = Array2::<f32>::zeros([layer_size, layer_size]);
     let mut accumulated_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);
 
+    let (finish_x, finish_y) = get_last_field(layer_params);
+
     for layer_y in 0..layer_params.layer_height {
         for layer_x in 0..layer_params.layer_width {
-            let (layer_2_to_1_x, layer_2_to_1_y) = get_next_field(layer_params, layer_x, layer_y);
+            if layer_x != finish_x || layer_y != finish_y {
+                let (layer_2_to_1_x, layer_2_to_1_y) =
+                    get_next_field(layer_params, layer_x, layer_y);
 
-            for neuron_in_field_y in 0..layer_params.field_height {
-                for neuron_in_field_x in 0..layer_params.field_width {
-                    let neuron_index = get_neuron_index(
-                        layer_params,
-                        computed_params,
-                        layer_x,
-                        layer_y,
-                        neuron_in_field_x,
-                        neuron_in_field_y,
-                    );
-                    let neuron_2_to_1_index = get_neuron_index(
-                        layer_params,
-                        computed_params,
-                        layer_2_to_1_x,
-                        layer_2_to_1_y,
-                        neuron_in_field_x,
-                        neuron_in_field_y,
-                    );
+                for neuron_in_field_y in 0..layer_params.field_height {
+                    for neuron_in_field_x in 0..layer_params.field_width {
+                        let neuron_index = get_neuron_index(
+                            layer_params,
+                            computed_params,
+                            layer_x,
+                            layer_y,
+                            neuron_in_field_x,
+                            neuron_in_field_y,
+                        );
+                        let neuron_2_to_1_index = get_neuron_index(
+                            layer_params,
+                            computed_params,
+                            layer_2_to_1_x,
+                            layer_2_to_1_y,
+                            neuron_in_field_x,
+                            neuron_in_field_y,
+                        );
 
-                    accumulated_weights_1_to_2[[neuron_index, neuron_index]] =
-                        synapse_params.initial_strong_g;
-                    accumulated_weights_2_to_1[[neuron_2_to_1_index, neuron_index]] =
-                        synapse_params.initial_strong_g;
+                        accumulated_weights_1_to_2[[neuron_index, neuron_index]] =
+                            synapse_params.initial_strong_g;
+                        accumulated_weights_2_to_1[[neuron_2_to_1_index, neuron_index]] =
+                            synapse_params.initial_strong_g;
 
-                    let (x, y) = get_neuron_coordinates(
-                        layer_params,
-                        layer_x,
-                        layer_y,
-                        neuron_in_field_x,
-                        neuron_in_field_y,
-                    );
+                        let (x, y) = get_neuron_coordinates(
+                            layer_params,
+                            layer_x,
+                            layer_y,
+                            neuron_in_field_x,
+                            neuron_in_field_y,
+                        );
 
-                    apply_mask(
-                        layer_params,
-                        computed_params,
-                        neuron_index,
-                        &mut distance_weights_1_to_2,
-                        mask,
-                        x,
-                        y,
-                    );
+                        apply_mask(
+                            layer_params,
+                            computed_params,
+                            neuron_index,
+                            &mut distance_weights_1_to_2,
+                            mask,
+                            x,
+                            y,
+                        );
 
-                    let (x_2_to_1, y_2_to_1) = get_neuron_coordinates(
-                        layer_params,
-                        layer_2_to_1_x,
-                        layer_2_to_1_y,
-                        neuron_in_field_x,
-                        neuron_in_field_y,
-                    );
+                        let (x_2_to_1, y_2_to_1) = get_neuron_coordinates(
+                            layer_params,
+                            layer_2_to_1_x,
+                            layer_2_to_1_y,
+                            neuron_in_field_x,
+                            neuron_in_field_y,
+                        );
 
-                    apply_mask(
-                        layer_params,
-                        computed_params,
-                        neuron_index,
-                        &mut distance_weights_2_to_1,
-                        mask,
-                        x_2_to_1,
-                        y_2_to_1,
-                    );
+                        apply_mask(
+                            layer_params,
+                            computed_params,
+                            neuron_index,
+                            &mut distance_weights_2_to_1,
+                            mask,
+                            x_2_to_1,
+                            y_2_to_1,
+                        );
+                    }
                 }
             }
         }
