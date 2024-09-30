@@ -28,6 +28,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         h: 2,
         refract_interval: 3,
         threshold: 0.9,
+        signal_shift_interval: 2,
     };
 
     let capacity = params.field_width * params.field_height;

@@ -498,7 +498,11 @@ impl Network {
         }
 
         for (pos, value) in bit_vec.iter().enumerate() {
-            self.neurons_1[[pos]] = if *value { 1.0 } else { 0.0 };
+            if self.refract_intervals_1[[pos]] > 0 {
+                self.neurons_1[[pos]] = 0.0;
+            } else {
+                self.neurons_1[[pos]] = if *value { 1.0 } else { 0.0 };
+            }
         }
 
         for pos in data_len..self.field_size {
@@ -581,7 +585,7 @@ impl Network {
     pub fn tick(&mut self, bit_vec: &[bool]) {
         self.shift(bit_vec);
 
-        for _ in 0..self.synapse_params.refract_interval {
+        for _ in 0..self.synapse_params.signal_shift_interval {
             self.shift(&vec![]);
         }
     }
