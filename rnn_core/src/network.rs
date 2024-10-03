@@ -498,11 +498,7 @@ impl Network {
         }
 
         for (pos, value) in bit_vec.iter().enumerate() {
-            if self.refract_intervals_1[[pos]] > 0 {
-                self.neurons_1[[pos]] = 0.0;
-            } else {
-                self.neurons_1[[pos]] = if *value { 1.0 } else { 0.0 };
-            }
+            self.neurons_1[[pos]] = if *value { 1.0 } else { 0.0 };
         }
 
         for pos in data_len..self.field_size {
@@ -584,11 +580,49 @@ impl Network {
         self.accumulated_weights_2_to_1 = next_accumulated_weights_2_to_1;
     }
 
-    pub fn tick(&mut self, bit_vec: &[bool]) {
+    fn split_signal(&self, bit_vec: &[bool]) -> (Vec<bool>, Option<Vec<bool>>) {
+        let mut has_intersection = false;
+
+        let mut apply_vec = vec![false; self.field_size];
+        let mut rest_vec = vec![false; self.field_size];
+
+        for (pos, value) in bit_vec.iter().enumerate() {
+            if *value {
+                if self.refract_intervals_1[[pos]] > 0 {
+                    has_intersection = true;
+                    rest_vec[pos] = true;
+                } else {
+                    apply_vec[pos] = true;
+                }
+            }
+        }
+
+        (
+            apply_vec,
+            if has_intersection {
+                Some(rest_vec)
+            } else {
+                None
+            },
+        )
+    }
+
+    fn tick_not_intersected(&mut self, bit_vec: &[bool]) {
         self.shift(bit_vec);
 
         for _ in 0..self.synapse_params.signal_shift_interval {
             self.shift(&vec![]);
+        }
+    }
+
+    pub fn tick(&mut self, bit_vec: &[bool]) {
+        let (mut apply_vec, mut rest_vec) = self.split_signal(bit_vec);
+
+        self.tick_not_intersected(&apply_vec);
+
+        while rest_vec.is_some() {
+            (apply_vec, rest_vec) = self.split_signal(&rest_vec.unwrap());
+            self.tick_not_intersected(&apply_vec);
         }
     }
 
