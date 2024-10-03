@@ -532,6 +532,7 @@ impl Network {
             &self.refract_intervals_2,
             self.synapse_params.g_dec,
             self.synapse_params.g_inc,
+            self.synapse_params.max_g,
         )
         .unwrap();
 
@@ -568,6 +569,7 @@ impl Network {
             &self.refract_intervals_1,
             self.synapse_params.g_dec,
             self.synapse_params.g_inc,
+            self.synapse_params.max_g,
         )
         .unwrap();
 
@@ -843,5 +845,15 @@ impl Network {
         };
 
         self.get_neuron_weights(weights_layer, neuron_x, neuron_y)
+    }
+
+    pub fn get_accumulated_weights_sum(&self, layer_index: u8) -> f32 {
+        let weights_layer = if layer_index == 1 {
+            &self.accumulated_weights_1_to_2
+        } else {
+            &self.accumulated_weights_2_to_1
+        };
+
+        weights_layer.sum()
     }
 }

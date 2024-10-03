@@ -2,6 +2,8 @@ use tokio;
 extern crate rnn_core;
 
 use std::env;
+use std::fs::File;
+use std::io::{self, Write};
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -24,7 +26,8 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         g_dec: 0.001,
         g_inc: 0.1,
         g_0: 1.0,
-        initial_strong_g: 10.0,
+        max_g: 10.0,
+        initial_strong_g: 5.0,
         h: 2,
         refract_interval: 3,
         threshold: 0.9,
@@ -121,10 +124,25 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         7873, 7877, 7879, 7883, 7901, 7907, 7919,
     ];
 
+    let mut file = File::create("data.txt").unwrap();
+
+    writeln!(
+        file,
+        "{}",
+        network.read().unwrap().get_accumulated_weights_sum(1)
+    )
+    .unwrap();
+
     // let numbers = vec![];
 
     for number in numbers {
         data_layer.push_data(number);
+        writeln!(
+            file,
+            "{}",
+            network.read().unwrap().get_accumulated_weights_sum(1)
+        )
+        .unwrap();
     }
 
     Arc::clone(&network)

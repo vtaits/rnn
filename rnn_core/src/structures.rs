@@ -16,6 +16,7 @@ pub struct SynapseParams {
     pub g_dec: f32,
     pub g_inc: f32,
     pub g_0: f32,
+    pub max_g: f32,
     pub initial_strong_g: f32,
     pub h: u8,
     pub threshold: f32,

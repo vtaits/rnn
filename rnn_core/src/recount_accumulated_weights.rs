@@ -23,6 +23,7 @@ pub fn build_recount_accumulated_weights_kernel(layer_size: usize) -> ocl::Resul
         .arg_named("layer_size", 0_u32)
         .arg_named("g_dec", 0.0_f32)
         .arg_named("g_inc", 0.0_f32)
+        .arg_named("max_g", 0.0_f32)
         .build()?;
 
     Ok(CompiledKernel {
@@ -40,6 +41,7 @@ pub fn recount_accumulated_weights(
     refract_intervals_to: &Array1<u8>,
     g_dec: f32,
     g_inc: f32,
+    max_g: f32,
 ) -> ocl::Result<Array2<f32>> {
     let buffer_accumulated_weights = Buffer::<f32>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
@@ -81,6 +83,7 @@ pub fn recount_accumulated_weights(
         kernel.set_arg("layer_size", layer_size as u32)?;
         kernel.set_arg("g_dec", g_dec)?;
         kernel.set_arg("g_inc", g_inc)?;
+        kernel.set_arg("max_g", max_g)?;
         kernel.enq()?;
     }
 

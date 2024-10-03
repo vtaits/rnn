@@ -15,7 +15,8 @@ beta(r[i][j]) = 1 / (1 + alpha * (r[i][j]) ^ ( 1 / h ) )
 * g_dec = 0.001
 * g_inc = 0.1
 * g_0 = 1.0
-* initial_strong_g = 10.0
+* max_g = 10.0,
+* initial_strong_g: 5.0
 * h = 2
 * refract_interval = 3
 * threshold = 0.9
