@@ -27,7 +27,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         g_inc: 0.1,
         g_0: 1.0,
         max_g: 10.0,
-        initial_strong_g: 5.0,
+        initial_strong_g: 7.0,
         h: 3,
         refract_interval: 3,
         threshold: 0.9,
@@ -38,7 +38,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
 
     let timeline = IntegerTimeline::new(IntegerTimelineParams {
         min_value: 0,
-        max_value: 10000,
+        max_value: 1048575,
         capacity: capacity as u8,
         get_multiplier: None,
         get_reverse_multiplier: None,
