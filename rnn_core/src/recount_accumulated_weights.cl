@@ -16,11 +16,11 @@ __kernel void recount_accumulated_weights(
 
         if (neurons_from[col] < 0.5) {
             next_accumulated_weights[index_to] = accumulated_weights[index_to];
-        } else if (refract_intervals_to[index_to] > 0) {
+        } else if (refract_intervals_to[row] > 0) {
             next_accumulated_weights[index_to] = max(accumulated_weights[index_to] - g_dec, 0.0f);
         } else if (neurons_to[row] > 0.5) {
             next_accumulated_weights[index_to] = min(accumulated_weights[index_to] + g_inc, max_g);
-        } else  {
+        } else {
             next_accumulated_weights[index_to] = accumulated_weights[index_to];
         }
     }
