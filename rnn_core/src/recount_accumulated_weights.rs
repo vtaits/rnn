@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use ndarray::{Array1, Array2};
 use ocl::{Buffer, Kernel, ProQue};
 
-use crate::structures::CompiledKernel;
+use crate::{logger::{Logger, LoggerEvent}, structures::CompiledKernel};
 
 pub fn build_recount_accumulated_weights_kernel(layer_size: usize) -> ocl::Result<CompiledKernel> {
     let kernel_source = include_str!("recount_accumulated_weights.cl");
@@ -24,6 +24,8 @@ pub fn build_recount_accumulated_weights_kernel(layer_size: usize) -> ocl::Resul
         .arg_named("g_dec", 0.0_f32)
         .arg_named("g_inc", 0.0_f32)
         .arg_named("max_g", 0.0_f32)
+        .arg_named("inc_counter", None::<&Buffer<i32>>)
+        .arg_named("dec_counter", None::<&Buffer<i32>>)
         .build()?;
 
     Ok(CompiledKernel {
@@ -42,6 +44,8 @@ pub fn recount_accumulated_weights(
     g_dec: f32,
     g_inc: f32,
     max_g: f32,
+    layer_index: usize,
+    logger: &mut Option<Box<dyn Logger>>,
 ) -> ocl::Result<Array2<f32>> {
     let buffer_accumulated_weights = Buffer::<f32>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
@@ -72,6 +76,21 @@ pub fn recount_accumulated_weights(
         .len(accumulated_weights.len())
         .build()?;
 
+    let buffer_inc_counter = Buffer::<i32>::builder()
+        .queue(compiled_kernel.pro_que.queue().clone())
+        .flags(ocl::flags::MEM_READ_WRITE)
+        .len(1)
+        .fill_val(0)
+        .build().unwrap();
+
+    let buffer_dec_counter = Buffer::<i32>::builder()
+        .queue(compiled_kernel.pro_que.queue().clone())
+        .flags(ocl::flags::MEM_READ_WRITE)
+        .len(1)
+        .fill_val(0)
+        .build().unwrap();
+
+
     let kernel = compiled_kernel.kernel.lock().unwrap();
 
     unsafe {
@@ -84,6 +103,8 @@ pub fn recount_accumulated_weights(
         kernel.set_arg("g_dec", g_dec)?;
         kernel.set_arg("g_inc", g_inc)?;
         kernel.set_arg("max_g", max_g)?;
+        kernel.set_arg("inc_counter", &buffer_inc_counter)?;
+        kernel.set_arg("dec_counter", &buffer_dec_counter)?;
         kernel.enq()?;
     }
 
@@ -94,6 +115,16 @@ pub fn recount_accumulated_weights(
 
     let next_accumulated_weights =
         Array2::from_shape_vec((layer_size, layer_size), vec_next_accumulated_weights).unwrap();
+
+    let mut inc_counter_result = vec![0i32; 1];
+    buffer_inc_counter.read(&mut inc_counter_result).enq().unwrap();
+
+    let mut dec_counter_result = vec![0i32; 1];
+    buffer_dec_counter.read(&mut dec_counter_result).enq().unwrap();
+
+    if let Some(logger) = logger {
+        logger.log_event(LoggerEvent::ChangeLayerWeights(layer_index, inc_counter_result[0] as u8, dec_counter_result[0] as u8));
+    }
 
     Ok(next_accumulated_weights)
 }

@@ -5,6 +5,7 @@ use flate2::Compression;
 use flate2::{read::GzDecoder, write::GzEncoder};
 use ndarray::{Array1, Array2};
 
+use crate::logger::Logger;
 use crate::recount_refract_intervals::recount_refract_intervals;
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
@@ -65,6 +66,7 @@ pub struct Network {
     refract_intervals_2: Array1<u8>,
     layer_params: LayerParams,
     synapse_params: SynapseParams,
+    logger: Option<Box<dyn Logger>>,
 }
 
 fn get_neuron_index(
@@ -344,7 +346,7 @@ fn parse_json_dump(dump: &str) -> Result<NetworkDumpDeserialize, NetworkParseErr
 }
 
 impl Network {
-    pub fn new(layer_params: LayerParams, synapse_params: SynapseParams) -> Self {
+    pub fn new(layer_params: LayerParams, synapse_params: SynapseParams, logger: Option<Box<dyn Logger>>) -> Self {
         let LayerParams {
             field_width,
             field_height,
@@ -392,6 +394,7 @@ impl Network {
             refract_intervals_2: Array1::<u8>::zeros(layer_size),
             layer_params,
             synapse_params,
+            logger,
         }
     }
 
@@ -437,6 +440,7 @@ impl Network {
             refract_intervals_2: parsed_dump.refract_intervals_2,
             layer_params: parsed_dump.layer_params,
             synapse_params: parsed_dump.synapse_params,
+            logger: None,
         };
 
         Ok(network)
@@ -529,6 +533,8 @@ impl Network {
             self.synapse_params.g_dec,
             self.synapse_params.g_inc,
             self.synapse_params.max_g,
+            1,
+            &mut self.logger
         )
         .unwrap();
 
@@ -566,6 +572,8 @@ impl Network {
             self.synapse_params.g_dec,
             self.synapse_params.g_inc,
             self.synapse_params.max_g,
+            2,
+            &mut self.logger
         )
         .unwrap();
 

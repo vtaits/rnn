@@ -7,7 +7,9 @@ __kernel void recount_accumulated_weights(
     const unsigned int layer_size,
     const float g_dec,
     const float g_inc,
-    const float max_g
+    const float max_g,
+    __global int* inc_counter,
+    __global int* dec_counter
 ) {
     int row = get_global_id(0);
 
@@ -17,9 +19,21 @@ __kernel void recount_accumulated_weights(
         if (neurons_from[col] < 0.5) {
             next_accumulated_weights[index_to] = accumulated_weights[index_to];
         } else if (refract_intervals_to[row] > 0) {
-            next_accumulated_weights[index_to] = max(accumulated_weights[index_to] - g_dec, 0.0f);
+            if (accumulated_weights[index_to] > 0.0001) {
+                next_accumulated_weights[index_to] = max(accumulated_weights[index_to] - g_dec, 0.0f);
+
+                atomic_inc(&dec_counter[0]);
+                // #ifdef DEBUG
+                    // atomic_inc(*dec_counter[0]);
+                // #endif
+            }
         } else if (neurons_to[row] > 0.5) {
             next_accumulated_weights[index_to] = min(accumulated_weights[index_to] + g_inc, max_g);
+
+            atomic_inc(&inc_counter[0]);
+            // #ifdef DEBUG
+            //    atomic_inc(&inc_counter[0]);
+            // #endif
         } else {
             next_accumulated_weights[index_to] = accumulated_weights[index_to];
         }
