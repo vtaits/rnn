@@ -3,7 +3,10 @@ use std::sync::{Arc, Mutex};
 use ndarray::{Array1, Array2};
 use ocl::{Buffer, Kernel, ProQue};
 
-use crate::{logger::{Logger, LoggerEvent}, structures::CompiledKernel};
+use crate::{
+    logger::{Logger, LoggerEvent},
+    structures::CompiledKernel,
+};
 
 pub fn build_recount_accumulated_weights_kernel(layer_size: usize) -> ocl::Result<CompiledKernel> {
     let kernel_source = include_str!("recount_accumulated_weights.cl");
@@ -81,15 +84,16 @@ pub fn recount_accumulated_weights(
         .flags(ocl::flags::MEM_READ_WRITE)
         .len(1)
         .fill_val(0)
-        .build().unwrap();
+        .build()
+        .unwrap();
 
     let buffer_dec_counter = Buffer::<i32>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .flags(ocl::flags::MEM_READ_WRITE)
         .len(1)
         .fill_val(0)
-        .build().unwrap();
-
+        .build()
+        .unwrap();
 
     let kernel = compiled_kernel.kernel.lock().unwrap();
 
@@ -117,13 +121,23 @@ pub fn recount_accumulated_weights(
         Array2::from_shape_vec((layer_size, layer_size), vec_next_accumulated_weights).unwrap();
 
     let mut inc_counter_result = vec![0i32; 1];
-    buffer_inc_counter.read(&mut inc_counter_result).enq().unwrap();
+    buffer_inc_counter
+        .read(&mut inc_counter_result)
+        .enq()
+        .unwrap();
 
     let mut dec_counter_result = vec![0i32; 1];
-    buffer_dec_counter.read(&mut dec_counter_result).enq().unwrap();
+    buffer_dec_counter
+        .read(&mut dec_counter_result)
+        .enq()
+        .unwrap();
 
     if let Some(logger) = logger {
-        logger.log_event(LoggerEvent::ChangeLayerWeights(layer_index, inc_counter_result[0] as u8, dec_counter_result[0] as u8));
+        logger.log_event(LoggerEvent::ChangeLayerWeights(
+            layer_index,
+            inc_counter_result[0] as u8,
+            dec_counter_result[0] as u8,
+        ));
     }
 
     Ok(next_accumulated_weights)

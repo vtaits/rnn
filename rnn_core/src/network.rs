@@ -346,7 +346,11 @@ fn parse_json_dump(dump: &str) -> Result<NetworkDumpDeserialize, NetworkParseErr
 }
 
 impl Network {
-    pub fn new(layer_params: LayerParams, synapse_params: SynapseParams, logger: Option<Box<dyn Logger>>) -> Self {
+    pub fn new(
+        layer_params: LayerParams,
+        synapse_params: SynapseParams,
+        logger: Option<Box<dyn Logger>>,
+    ) -> Self {
         let LayerParams {
             field_width,
             field_height,
@@ -534,7 +538,7 @@ impl Network {
             self.synapse_params.g_inc,
             self.synapse_params.max_g,
             1,
-            &mut self.logger
+            &mut self.logger,
         )
         .unwrap();
 
@@ -573,7 +577,7 @@ impl Network {
             self.synapse_params.g_inc,
             self.synapse_params.max_g,
             2,
-            &mut self.logger
+            &mut self.logger,
         )
         .unwrap();
 

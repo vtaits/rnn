@@ -1,9 +1,10 @@
+use rnn_core::FileLogger;
 use tokio;
 extern crate rnn_core;
 
 use std::env;
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::Write;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -44,7 +45,11 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         get_reverse_multiplier: None,
     });
 
-    let network = Arc::new(RwLock::new(Network::new(params, synapse_params)));
+    let network = Arc::new(RwLock::new(Network::new(
+        params,
+        synapse_params,
+        Some(Box::new(FileLogger::new("diffs.txt"))),
+    )));
 
     let mut data_layer = DataLayer::new(
         DataLayerParams {
