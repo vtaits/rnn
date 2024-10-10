@@ -2,12 +2,13 @@ use chrono::NaiveDateTime;
 use serde_derive::Deserialize;
 use timeline_helpers::ComplexTimelineValue;
 
-use super::csv_stream::CsvStreamConfig;
+use super::{CsvStreamConfig, CsvDateTimeStreamConfig};
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
 
 pub enum TrainingStreamConfig {
+    CsvDateTime(CsvDateTimeStreamConfig),
     Csv(CsvStreamConfig),
 }
 
