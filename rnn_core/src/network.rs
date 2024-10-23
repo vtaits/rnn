@@ -7,6 +7,7 @@ use ndarray::{Array1, Array2};
 
 use crate::logger::Logger;
 use crate::recount_refract_intervals::recount_refract_intervals;
+use crate::LoggerEvent;
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
     get_synapse_mask::get_synapse_mask,
@@ -503,6 +504,10 @@ impl Network {
 
         if data_len > self.field_size {
             panic!("The length of the bit vec chunk should be less than or equal to the size of one field");
+        }
+
+        if let Some(logger) = &mut self.logger {
+            logger.log_event(LoggerEvent::Input(bit_vec.to_vec()));
         }
 
         for (pos, value) in bit_vec.iter().enumerate() {

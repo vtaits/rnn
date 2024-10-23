@@ -4,6 +4,8 @@ use data_streams::{train_network, ComplexStream, TrainingStream};
 use rnn_core::{DataLayer, DataLayerParams, FileLogger, LayerParams, Network, SynapseParams};
 use timeline_helpers::{ComplexTimeline, ComplexTimelineValue, Timeline};
 
+use crate::logger::AppLogger;
+
 pub fn init_data_layer(
     layer_params: LayerParams,
     synapse_params: SynapseParams,
@@ -14,10 +16,20 @@ pub fn init_data_layer(
 
     let complex_timeline = Arc::new(ComplexTimeline::new(timelines));
 
+    let LayerParams {
+        field_width,
+        field_height,
+        ..
+    } = layer_params;
+
     let network = Network::new(
         layer_params,
         synapse_params,
-        Some(Box::new(FileLogger::new("data.txt"))),
+        Some(Box::new(AppLogger::new(
+            "data.txt",
+            "count.txt",
+            field_width * field_height,
+        ))),
     );
 
     let mut data_layer = DataLayer::new(

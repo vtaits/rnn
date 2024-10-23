@@ -1,4 +1,6 @@
-use rnn_core::FileLogger;
+mod logger;
+
+use logger::AppLogger;
 use tokio;
 extern crate rnn_core;
 
@@ -48,7 +50,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
     let network = Arc::new(RwLock::new(Network::new(
         params,
         synapse_params,
-        Some(Box::new(FileLogger::new("diffs.txt"))),
+        Some(Box::new(AppLogger::new("diffs.txt", "count.txt", 20))),
     )));
 
     let mut data_layer = DataLayer::new(

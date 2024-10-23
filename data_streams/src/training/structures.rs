@@ -2,7 +2,7 @@ use chrono::NaiveDateTime;
 use serde_derive::Deserialize;
 use timeline_helpers::ComplexTimelineValue;
 
-use super::{CsvStreamConfig, CsvDateTimeStreamConfig};
+use super::{CsvDateTimeStreamConfig, CsvStreamConfig};
 
 #[derive(Deserialize)]
 #[serde(tag = "type")]
