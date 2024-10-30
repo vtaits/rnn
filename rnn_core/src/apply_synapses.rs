@@ -17,9 +17,9 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
         .global_work_size(layer_size)
         .arg_named("accumulated_weights", None::<&Buffer<f32>>)
         .arg_named("distance_weights", None::<&Buffer<f32>>)
-        .arg_named("neurons_from", None::<&Buffer<f32>>)
+        .arg_named("neurons_from", None::<&Buffer<u8>>)
         .arg_named("refract_intervals_to", None::<&Buffer<u8>>)
-        .arg_named("next_neurons_to", None::<&Buffer<f32>>)
+        .arg_named("next_neurons_to", None::<&Buffer<u8>>)
         .arg_named("layer_size", 0_u32)
         .arg_named("initial_refract_interval", 0_u8)
         .arg_named("threshold", 0.0_f32)
@@ -41,13 +41,13 @@ pub fn apply_synapses(
     layer_size: usize,
     accumulated_weights: &Array2<f32>,
     distance_weights: &Array2<f32>,
-    neurons_from: &Array1<f32>,
+    neurons_from: &Array1<u8>,
     refract_intervals_to: &Array1<u8>,
     initial_refract_interval: u8,
     threshold: f32,
     gamma: f32,
     g_0: f32,
-) -> ocl::Result<Array1<f32>> {
+) -> ocl::Result<Array1<u8>> {
     let buffer_accumulated_weights = Buffer::<f32>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .len(accumulated_weights.len())
@@ -60,7 +60,7 @@ pub fn apply_synapses(
         .copy_host_slice(distance_weights.as_slice().unwrap())
         .build()?;
 
-    let buffer_neurons_from = Buffer::<f32>::builder()
+    let buffer_neurons_from = Buffer::<u8>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .len(neurons_from.len())
         .copy_host_slice(neurons_from.as_slice().unwrap())
@@ -72,7 +72,7 @@ pub fn apply_synapses(
         .copy_host_slice(refract_intervals_to.as_slice().unwrap())
         .build()?;
 
-    let buffer_next_neurons_to = Buffer::<f32>::builder()
+    let buffer_next_neurons_to = Buffer::<u8>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .len(layer_size)
         .build()?;
@@ -93,7 +93,7 @@ pub fn apply_synapses(
         kernel.enq()?;
     }
 
-    let mut vec_next_neurons_to = vec![0.0f32; layer_size];
+    let mut vec_next_neurons_to = vec![0u8; layer_size];
     buffer_next_neurons_to
         .read(&mut vec_next_neurons_to)
         .enq()?;

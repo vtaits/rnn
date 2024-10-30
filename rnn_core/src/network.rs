@@ -58,9 +58,9 @@ pub struct Network {
     // number of neurons in one layer
     layer_size: usize,
     // neuron states at the first layer
-    neurons_1: Array1<f32>,
+    neurons_1: Array1<u8>,
     // neuron states at the second layer
-    neurons_2: Array1<f32>,
+    neurons_2: Array1<u8>,
     // timeouts of neuron refract states of the first layer
     refract_intervals_1: Array1<u8>,
     // timeouts of neuron refract states of the second layer
@@ -393,8 +393,8 @@ impl Network {
             layer_height,
             field_size,
             layer_size,
-            neurons_1: Array1::<f32>::zeros(layer_size),
-            neurons_2: Array1::<f32>::zeros(layer_size),
+            neurons_1: Array1::<u8>::zeros(layer_size),
+            neurons_2: Array1::<u8>::zeros(layer_size),
             refract_intervals_1: Array1::<u8>::zeros(layer_size),
             refract_intervals_2: Array1::<u8>::zeros(layer_size),
             layer_params,
@@ -511,11 +511,11 @@ impl Network {
         }
 
         for (pos, value) in bit_vec.iter().enumerate() {
-            self.neurons_1[[pos]] = if *value { 1.0 } else { 0.0 };
+            self.neurons_1[[pos]] = if *value { 1 } else { 0 };
         }
 
         for pos in data_len..self.field_size {
-            self.neurons_1[[pos]] = 0.0;
+            self.neurons_1[[pos]] = 0;
         }
 
         let next_neurons_2 = apply_synapses(
@@ -595,6 +595,14 @@ impl Network {
         self.neurons_1 = next_neurons_1;
         self.refract_intervals_2 = next_refract_intervals_2;
         self.accumulated_weights_2_to_1 = next_accumulated_weights_2_to_1;
+
+        let total_1 = self.get_accumulated_weights_sum(1);
+        let total_2 = self.get_accumulated_weights_sum(2);
+
+        if let Some(logger) = &mut self.logger {
+            logger.log_event(LoggerEvent::LayerTotalWeight(1, total_1));
+            logger.log_event(LoggerEvent::LayerTotalWeight(2, total_2));
+        }
     }
 
     fn split_signal(&self, bit_vec: &[bool]) -> (Vec<bool>, Option<Vec<bool>>) {
@@ -686,22 +694,18 @@ impl Network {
             let last_field_state = self.get_last_field_state();
 
             for neuron_value in last_field_state {
-                res.push(neuron_value);
+                res.push(if neuron_value > 0 { true } else { false });
             }
         }
 
         res
     }
 
-    pub fn get_last_field_state(&self) -> Vec<bool> {
+    pub fn get_last_field_state(&self) -> Vec<u8> {
         let mut res = vec![];
 
         for field_index in self.last_field_indexes.iter() {
-            res.push(if self.neurons_2[*field_index] > 0.5 {
-                true
-            } else {
-                false
-            });
+            res.push(self.neurons_2[*field_index]);
         }
 
         res
@@ -718,7 +722,7 @@ impl Network {
         println!();
     }
 
-    fn print_state(&self, layer: &Array1<f32>) {
+    fn print_state(&self, layer: &Array1<u8>) {
         for layer_y in 0..self.layer_height {
             for neuron_in_field_y in 0..self.layer_params.field_height {
                 for layer_x in 0..self.layer_width {
@@ -732,14 +736,7 @@ impl Network {
                             neuron_in_field_y,
                         );
 
-                        print!(
-                            "{} ",
-                            if layer[[neuron_index]] > 0.5 {
-                                "+"
-                            } else {
-                                "."
-                            }
-                        );
+                        print!("{} ", if layer[[neuron_index]] > 0 { "+" } else { "." });
                     }
 
                     print!(" ");
@@ -792,7 +789,7 @@ impl Network {
         layer_y: usize,
         neuron_in_field_x: usize,
         neuron_in_field_y: usize,
-    ) -> f32 {
+    ) -> u8 {
         let neurons = if layer_index == 1 {
             &self.neurons_1
         } else {

@@ -9,6 +9,6 @@ mod spiral;
 mod structures;
 
 pub use data_layer::{DataLayer, DataLayerParams};
-pub use logger::{FileLogger, Logger, LoggerEvent};
+pub use logger::{Logger, LoggerEvent, MultipleFileLogger, MultipleFileLoggerParams};
 pub use network::{Network, NetworkParseError};
 pub use structures::{LayerParams, SynapseParams};

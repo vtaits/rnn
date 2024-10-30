@@ -1,12 +1,9 @@
-mod logger;
-
-use logger::AppLogger;
+use rnn_core::MultipleFileLogger;
+use rnn_core::MultipleFileLoggerParams;
 use tokio;
 extern crate rnn_core;
 
 use std::env;
-use std::fs::File;
-use std::io::Write;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -50,7 +47,16 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
     let network = Arc::new(RwLock::new(Network::new(
         params,
         synapse_params,
-        Some(Box::new(AppLogger::new("diffs.txt", "count.txt", 20))),
+        Some(Box::new(MultipleFileLogger::new(
+            MultipleFileLoggerParams {
+                weights_diff_path_1: Some("diffs1.txt"),
+                weights_diff_path_2: Some("diffs2.txt"),
+                sum_path_1: Some("total1.txt"),
+                sum_path_2: Some("total2.txt"),
+                count_path: Some("count.txt"),
+            },
+            20,
+        ))),
     )));
 
     let mut data_layer = DataLayer::new(
@@ -131,25 +137,10 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         7873, 7877, 7879, 7883, 7901, 7907, 7919,
     ];
 
-    let mut file = File::create("data.txt").unwrap();
-
-    writeln!(
-        file,
-        "{}",
-        network.read().unwrap().get_accumulated_weights_sum(1)
-    )
-    .unwrap();
-
     // let numbers = vec![];
 
     for number in numbers {
         data_layer.push_data(number);
-        writeln!(
-            file,
-            "{}",
-            network.read().unwrap().get_accumulated_weights_sum(1)
-        )
-        .unwrap();
     }
 
     Arc::clone(&network)

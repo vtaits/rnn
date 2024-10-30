@@ -48,7 +48,7 @@ pub fn render_neurons(frame: &mut Frame, area: Rect, app: &App) {
                         neuron_in_field_y,
                     );
 
-                    let cell_content = if neuron_state > 0.5 {
+                    let cell_content = if neuron_state > 0 {
                         String::from("+")
                     } else {
                         String::from("·")

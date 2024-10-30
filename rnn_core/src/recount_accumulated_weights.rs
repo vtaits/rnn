@@ -19,8 +19,8 @@ pub fn build_recount_accumulated_weights_kernel(layer_size: usize) -> ocl::Resul
         .queue(pro_que.queue().clone())
         .global_work_size(layer_size)
         .arg_named("accumulated_weights", None::<&Buffer<f32>>)
-        .arg_named("neurons_from", None::<&Buffer<f32>>)
-        .arg_named("neurons_to", None::<&Buffer<f32>>)
+        .arg_named("neurons_from", None::<&Buffer<u8>>)
+        .arg_named("neurons_to", None::<&Buffer<u8>>)
         .arg_named("refract_intervals_to", None::<&Buffer<u8>>)
         .arg_named("next_accumulated_weights", None::<&Buffer<f32>>)
         .arg_named("layer_size", 0_u32)
@@ -41,8 +41,8 @@ pub fn recount_accumulated_weights(
     compiled_kernel: &CompiledKernel,
     layer_size: usize,
     accumulated_weights: &Array2<f32>,
-    neurons_from: &Array1<f32>,
-    neurons_to: &Array1<f32>,
+    neurons_from: &Array1<u8>,
+    neurons_to: &Array1<u8>,
     refract_intervals_to: &Array1<u8>,
     g_dec: f32,
     g_inc: f32,
@@ -56,13 +56,13 @@ pub fn recount_accumulated_weights(
         .copy_host_slice(accumulated_weights.as_slice().unwrap())
         .build()?;
 
-    let buffer_neurons_from = Buffer::<f32>::builder()
+    let buffer_neurons_from = Buffer::<u8>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .len(neurons_from.len())
         .copy_host_slice(neurons_from.as_slice().unwrap())
         .build()?;
 
-    let buffer_neurons_to = Buffer::<f32>::builder()
+    let buffer_neurons_to = Buffer::<u8>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .len(neurons_to.len())
         .copy_host_slice(neurons_to.as_slice().unwrap())

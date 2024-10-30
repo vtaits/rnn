@@ -51,9 +51,10 @@ pub struct NetworkDumpSerialize<'a> {
     pub distance_weights_1_to_2: &'a Array2<f32>,
     // distance weights of synapses from the second layer to the first layer
     pub distance_weights_2_to_1: &'a Array2<f32>,
-    pub neurons_1: &'a Array1<f32>,
+    // neuron states at the first layer
+    pub neurons_1: &'a Array1<u8>,
     // neuron states at the second layer
-    pub neurons_2: &'a Array1<f32>,
+    pub neurons_2: &'a Array1<u8>,
     // timeouts of neuron refract states of the first layer
     pub refract_intervals_1: &'a Array1<u8>,
     // timeouts of neuron refract states of the second layer
@@ -71,9 +72,10 @@ pub struct NetworkDumpDeserialize {
     pub distance_weights_1_to_2: Array2<f32>,
     // distance weights of synapses from the second layer to the first layer
     pub distance_weights_2_to_1: Array2<f32>,
-    pub neurons_1: Array1<f32>,
+    // neuron states at the first layer
+    pub neurons_1: Array1<u8>,
     // neuron states at the second layer
-    pub neurons_2: Array1<f32>,
+    pub neurons_2: Array1<u8>,
     // timeouts of neuron refract states of the first layer
     pub refract_intervals_1: Array1<u8>,
     // timeouts of neuron refract states of the second layer

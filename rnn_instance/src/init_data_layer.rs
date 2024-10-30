@@ -1,10 +1,11 @@
 use std::{sync::Arc, sync::RwLock};
 
 use data_streams::{train_network, ComplexStream, TrainingStream};
-use rnn_core::{DataLayer, DataLayerParams, FileLogger, LayerParams, Network, SynapseParams};
+use rnn_core::{
+    DataLayer, DataLayerParams, LayerParams, MultipleFileLogger, MultipleFileLoggerParams, Network,
+    SynapseParams,
+};
 use timeline_helpers::{ComplexTimeline, ComplexTimelineValue, Timeline};
-
-use crate::logger::AppLogger;
 
 pub fn init_data_layer(
     layer_params: LayerParams,
@@ -25,9 +26,14 @@ pub fn init_data_layer(
     let network = Network::new(
         layer_params,
         synapse_params,
-        Some(Box::new(AppLogger::new(
-            "data.txt",
-            "count.txt",
+        Some(Box::new(MultipleFileLogger::new(
+            MultipleFileLoggerParams {
+                weights_diff_path_1: Some("diffs1.txt"),
+                weights_diff_path_2: Some("diffs2.txt"),
+                sum_path_1: Some("total1.txt"),
+                sum_path_2: Some("total2.txt"),
+                count_path: Some("count.txt"),
+            },
             field_width * field_height,
         ))),
     );
