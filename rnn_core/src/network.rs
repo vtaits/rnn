@@ -645,9 +645,14 @@ impl Network {
 
         self.tick_not_intersected(&apply_vec);
 
-        while rest_vec.is_some() {
+        let mut counter = 1u8;
+
+        let limit = self.synapse_params.signal_shift_limit.unwrap_or(255);
+
+        while rest_vec.is_some() && counter < limit {
             (apply_vec, rest_vec) = self.split_signal(&rest_vec.unwrap());
             self.tick_not_intersected(&apply_vec);
+            counter += 1;
         }
     }
 

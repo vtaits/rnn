@@ -22,6 +22,7 @@ pub struct SynapseParams {
     pub threshold: f32,
     pub refract_interval: u8,
     pub signal_shift_interval: u8,
+    pub signal_shift_limit: Option<u8>,
 }
 
 #[derive(Serialize, Deserialize)]
