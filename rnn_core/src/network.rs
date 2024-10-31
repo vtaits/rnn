@@ -6,6 +6,8 @@ use flate2::{read::GzDecoder, write::GzEncoder};
 use ndarray::{Array1, Array2};
 
 use crate::logger::Logger;
+use crate::prediction;
+use crate::prediction::PredictionProcessing;
 use crate::recount_refract_intervals::recount_refract_intervals;
 use crate::LoggerEvent;
 use crate::{
@@ -632,26 +634,56 @@ impl Network {
         )
     }
 
-    fn tick_not_intersected(&mut self, bit_vec: &[bool]) {
+    /**
+     * Set the values of neurons to the input field and make shifts before setting the second part
+     *
+     * The values are guaranteed not to overlap with the refractive neurons
+     */
+    fn tick_not_intersected(
+        &mut self,
+        bit_vec: &[bool],
+        prediction: &mut Option<PredictionProcessing>,
+    ) {
         self.shift(bit_vec);
+
+        if let Some(prediction) = prediction {
+            prediction.add_tick_split();
+
+            if prediction.should_read() {
+                prediction.read(&self.get_last_field_state());
+            }
+        }
 
         for _ in 0..self.synapse_params.signal_shift_interval {
             self.shift(&vec![]);
+
+            if let Some(prediction) = prediction {
+                prediction.shift();
+
+                if prediction.should_read() {
+                    prediction.read(&self.get_last_field_state());
+                }
+            }
         }
     }
 
-    pub fn tick(&mut self, bit_vec: &[bool]) {
+    /**
+     * Set the values of neurons to the input field  and make shifts before setting the second part
+     *
+     * If there are values that overlap with the refractive neurons, make a tick without them and recursively call this method with that values
+     */
+    pub fn tick(&mut self, bit_vec: &[bool], prediction: &mut Option<PredictionProcessing>) {
         let (mut apply_vec, mut rest_vec) = self.split_signal(bit_vec);
 
-        self.tick_not_intersected(&apply_vec);
+        self.tick_not_intersected(&apply_vec, prediction);
 
-        let mut counter = 1u8;
+        let mut counter = 0u8;
 
-        let limit = self.synapse_params.signal_shift_limit.unwrap_or(255);
+        let limit = self.synapse_params.signal_rest_shift_limit.unwrap_or(255);
 
         while rest_vec.is_some() && counter < limit {
             (apply_vec, rest_vec) = self.split_signal(&rest_vec.unwrap());
-            self.tick_not_intersected(&apply_vec);
+            self.tick_not_intersected(&apply_vec, prediction);
             counter += 1;
         }
     }
@@ -668,7 +700,7 @@ impl Network {
         for i in 0..tick_count {
             let start = i * self.field_size;
             let end = std::cmp::min(start + self.field_size, data_len);
-            self.tick(&bit_vec[start..end]);
+            self.tick(&bit_vec[start..end], &mut None);
         }
     }
 
@@ -681,29 +713,35 @@ impl Network {
             (data_len / self.field_size) + 1
         };
 
+        let mut prediction = Some(PredictionProcessing::new(
+            self.computed_params.field_size,
+            self.computed_params.field_count,
+        ));
+
         for i in 0..tick_count {
             let start = i * self.field_size;
             let end = std::cmp::min(start + self.field_size, data_len);
-            self.tick(&bit_vec[start..end]);
+
+            prediction.as_mut().unwrap().add_tick(i);
+
+            self.tick(&bit_vec[start..end], &mut prediction);
         }
 
-        for _ in tick_count..self.computed_params.field_count - 1 {
-            self.tick(&vec![]);
-        }
+        let prediction = prediction.as_mut().unwrap();
 
-        let mut res = vec![];
+        while !prediction.is_finished() {
+            for _ in 0..=self.synapse_params.signal_shift_interval {
+                self.shift(&vec![]);
 
-        for _ in 0..tick_count {
-            self.tick(&vec![]);
+                prediction.shift();
 
-            let last_field_state = self.get_last_field_state();
-
-            for neuron_value in last_field_state {
-                res.push(if neuron_value > 0 { true } else { false });
+                if prediction.should_read() {
+                    prediction.read(&self.get_last_field_state());
+                }
             }
         }
 
-        res
+        prediction.get_prediction()
     }
 
     pub fn get_last_field_state(&self) -> Vec<u8> {

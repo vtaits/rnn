@@ -11,7 +11,7 @@ use crate::init_data_layer;
 struct InitConfig {
     layer_params: LayerParams,
     synapse_params: SynapseParams,
-    training_streams: Vec<TrainingStreamConfig>,
+    training_streams: Option<Vec<TrainingStreamConfig>>,
     timelines: Vec<TimelineConfig>,
 }
 
@@ -26,11 +26,12 @@ pub fn init_by_toml<P: AsRef<Path>>(file_path: P) -> DataLayer<Vec<ComplexTimeli
         .map(init_timeline_by_config)
         .collect();
 
-    let training_streams = config
-        .training_streams
-        .iter()
-        .map(init_training_stream_by_config)
-        .collect();
+    let training_streams = config.training_streams.map_or(vec![], |training_streams| {
+        training_streams
+            .iter()
+            .map(init_training_stream_by_config)
+            .collect()
+    });
 
     init_data_layer(
         config.layer_params,

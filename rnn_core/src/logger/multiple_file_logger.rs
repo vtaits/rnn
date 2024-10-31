@@ -102,7 +102,6 @@ impl Logger for MultipleFileLogger {
                     let _ = writeln!(count_file);
                 }
             }
-            _ => {}
         };
     }
 }

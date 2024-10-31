@@ -14,7 +14,7 @@ use rnn_core::DataLayer;
 use rnn_instance::init_by_toml;
 use timeline_helpers::ComplexTimelineValue;
 use tokio::sync::Semaphore;
-use tokio::{io::AsyncWriteExt, net::TcpStream, time::timeout};
+use tokio::time::timeout;
 
 struct AppState {
     client: Arc<Client>,
@@ -48,9 +48,9 @@ async fn send_data_to_receiver(
 
     match response {
         Ok(res) => {
-            //             println!("Request sent, response: {:?}", res);
-            //             let response_text = res.text().await;
-            //             println!("Response body: {:?}", response_text);
+            println!("Request sent, response: {:?}", res);
+            let response_text = res.text().await;
+            println!("Response body: {:?}", response_text);
         }
         Err(err) => eprintln!("Error sending request: {:?}", err),
     }
@@ -123,7 +123,7 @@ async fn main() -> std::io::Result<()> {
 
     let data_layer = init_by_toml(config_path);
 
-    let network = data_layer.get_network();
+    // let network = data_layer.get_network();
 
     let client = Client::new();
 
@@ -149,7 +149,7 @@ async fn main() -> std::io::Result<()> {
                 .supports_credentials();
 
             App::new()
-                // .wrap(Logger::default())
+                .wrap(Logger::default())
                 .wrap(cors)
                 .app_data(app_data.clone())
                 .service(push_data)
@@ -157,7 +157,7 @@ async fn main() -> std::io::Result<()> {
         })
         .bind(("127.0.0.1", port))?
         .run(),
-        run_console_app(Arc::clone(&network)),
+        // run_console_app(Arc::clone(&network)),
     );
 
     Ok(())
