@@ -12,7 +12,7 @@ struct InitConfig {
     layer_params: LayerParams,
     synapse_params: SynapseParams,
     training_streams: Option<Vec<TrainingStreamConfig>>,
-    timelines: Vec<TimelineConfig>,
+    timelines: Option<Vec<TimelineConfig>>,
 }
 
 pub fn init_by_toml<P: AsRef<Path>>(file_path: P) -> DataLayer<Vec<ComplexTimelineValue>> {
@@ -20,11 +20,9 @@ pub fn init_by_toml<P: AsRef<Path>>(file_path: P) -> DataLayer<Vec<ComplexTimeli
 
     let config: InitConfig = toml::from_str(&toml_str).expect("Failed to parse TOML");
 
-    let timelines = config
-        .timelines
-        .iter()
-        .map(init_timeline_by_config)
-        .collect();
+    let timelines = config.timelines.map_or(vec![], |timelines| {
+        timelines.iter().map(init_timeline_by_config).collect()
+    });
 
     let training_streams = config.training_streams.map_or(vec![], |training_streams| {
         training_streams

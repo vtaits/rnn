@@ -694,10 +694,14 @@ impl Network {
     pub fn push_data_binary(&mut self, bit_vec: &[bool]) {
         let data_len = bit_vec.len();
 
-        let tick_count = if data_len % self.field_size == 0 {
-            data_len / self.field_size
+        let tick_count = if data_len == 0 {
+            1
         } else {
-            (data_len / self.field_size) + 1
+            if data_len % self.field_size == 0 {
+                data_len / self.field_size
+            } else {
+                (data_len / self.field_size) + 1
+            }
         };
 
         for i in 0..tick_count {
@@ -707,7 +711,21 @@ impl Network {
         }
     }
 
+    /**
+     * Set all the values of neurons and refract intervals to 0
+     */
+    fn clean_neurons(&mut self) {
+        let layer_size = self.layer_size;
+
+        self.neurons_1 = Array1::<u8>::zeros(layer_size);
+        self.neurons_2 = Array1::<u8>::zeros(layer_size);
+        self.refract_intervals_1 = Array1::<u8>::zeros(layer_size);
+        self.refract_intervals_2 = Array1::<u8>::zeros(layer_size);
+    }
+
     pub fn predict(&mut self, bit_vec: &[bool]) -> Vec<bool> {
+        self.clean_neurons();
+
         let data_len = bit_vec.len();
 
         let tick_count = if data_len % self.field_size == 0 {
