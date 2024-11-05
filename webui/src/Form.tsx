@@ -25,6 +25,7 @@ const schemas = __APP_CONFIG__.timelines.reduce<
 				type: "input",
 				isNumber: true,
 				label: `#${index + 1} integer`,
+				hint: `${timelineItem.min_value} - ${timelineItem.max_value} ; ${timelineItem.capacity} bits`,
 				required: true,
 			};
 			break;
@@ -34,6 +35,7 @@ const schemas = __APP_CONFIG__.timelines.reduce<
 				type: "input",
 				isNumber: true,
 				label: `#${index + 1} float`,
+				hint: `${timelineItem.min_value} - ${timelineItem.max_value} ; ${timelineItem.capacity} bits`,
 				required: true,
 			};
 			break;

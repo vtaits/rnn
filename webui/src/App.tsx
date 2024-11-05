@@ -9,15 +9,15 @@ export function App() {
 	>(null);
 
 	const onPredict = useCallback(async (values: readonly ITimelineValue[]) => {
-		const response = await axios.post<ITimelineValue[]>(`${__PREDICTION_SERVER__}/predict`, values);
+		const response = await axios.post<ITimelineValue[]>(
+			`${__PREDICTION_SERVER__}/predict`,
+			values,
+		);
 		setLastPrediction(response.data);
 	}, []);
 
 	const onTrain = useCallback(async (values: readonly ITimelineValue[]) => {
-		await axios.post(
-			`${__TRAINING_SERVER__}/push_data`,
-			values,
-		);
+		await axios.post(`${__TRAINING_SERVER__}/push_data`, values);
 	}, []);
 
 	return (
