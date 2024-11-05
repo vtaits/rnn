@@ -1,6 +1,6 @@
 use std::{
     env,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex},
 };
 
 use actix_cors::Cors;
@@ -50,7 +50,7 @@ async fn update_network(bytes: web::Bytes, data: web::Data<AppState>) -> impl Re
 
     match Network::from_gzip_dump_bytes(&dump) {
         Ok(network) => {
-            data_layer.replace_network(Arc::new(RwLock::new(network)));
+            data_layer.replace_network(network);
             return HttpResponse::Ok().finish();
         }
         Err(error) => match error {
@@ -84,7 +84,7 @@ async fn main() -> std::io::Result<()> {
 
         let network = Network::from_json_dump(&dump).unwrap();
 
-        data_layer.replace_network(Arc::new(RwLock::new(network)));
+        data_layer.replace_network(network);
     }
 
     let network = data_layer.get_network();

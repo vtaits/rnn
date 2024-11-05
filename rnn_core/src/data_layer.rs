@@ -21,8 +21,9 @@ impl<T> DataLayer<T> {
         Arc::clone(&self.network)
     }
 
-    pub fn replace_network(&mut self, network: Arc<RwLock<Network>>) {
-        self.network = network;
+    pub fn replace_network(&mut self, network: Network) {
+        let mut current_network = self.network.write().unwrap();
+        *current_network = network;
     }
 
     pub fn push_data(&mut self, data: T) {
