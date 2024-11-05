@@ -93,8 +93,8 @@ fn get_last_field_indexes(
 
     let (last_field_x, last_field_y) = get_last_field(layer_params);
 
-    for neuron_in_field_x in 0..layer_params.field_width {
-        for neuron_in_field_y in 0..layer_params.field_height {
+    for neuron_in_field_y in 0..layer_params.field_height {
+        for neuron_in_field_x in 0..layer_params.field_width {
             res.push(get_neuron_index(
                 layer_params,
                 computed_params,

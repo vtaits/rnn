@@ -49,7 +49,7 @@ pub fn get_last_field(params: &LayerParams) -> (usize, usize) {
         if params.layer_height % 2 == 0 {
             0
         } else {
-            params.layer_height - 1
+            params.layer_width - 1
         },
         params.layer_height - 1,
     )
