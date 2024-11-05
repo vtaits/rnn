@@ -79,8 +79,8 @@ impl Timeline for DatetimeTimeline {
         let format = self.get_date_format();
 
         let year = bits_to_number(&bits[0..8]);
-        let month = std::cmp::min(bits_to_number(&bits[8..12]), 12);
-        let day = std::cmp::min(bits_to_number(&bits[12..17]), 31);
+        let month = std::cmp::max(std::cmp::min(bits_to_number(&bits[8..12]), 12), 1);
+        let day = std::cmp::max(std::cmp::min(bits_to_number(&bits[12..17]), 31), 1);
         let hour = std::cmp::min(bits_to_number(&bits[17..22]), 23);
         let minute = std::cmp::min(bits_to_number(&bits[22..24]) * 4, 59);
 
