@@ -131,3 +131,56 @@ fn not_restore_missed_bits(#[case] full: Vec<bool>, #[case] cut: Vec<bool>, #[ca
 
     assert_eq!(result, cut);
 }
+
+#[rstest]
+#[case(
+    vec![
+        (
+            vec![true, true, true, true, true, true, false, false, false],
+            vec![true, false, true, false, true, true, false, false, false],
+        ),
+        (
+            vec![true, true, true, false, false, false, true, true, true],
+            vec![true, false, true, false, false, false, false, true, true],
+        ),
+        (
+            vec![false, false, false, true, true, true, true, true, true],
+            vec![false, false, false, true, false, true, false, true, true],
+        ),
+    ],
+)]
+fn restore_multiple_sequences(#[case] sequences: Vec<(Vec<bool>, Vec<bool>)>) {
+    let mut network = Network::new(
+        LayerParams {
+            field_width: 3,
+            field_height: 3,
+            layer_width: 3,
+            layer_height: 3,
+        },
+        SynapseParams {
+            alpha: 3.0,
+            gamma: 0.5,
+            g_dec: 0.0,
+            g_inc: 10.0,
+            g_0: 1.0,
+            max_g: 10.0,
+            initial_strong_g: 7.0,
+            h: 3,
+            refract_interval: 3,
+            threshold: 0.8,
+            signal_shift_interval: 2,
+            signal_rest_shift_limit: Some(0),
+        },
+        None,
+    );
+
+    for sequence in sequences.iter() {
+        network.push_data_binary(&sequence.0);
+    }
+
+    for sequence in sequences.iter() {
+        let result = network.predict(&sequence.1);
+
+        assert_eq!(result, sequence.0);
+    }
+}

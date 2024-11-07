@@ -32,11 +32,15 @@ __kernel void apply_synapses(
     float sum = 0.0;
     for (int col = 0; col < layer_size; ++col) {
         if (neurons_from[col] > 0) {
-            sum += get_weight_coefficient(gamma, accumulated_weights[row * layer_size + col], g_0) * distance_weights[row * layer_size + col];
+            float weight_to = accumulated_weights[row * layer_size + col];
 
-            if (sum > threshold) {
-                next_neurons_to[row] = 1;
-                return;
+            if (weight_to > 0.0001) {
+                sum += get_weight_coefficient(gamma, weight_to, g_0) * distance_weights[row * layer_size + col];
+
+                if (sum > threshold) {
+                    next_neurons_to[row] = 1;
+                    return;
+                }
             }
         }
     }
