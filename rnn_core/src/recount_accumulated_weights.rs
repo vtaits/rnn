@@ -26,6 +26,7 @@ pub fn build_recount_accumulated_weights_kernel(layer_size: usize) -> ocl::Resul
         .arg_named("layer_size", 0_u32)
         .arg_named("g_dec", 0.0_f32)
         .arg_named("g_inc", 0.0_f32)
+        .arg_named("min_g", 0.0_f32)
         .arg_named("max_g", 0.0_f32)
         .arg_named("inc_counter", None::<&Buffer<i32>>)
         .arg_named("dec_counter", None::<&Buffer<i32>>)
@@ -46,6 +47,7 @@ pub fn recount_accumulated_weights(
     refract_intervals_to: &Array1<u8>,
     g_dec: f32,
     g_inc: f32,
+    min_g: f32,
     max_g: f32,
     layer_index: usize,
     logger: &mut Option<Box<dyn Logger>>,
@@ -106,6 +108,7 @@ pub fn recount_accumulated_weights(
         kernel.set_arg("layer_size", layer_size as u32)?;
         kernel.set_arg("g_dec", g_dec)?;
         kernel.set_arg("g_inc", g_inc)?;
+        kernel.set_arg("min_g", min_g)?;
         kernel.set_arg("max_g", max_g)?;
         kernel.set_arg("inc_counter", &buffer_inc_counter)?;
         kernel.set_arg("dec_counter", &buffer_dec_counter)?;

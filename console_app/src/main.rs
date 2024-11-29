@@ -22,10 +22,12 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
 
     let synapse_params = SynapseParams {
         alpha: 3.0,
-        gamma: 0.5,
+        gamma_dec: 0.5,
+        gamma_inc: 0.5,
         g_dec: 0.05,
         g_inc: 0.1,
         g_0: 1.0,
+        min_g: -10.0,
         max_g: 10.0,
         initial_strong_g: 7.0,
         h: 3,

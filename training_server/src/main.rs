@@ -44,16 +44,16 @@ async fn send_data_to_receiver(
 ) -> tokio::io::Result<()> {
     let permit = semaphore.acquire().await.unwrap();
 
-    let response = client.post(receiver).body(data.to_vec()).send().await;
+    let _response = client.post(receiver).body(data.to_vec()).send().await;
 
-    match response {
+    /* match response {
         Ok(res) => {
             println!("Request sent, response: {:?}", res);
             let response_text = res.text().await;
             println!("Response body: {:?}", response_text);
         }
         Err(err) => eprintln!("Error sending request: {:?}", err),
-    }
+    } */
 
     drop(permit);
 
@@ -123,7 +123,7 @@ async fn main() -> std::io::Result<()> {
 
     let data_layer = init_by_toml(config_path);
 
-    // let network = data_layer.get_network();
+    let network = data_layer.get_network();
 
     let client = Client::new();
 
@@ -157,7 +157,7 @@ async fn main() -> std::io::Result<()> {
         })
         .bind(("127.0.0.1", port))?
         .run(),
-        // run_console_app(Arc::clone(&network)),
+        run_console_app(Arc::clone(&network)),
     );
 
     Ok(())

@@ -532,7 +532,8 @@ impl Network {
             &self.refract_intervals_2,
             self.synapse_params.refract_interval,
             self.synapse_params.threshold,
-            self.synapse_params.gamma,
+            self.synapse_params.gamma_inc,
+            self.synapse_params.gamma_dec,
             0.0,
         )
         .unwrap();
@@ -546,6 +547,7 @@ impl Network {
             &self.refract_intervals_2,
             self.synapse_params.g_dec,
             self.synapse_params.g_inc,
+            self.synapse_params.min_g,
             self.synapse_params.max_g,
             1,
             &mut self.logger,
@@ -571,7 +573,8 @@ impl Network {
             &self.refract_intervals_1,
             self.synapse_params.refract_interval,
             self.synapse_params.threshold,
-            self.synapse_params.gamma,
+            self.synapse_params.gamma_inc,
+            self.synapse_params.gamma_dec,
             self.synapse_params.g_0,
         )
         .unwrap();
@@ -585,6 +588,7 @@ impl Network {
             &self.refract_intervals_1,
             self.synapse_params.g_dec,
             self.synapse_params.g_inc,
+            self.synapse_params.min_g,
             self.synapse_params.max_g,
             2,
             &mut self.logger,

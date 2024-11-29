@@ -23,7 +23,8 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
         .arg_named("layer_size", 0_u32)
         .arg_named("initial_refract_interval", 0_u8)
         .arg_named("threshold", 0.0_f32)
-        .arg_named("gamma", 0.0_f32)
+        .arg_named("gamma_inc", 0.0_f32)
+        .arg_named("gamma_dec", 0.0_f32)
         .arg_named("g_0", 0.0_f32)
         .build()?;
 
@@ -45,7 +46,8 @@ pub fn apply_synapses(
     refract_intervals_to: &Array1<u8>,
     initial_refract_interval: u8,
     threshold: f32,
-    gamma: f32,
+    gamma_inc: f32,
+    gamma_dec: f32,
     g_0: f32,
 ) -> ocl::Result<Array1<u8>> {
     let buffer_accumulated_weights = Buffer::<f32>::builder()
@@ -88,7 +90,8 @@ pub fn apply_synapses(
         kernel.set_arg("layer_size", layer_size as u32)?;
         kernel.set_arg("initial_refract_interval", initial_refract_interval)?;
         kernel.set_arg("threshold", threshold)?;
-        kernel.set_arg("gamma", gamma)?;
+        kernel.set_arg("gamma_inc", gamma_inc)?;
+        kernel.set_arg("gamma_dec", gamma_dec)?;
         kernel.set_arg("g_0", g_0)?;
         kernel.enq()?;
     }
