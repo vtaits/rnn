@@ -8,6 +8,7 @@ use ndarray::{Array1, Array2};
 use crate::logger::Logger;
 use crate::prediction::PredictionProcessing;
 use crate::recount_refract_intervals::recount_refract_intervals;
+use crate::shift_signal::shift_signal;
 use crate::LoggerEvent;
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
@@ -671,14 +672,18 @@ impl Network {
     }
 
     /**
-     * Set the values of neurons to the input field  and make shifts before setting the second part
+     * Set the values of neurons to the input field and make shifts before setting the second part
      *
      * If there are values that overlap with the refractive neurons, make a tick without them and recursively call this method with that values
      */
-    pub fn tick(&mut self, bit_vec: &[bool], prediction: &mut Option<PredictionProcessing>) {
+    pub fn tick(&mut self, bit_vec: &[bool], prediction: &mut Option<PredictionProcessing>, apply_rest: bool) {
         let (mut apply_vec, mut rest_vec) = self.split_signal(bit_vec);
 
         self.tick_not_intersected(&apply_vec, prediction);
+
+        if !apply_rest {
+            return;
+        } 
 
         let mut counter = 0u8;
 
@@ -694,27 +699,39 @@ impl Network {
     pub fn push_data_binary(&mut self, bit_vec: &[bool]) {
         let data_len = bit_vec.len();
 
+        let field_size = self.field_size;
+
         let tick_count = if data_len == 0 {
             1
         } else {
-            if data_len % self.field_size == 0 {
-                data_len / self.field_size
+            if data_len % field_size == 0 {
+                data_len / field_size
             } else {
-                (data_len / self.field_size) + 1
+                (data_len / field_size) + 1
             }
         };
 
         for i in 0..tick_count {
             let start = i * self.field_size;
-            let end = std::cmp::min(start + self.field_size, data_len);
-            self.tick(&bit_vec[start..end], &mut None);
+            let end = std::cmp::min(start + field_size, data_len);
+            self.tick(&bit_vec[start..end], &mut None, true);
+
+            if let Some(shifts) = &self.synapse_params.signal_copy_shifts {
+                let shifted_signals: Vec<Vec<bool>> = shifts.iter().map(|shift| {
+                    return shift_signal(&bit_vec[start..end], field_size, &self.layer_params, shift);
+                }).collect();
+
+                for shifted_signal in shifted_signals.iter() {
+                    self.tick(&shifted_signal, &mut None, false);
+                }
+            }
         }
     }
 
     /**
      * Set all the values of neurons and refract intervals to 0
      */
-    fn clean_neurons(&mut self) {
+    fn _clean_neurons(&mut self) {
         let layer_size = self.layer_size;
 
         self.neurons_1 = Array1::<u8>::zeros(layer_size);
@@ -724,8 +741,6 @@ impl Network {
     }
 
     pub fn predict(&mut self, bit_vec: &[bool]) -> Vec<bool> {
-        self.clean_neurons();
-
         let data_len = bit_vec.len();
 
         let tick_count = if data_len % self.field_size == 0 {
@@ -745,7 +760,7 @@ impl Network {
 
             prediction.as_mut().unwrap().add_tick(i);
 
-            self.tick(&bit_vec[start..end], &mut prediction);
+            self.tick(&bit_vec[start..end], &mut prediction, true);
         }
 
         let prediction = prediction.as_mut().unwrap();

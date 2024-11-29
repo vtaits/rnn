@@ -23,6 +23,8 @@ pub struct SynapseParams {
     pub refract_interval: u8,
     pub signal_shift_interval: u8,
     pub signal_rest_shift_limit: Option<u8>,
+    /// Apply additional signals that copy original signal with the shift
+    pub signal_copy_shifts: Option<Vec<(i8, i8)>>,
 }
 
 #[derive(Serialize, Deserialize)]
