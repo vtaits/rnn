@@ -4,6 +4,7 @@ pub struct PredictionProcessingTick {
 }
 
 pub struct PredictionProcessing {
+    split_count: usize,
     ticks: Vec<PredictionProcessingTick>,
     input_index: usize,
     collect_prediction_index: Option<usize>,
@@ -12,8 +13,9 @@ pub struct PredictionProcessing {
 }
 
 impl PredictionProcessing {
-    pub fn new(field_size: usize, field_count: usize) -> Self {
+    pub fn new(split_count: usize, field_size: usize, field_count: usize) -> Self {
         PredictionProcessing {
+            split_count,
             ticks: vec![],
             input_index: 0,
             collect_prediction_index: Some(0),
@@ -24,6 +26,14 @@ impl PredictionProcessing {
 
     pub fn add_tick(&mut self, index: usize) {
         self.input_index = index;
+
+        if self.ticks.len() == self.split_count {
+            panic!(
+                "Number of splits of prediction is {}, cannot add more",
+                self.split_count
+            );
+        }
+
         self.ticks.push(PredictionProcessingTick {
             tick_splits: vec![],
             result: vec![false; self.field_size],
@@ -35,8 +45,14 @@ impl PredictionProcessing {
     }
 
     pub fn shift(&mut self) {
+        let field_count = self.field_count;
+
         for tick in self.ticks.iter_mut() {
             for tick_split in tick.tick_splits.iter_mut() {
+                if field_count == *tick_split {
+                    panic!("Signal have not been read");
+                }
+
                 *tick_split += 1;
             }
         }
@@ -100,6 +116,10 @@ impl PredictionProcessing {
 
         res
     }
+
+    pub fn is_all_ticks_added(&self) -> bool {
+        self.ticks.len() == self.split_count
+    }
 }
 
 #[cfg(test)]
@@ -108,22 +128,25 @@ mod tests {
 
     #[test]
     fn flow() {
-        let mut prediction = PredictionProcessing::new(5, 10);
+        let mut prediction = PredictionProcessing::new(2, 5, 10);
 
         prediction.add_tick(0); // []
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(!prediction.is_all_ticks_added());
 
         prediction.add_tick_split(); // [1]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(!prediction.is_all_ticks_added());
 
         prediction.shift(); // [2]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(!prediction.is_all_ticks_added());
 
         prediction.shift(); // [3]
 
@@ -131,86 +154,103 @@ mod tests {
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(!prediction.is_all_ticks_added());
 
         prediction.shift(); // [5, 2]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(!prediction.is_all_ticks_added());
 
         prediction.shift(); // [6, 3]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(!prediction.is_all_ticks_added());
 
         prediction.add_tick(1); // [6, 3] []
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.add_tick_split(); // [7, 4] [1]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.shift(); // [8, 5] [2]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.shift(); // [9, 6] [3]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.shift(); // [10, 7] [4]
 
         assert!(prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.read(&[1, 0, 1, 0, 0]); // [7] [4]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.shift(); // [8] [5]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.shift(); // [9] [6]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.shift(); // [10] [7]
 
         assert!(prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.read(&[0, 0, 0, 0, 1]); // [] [7]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.shift(); // [] [8]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.shift(); // [] [9]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.shift(); // [] [10]
 
         assert!(prediction.should_read());
         assert!(!prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         prediction.read(&[0, 1, 1, 0, 0]); // [] []
 
         assert!(!prediction.should_read());
         assert!(prediction.is_finished());
+        assert!(prediction.is_all_ticks_added());
 
         let result = prediction.get_prediction();
 

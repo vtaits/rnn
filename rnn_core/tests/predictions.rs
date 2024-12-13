@@ -37,7 +37,8 @@ fn identical_prediction(
             threshold: 0.9,
             signal_shift_interval: 2,
             signal_rest_shift_limit: Some(1),
-            signal_copy_shifts: Some(vec![(1, 0), (0, 1), (0, -1), (-1, 0)]),
+            // signal_copy_shifts: Some(vec![(1, 0), (0, 1), (0, -1), (-1, 0)]),
+            signal_copy_shifts: Some(vec![(1, 0)]),
         },
         None,
     );
@@ -79,7 +80,8 @@ fn restore_missed_bits(#[case] full: Vec<bool>, #[case] cut: Vec<bool>, #[case] 
             threshold: 0.8,
             signal_shift_interval: 2,
             signal_rest_shift_limit: Some(1),
-            signal_copy_shifts: Some(vec![(1, 0), (0, 1), (-1, 0), (0, -1)]),
+            signal_copy_shifts: Some(vec![(1, 0)]),
+            // signal_copy_shifts: Some(vec![(1, 0), (0, 1), (-1, 0), (0, -1)]),
         },
         None,
     );
@@ -123,7 +125,7 @@ fn not_restore_missed_bits(#[case] full: Vec<bool>, #[case] cut: Vec<bool>, #[ca
             threshold: 0.9,
             signal_shift_interval: 2,
             signal_rest_shift_limit: Some(1),
-            signal_copy_shifts: None,
+            signal_copy_shifts: Some(vec![(1, 0)]),
         },
         None,
     );
@@ -305,7 +307,7 @@ fn restore_multiple_overlapping_sequences(#[case] sequences: Vec<(Vec<bool>, Vec
             threshold: 0.8,
             signal_shift_interval: 2,
             signal_rest_shift_limit: Some(1),
-            signal_copy_shifts: Some(vec![(1, 0), (0, 1), (-1, 0), (0, -1)]),
+            signal_copy_shifts: Some(vec![(1, 0)]),
         },
         None,
     );

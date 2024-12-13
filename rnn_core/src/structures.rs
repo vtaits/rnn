@@ -86,3 +86,14 @@ pub struct NetworkDumpDeserialize {
     pub layer_params: LayerParams,
     pub synapse_params: SynapseParams,
 }
+
+pub enum Action {
+    ApplyRest(Vec<bool>, u8),
+    EmptyShift1to2,
+    EmptyShift2to1,
+    /**
+     * 0 - signal
+     * 1 - whether it a source signal that should be taken into account in prediction process
+     */
+    InputSignal(Vec<bool>, bool),
+}
