@@ -8,6 +8,8 @@ use ndarray::{Array1, Array2};
 use crate::logger::Logger;
 use crate::prediction::PredictionProcessing;
 use crate::recount_refract_intervals::recount_refract_intervals;
+use crate::shift_signal::shift_signal;
+use crate::structures::Action;
 use crate::LoggerEvent;
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
@@ -33,6 +35,8 @@ struct ComputedParams {
     row_width: usize,
     // number of neurons in one column of neurons
     column_height: usize,
+    // number of empty shifts that should be fulfiled after the last step of the prediction
+    prediction_rest_shifts: usize,
 }
 
 // TO DO: bit-vec / bitfield
@@ -69,6 +73,9 @@ pub struct Network {
     layer_params: LayerParams,
     synapse_params: SynapseParams,
     logger: Option<Box<dyn Logger>>,
+    action_queue: Vec<Action>,
+    signal_buffer: Vec<Vec<bool>>,
+    prediction: Option<PredictionProcessing>,
 }
 
 fn get_neuron_index(
@@ -311,7 +318,10 @@ fn set_initial_connections(
     )
 }
 
-fn get_computed_params(layer_params: &LayerParams) -> ComputedParams {
+fn get_computed_params(
+    layer_params: &LayerParams,
+    synapse_params: &SynapseParams,
+) -> ComputedParams {
     let LayerParams {
         field_width,
         field_height,
@@ -324,6 +334,17 @@ fn get_computed_params(layer_params: &LayerParams) -> ComputedParams {
     let row_width = field_width * layer_width;
     let column_height = field_height * layer_height;
     let field_count = layer_width * layer_height;
+    let single_signal_shifts = 1
+        + synapse_params
+            .signal_copy_shifts
+            .as_ref()
+            .map_or(0, |signal_copy_shifts| signal_copy_shifts.len())
+        + synapse_params.signal_shift_interval as usize;
+    let prediction_rest_shifts = if field_count > single_signal_shifts {
+        field_count - single_signal_shifts
+    } else {
+        0
+    };
 
     ComputedParams {
         field_size,
@@ -331,6 +352,7 @@ fn get_computed_params(layer_params: &LayerParams) -> ComputedParams {
         row_size,
         row_width,
         column_height,
+        prediction_rest_shifts,
     }
 }
 
@@ -366,7 +388,7 @@ impl Network {
 
         let field_size = field_width * field_height;
 
-        let computed_params = get_computed_params(&layer_params);
+        let computed_params = get_computed_params(&layer_params, &synapse_params);
 
         let layer_size = get_layer_size(&layer_params, &computed_params);
 
@@ -405,6 +427,9 @@ impl Network {
             layer_params,
             synapse_params,
             logger,
+            action_queue: vec![],
+            signal_buffer: vec![],
+            prediction: None,
         }
     }
 
@@ -420,7 +445,8 @@ impl Network {
 
         let field_size = field_width * field_height;
 
-        let computed_params = get_computed_params(&parsed_dump.layer_params);
+        let computed_params =
+            get_computed_params(&parsed_dump.layer_params, &parsed_dump.synapse_params);
 
         let layer_size = get_layer_size(&parsed_dump.layer_params, &computed_params);
 
@@ -451,6 +477,9 @@ impl Network {
             layer_params: parsed_dump.layer_params,
             synapse_params: parsed_dump.synapse_params,
             logger: None,
+            action_queue: vec![],
+            signal_buffer: vec![],
+            prediction: None,
         };
 
         Ok(network)
@@ -504,7 +533,7 @@ impl Network {
         &self.layer_params
     }
 
-    fn shift(&mut self, bit_vec: &[bool]) {
+    fn input_signal(&mut self, bit_vec: &[bool]) {
         let data_len = bit_vec.len();
 
         if data_len > self.field_size {
@@ -516,13 +545,13 @@ impl Network {
         }
 
         for (pos, value) in bit_vec.iter().enumerate() {
-            self.neurons_1[[pos]] = if *value { 1 } else { 0 };
+            if *value {
+                self.neurons_1[[pos]] = 1;
+            }
         }
+    }
 
-        for pos in data_len..self.field_size {
-            self.neurons_1[[pos]] = 0;
-        }
-
+    fn shift_1_to_2(&mut self) {
         let next_neurons_2 = apply_synapses(
             &self.kernel_synapses,
             self.layer_size,
@@ -564,6 +593,16 @@ impl Network {
         self.refract_intervals_1 = next_refract_intervals_1;
         self.accumulated_weights_1_to_2 = next_accumulated_weights_1_to_2;
 
+        if self.logger.is_some() {
+            let total_2 = self.get_accumulated_weights_sum(2);
+            self.logger
+                .as_mut()
+                .unwrap()
+                .log_event(LoggerEvent::LayerTotalWeight(2, total_2));
+        }
+    }
+
+    fn shift_2_to_1(&mut self) {
         let next_neurons_1 = apply_synapses(
             &self.kernel_synapses,
             self.layer_size,
@@ -605,13 +644,19 @@ impl Network {
         self.refract_intervals_2 = next_refract_intervals_2;
         self.accumulated_weights_2_to_1 = next_accumulated_weights_2_to_1;
 
-        let total_1 = self.get_accumulated_weights_sum(1);
-        let total_2 = self.get_accumulated_weights_sum(2);
-
-        if let Some(logger) = &mut self.logger {
-            logger.log_event(LoggerEvent::LayerTotalWeight(1, total_1));
-            logger.log_event(LoggerEvent::LayerTotalWeight(2, total_2));
+        if self.logger.is_some() {
+            let total_1 = self.get_accumulated_weights_sum(1);
+            self.logger
+                .as_mut()
+                .unwrap()
+                .log_event(LoggerEvent::LayerTotalWeight(1, total_1));
         }
+    }
+
+    fn shift(&mut self, bit_vec: &[bool]) {
+        self.input_signal(bit_vec);
+        self.shift_1_to_2();
+        self.shift_2_to_1();
     }
 
     fn split_signal(&self, bit_vec: &[bool]) -> (Vec<bool>, Option<Vec<bool>>) {
@@ -649,40 +694,49 @@ impl Network {
     fn tick_not_intersected(
         &mut self,
         bit_vec: &[bool],
-        prediction: &mut Option<PredictionProcessing>,
+        _prediction: &mut Option<PredictionProcessing>,
     ) {
         self.shift(bit_vec);
 
-        if let Some(prediction) = prediction {
+        /* if let Some(prediction) = prediction {
             prediction.add_tick_split();
 
             if prediction.should_read() {
                 prediction.read(&self.get_last_field_state());
             }
-        }
+        } */
 
         for _ in 0..self.synapse_params.signal_shift_interval {
             self.shift(&vec![]);
 
-            if let Some(prediction) = prediction {
+            /* if let Some(prediction) = prediction {
                 prediction.shift();
 
                 if prediction.should_read() {
                     prediction.read(&self.get_last_field_state());
                 }
-            }
+            } */
         }
     }
 
     /**
-     * Set the values of neurons to the input field  and make shifts before setting the second part
+     * Set the values of neurons to the input field and make shifts before setting the second part
      *
      * If there are values that overlap with the refractive neurons, make a tick without them and recursively call this method with that values
      */
-    pub fn tick(&mut self, bit_vec: &[bool], prediction: &mut Option<PredictionProcessing>) {
+    pub fn tick(
+        &mut self,
+        bit_vec: &[bool],
+        prediction: &mut Option<PredictionProcessing>,
+        apply_rest: bool,
+    ) {
         let (mut apply_vec, mut rest_vec) = self.split_signal(bit_vec);
 
         self.tick_not_intersected(&apply_vec, prediction);
+
+        if !apply_rest {
+            return;
+        }
 
         let mut counter = 0u8;
 
@@ -697,28 +751,56 @@ impl Network {
 
     pub fn push_data_binary(&mut self, bit_vec: &[bool]) {
         let data_len = bit_vec.len();
-
-        let tick_count = if data_len == 0 {
-            1
-        } else {
-            if data_len % self.field_size == 0 {
-                data_len / self.field_size
-            } else {
-                (data_len / self.field_size) + 1
-            }
-        };
+        let field_size = self.field_size;
+        let tick_count = self.get_tick_count(bit_vec);
 
         for i in 0..tick_count {
             let start = i * self.field_size;
-            let end = std::cmp::min(start + self.field_size, data_len);
-            self.tick(&bit_vec[start..end], &mut None);
+            let end = std::cmp::min(start + field_size, data_len);
+
+            if let Some(prediction) = &mut self.prediction {
+                prediction.add_tick(i);
+            }
+
+            self.push_to_buffer(bit_vec[start..end].to_vec());
         }
+
+        self.apply_buffer();
+    }
+
+    fn get_tick_count(&self, bit_vec: &[bool]) -> usize {
+        let data_len = bit_vec.len();
+        let field_size = self.field_size;
+
+        if data_len == 0 {
+            return 1;
+        }
+
+        if data_len % field_size == 0 {
+            return data_len / field_size;
+        }
+
+        (data_len / field_size) + 1
+    }
+
+    pub fn predict(&mut self, bit_vec: &[bool]) -> Vec<bool> {
+        let tick_count = self.get_tick_count(bit_vec);
+
+        self.prediction = Some(PredictionProcessing::new(
+            tick_count,
+            self.computed_params.field_size,
+            self.computed_params.field_count,
+        ));
+
+        self.push_data_binary(bit_vec);
+
+        self.prediction.as_ref().unwrap().get_prediction()
     }
 
     /**
      * Set all the values of neurons and refract intervals to 0
      */
-    fn clean_neurons(&mut self) {
+    fn _clean_neurons(&mut self) {
         let layer_size = self.layer_size;
 
         self.neurons_1 = Array1::<u8>::zeros(layer_size);
@@ -727,9 +809,7 @@ impl Network {
         self.refract_intervals_2 = Array1::<u8>::zeros(layer_size);
     }
 
-    pub fn predict(&mut self, bit_vec: &[bool]) -> Vec<bool> {
-        self.clean_neurons();
-
+    pub fn _predict(&mut self, bit_vec: &[bool]) -> Vec<bool> {
         let data_len = bit_vec.len();
 
         let tick_count = if data_len % self.field_size == 0 {
@@ -739,6 +819,7 @@ impl Network {
         };
 
         let mut prediction = Some(PredictionProcessing::new(
+            tick_count,
             self.computed_params.field_size,
             self.computed_params.field_count,
         ));
@@ -749,7 +830,7 @@ impl Network {
 
             prediction.as_mut().unwrap().add_tick(i);
 
-            self.tick(&bit_vec[start..end], &mut prediction);
+            self.tick(&bit_vec[start..end], &mut prediction, true);
         }
 
         let prediction = prediction.as_mut().unwrap();
@@ -770,7 +851,7 @@ impl Network {
     }
 
     pub fn get_last_field_state(&self) -> Vec<u8> {
-        let mut res = vec![];
+        let mut res: Vec<u8> = vec![];
 
         for field_index in self.last_field_indexes.iter() {
             res.push(self.neurons_2[[*field_index]]);
@@ -971,5 +1052,146 @@ impl Network {
         };
 
         weights_layer.sum()
+    }
+
+    fn push_shift(&mut self, bit_vec: Vec<bool>, is_source: bool) {
+        self.action_queue
+            .push(Action::InputSignal(bit_vec, is_source));
+        self.action_queue.push(Action::EmptyShift1to2);
+        self.action_queue.push(Action::EmptyShift2to1);
+    }
+
+    fn push_empty_shift(&mut self) {
+        self.action_queue.push(Action::EmptyShift1to2);
+        self.action_queue.push(Action::EmptyShift2to1);
+    }
+
+    fn push_shifted_signals(&mut self, bit_vec: &[bool]) {
+        if let Some(shifts) = &self.synapse_params.signal_copy_shifts {
+            let shifted_signals: Vec<Vec<bool>> = shifts
+                .into_iter()
+                .map(|shift| {
+                    return shift_signal(&bit_vec, self.field_size, &self.layer_params, shift);
+                })
+                .collect();
+
+            for shifted_signal in shifted_signals.into_iter() {
+                self.push_shift(shifted_signal, false);
+            }
+        }
+    }
+
+    fn apply_signal(&mut self, bit_vec: &[bool], counter: &u8) {
+        let (apply_vec, rest) = self.split_signal(bit_vec);
+
+        self.push_shift(apply_vec, true);
+
+        self.push_shifted_signals(bit_vec);
+
+        for _ in 0..self.synapse_params.signal_shift_interval {
+            self.push_empty_shift();
+        }
+
+        let is_finish =
+            rest.is_none() || *counter < self.synapse_params.signal_rest_shift_limit.unwrap_or(255);
+
+        if is_finish {
+            if self
+                .prediction
+                .as_ref()
+                .map_or(false, |prediction| prediction.is_all_ticks_added())
+            {
+                for _ in 0..self.computed_params.prediction_rest_shifts {
+                    self.push_empty_shift();
+                }
+            }
+
+            return;
+        }
+
+        self.action_queue
+            .push(Action::ApplyRest(rest.unwrap(), *counter + 1));
+    }
+
+    fn apply_action(&mut self, action: &Action) {
+        match action {
+            Action::ApplyRest(bit_vec, counter) => {
+                self.apply_signal(bit_vec, counter);
+            }
+            Action::InputSignal(bit_vec, is_source) => {
+                self.input_signal(bit_vec);
+
+                if *is_source {
+                    if let Some(prediction) = &mut self.prediction {
+                        prediction.add_tick_split();
+                    }
+                }
+            }
+            Action::EmptyShift1to2 => {
+                self.shift_1_to_2();
+
+                let should_read = self
+                    .prediction
+                    .as_mut()
+                    .map_or(false, |prediction| prediction.should_read());
+
+                if should_read {
+                    let last_field_state = self.get_last_field_state();
+
+                    self.prediction.as_mut().unwrap().read(&last_field_state);
+                }
+            }
+            Action::EmptyShift2to1 => {
+                self.shift_2_to_1();
+
+                if let Some(prediction) = &mut self.prediction {
+                    prediction.shift();
+                }
+            }
+        }
+    }
+
+    pub fn apply_next_action(&mut self) {
+        if self.action_queue.len() == 0 {
+            return;
+        }
+
+        let action = self.action_queue.remove(0);
+        self.apply_action(&action);
+    }
+
+    pub fn has_next_action(&self) -> bool {
+        self.action_queue.len() > 0
+    }
+
+    pub fn apply_queue(&mut self) {
+        while self.has_next_action() {
+            self.apply_next_action();
+        }
+    }
+
+    fn push_to_buffer(&mut self, signal: Vec<bool>) {
+        self.signal_buffer.push(signal);
+    }
+
+    fn read_from_buffer(&mut self) {
+        if self.signal_buffer.len() == 0 {
+            return;
+        }
+
+        let signal = self.signal_buffer.remove(0);
+
+        self.apply_signal(&signal, &0);
+    }
+
+    pub fn has_signal_in_buffer(&self) -> bool {
+        self.signal_buffer.len() > 0
+    }
+
+    pub fn apply_buffer(&mut self) {
+        while self.has_signal_in_buffer() {
+            self.read_from_buffer();
+            self.apply_queue();
+        }
     }
 }

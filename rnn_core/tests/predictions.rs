@@ -38,7 +38,9 @@ fn identical_prediction(
             refract_interval: 3,
             threshold: 0.9,
             signal_shift_interval: 2,
-            signal_rest_shift_limit: Some(0),
+            signal_rest_shift_limit: Some(1),
+            // signal_copy_shifts: Some(vec![(1, 0), (0, 1), (0, -1), (-1, 0)]),
+            signal_copy_shifts: Some(vec![(1, 0)]),
         },
         None,
     );
@@ -64,24 +66,26 @@ fn restore_missed_bits(#[case] full: Vec<bool>, #[case] cut: Vec<bool>, #[case] 
         LayerParams {
             field_width: 3,
             field_height: 2,
-            layer_width: 2,
-            layer_height: 2,
+            layer_width: 12,
+            layer_height: 12,
         },
         SynapseParams {
             alpha,
             gamma_dec: 0.5,
             gamma_inc: 0.5,
-            g_dec: 0.0,
-            g_inc: 10.0,
+            g_dec: 5.0,
+            g_inc: 7.0,
             g_0: 1.0,
             min_g: 10.0,
             max_g: 10.0,
             initial_strong_g: 7.0,
             h: 3,
             refract_interval: 3,
-            threshold: 0.9,
+            threshold: 0.8,
             signal_shift_interval: 2,
-            signal_rest_shift_limit: Some(0),
+            signal_rest_shift_limit: Some(1),
+            signal_copy_shifts: Some(vec![(1, 0)]),
+            // signal_copy_shifts: Some(vec![(1, 0), (0, 1), (-1, 0), (0, -1)]),
         },
         None,
     );
@@ -109,15 +113,15 @@ fn not_restore_missed_bits(#[case] full: Vec<bool>, #[case] cut: Vec<bool>, #[ca
         LayerParams {
             field_width: 3,
             field_height: 2,
-            layer_width: 2,
-            layer_height: 2,
+            layer_width: 12,
+            layer_height: 12,
         },
         SynapseParams {
             alpha,
             gamma_dec: 0.5,
             gamma_inc: 0.5,
-            g_dec: 0.0,
-            g_inc: 10.0,
+            g_dec: 5.0,
+            g_inc: 7.0,
             g_0: 1.0,
             min_g: -10.0,
             max_g: 10.0,
@@ -126,7 +130,8 @@ fn not_restore_missed_bits(#[case] full: Vec<bool>, #[case] cut: Vec<bool>, #[ca
             refract_interval: 3,
             threshold: 0.9,
             signal_shift_interval: 2,
-            signal_rest_shift_limit: Some(0),
+            signal_rest_shift_limit: Some(1),
+            signal_copy_shifts: Some(vec![(1, 0)]),
         },
         None,
     );
@@ -204,15 +209,15 @@ fn restore_multiple_separated_sequences(#[case] sequences: Vec<(Vec<bool>, Vec<b
         LayerParams {
             field_width: 4,
             field_height: 4,
-            layer_width: 3,
-            layer_height: 3,
+            layer_width: 12,
+            layer_height: 12,
         },
         SynapseParams {
             alpha: 2.0,
             gamma_dec: 0.5,
             gamma_inc: 0.5,
-            g_dec: 0.0,
-            g_inc: 5.0,
+            g_dec: 5.0,
+            g_inc: 7.0,
             g_0: 1.0,
             min_g: -10.0,
             max_g: 10.0,
@@ -221,7 +226,8 @@ fn restore_multiple_separated_sequences(#[case] sequences: Vec<(Vec<bool>, Vec<b
             refract_interval: 3,
             threshold: 0.8,
             signal_shift_interval: 2,
-            signal_rest_shift_limit: Some(0),
+            signal_rest_shift_limit: Some(1),
+            signal_copy_shifts: Some(vec![(1, 0), (0, 1), (-1, 0), (0, -1)]),
         },
         None,
     );
@@ -235,7 +241,6 @@ fn restore_multiple_separated_sequences(#[case] sequences: Vec<(Vec<bool>, Vec<b
     }
 
     for sequence in sequences.iter() {
-        println!("PREDICT");
         let result = network.predict(&sequence.1);
 
         assert_eq!(result, sequence.0);
@@ -294,24 +299,25 @@ fn restore_multiple_overlapping_sequences(#[case] sequences: Vec<(Vec<bool>, Vec
         LayerParams {
             field_width: 4,
             field_height: 4,
-            layer_width: 3,
-            layer_height: 3,
+            layer_width: 12,
+            layer_height: 12,
         },
         SynapseParams {
             alpha: 2.0,
             gamma_dec: 0.5,
             gamma_inc: 0.5,
-            g_dec: 0.0,
-            g_inc: 5.0,
+            g_dec: 5.0,
+            g_inc: 7.0,
             g_0: 1.0,
-            min_g: 10.0,
+            min_g: -10.0,
             max_g: 10.0,
             initial_strong_g: 7.0,
             h: 3,
             refract_interval: 3,
             threshold: 0.8,
             signal_shift_interval: 2,
-            signal_rest_shift_limit: Some(0),
+            signal_rest_shift_limit: Some(1),
+            signal_copy_shifts: Some(vec![(1, 0)]),
         },
         None,
     );

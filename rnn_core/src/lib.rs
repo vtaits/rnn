@@ -6,6 +6,7 @@ mod network;
 mod prediction;
 mod recount_accumulated_weights;
 mod recount_refract_intervals;
+mod shift_signal;
 mod spiral;
 mod structures;
 

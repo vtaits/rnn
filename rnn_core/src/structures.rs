@@ -25,6 +25,8 @@ pub struct SynapseParams {
     pub refract_interval: u8,
     pub signal_shift_interval: u8,
     pub signal_rest_shift_limit: Option<u8>,
+    /// Apply additional signals that copy original signal with the shift
+    pub signal_copy_shifts: Option<Vec<(i8, i8)>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -85,4 +87,15 @@ pub struct NetworkDumpDeserialize {
     pub refract_intervals_2: Array1<u8>,
     pub layer_params: LayerParams,
     pub synapse_params: SynapseParams,
+}
+
+pub enum Action {
+    ApplyRest(Vec<bool>, u8),
+    EmptyShift1to2,
+    EmptyShift2to1,
+    /**
+     * 0 - signal
+     * 1 - whether it a source signal that should be taken into account in prediction process
+     */
+    InputSignal(Vec<bool>, bool),
 }
