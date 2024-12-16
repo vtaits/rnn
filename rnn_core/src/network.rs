@@ -545,7 +545,7 @@ impl Network {
         }
 
         for (pos, value) in bit_vec.iter().enumerate() {
-            if *value {
+            if *value && self.refract_intervals_1[[pos]] == 0 {
                 self.neurons_1[[pos]] = 1;
             }
         }

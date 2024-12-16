@@ -12,8 +12,8 @@ pub fn shift_signal(
 
     for (index, value) in bit_vec.iter().enumerate() {
         if *value {
-            let y = index % field_width;
-            let x = index / field_width;
+            let x = index % field_width;
+            let y = index / field_width;
 
             let next_x = x as i8 + shift.0;
             let next_y = y as i8 + shift.1;
@@ -25,10 +25,109 @@ pub fn shift_signal(
             {
                 let next_index = next_y as usize * field_width + next_x as usize;
 
-                res[next_index] = true;
+                if bit_vec.len() <= next_index || !bit_vec[next_index] {
+                    res[next_index] = true;
+                }
             }
         }
     }
 
     return res;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case(
+        4,
+        4,
+        vec![
+            true, true, true, true,
+            false, false, false, false,
+            false, false, false, false,
+            false, false, false, false,
+        ],
+        vec![
+            false, false, false, false,
+            false, false, false, false,
+            false, false, false, false,
+            false, false, false, false,
+        ],
+        (1, 0),
+    )]
+    #[case(
+        4,
+        4,
+        vec![
+            true, true, true, true,
+            false, false, false, false,
+            false, false, false, false,
+            false, false, false, false,
+        ],
+        vec![
+            false, false, false, false,
+            false, false, false, false,
+            false, false, false, false,
+            false, false, false, false,
+        ],
+        (-1, 0),
+    )]
+    #[case(
+        4,
+        4,
+        vec![
+            true, true, true, true,
+            false, false, false, false,
+            false, false, false, false,
+            false, false, false, false,
+        ],
+        vec![
+            false, false, false, false,
+            true, true, true, true,
+            false, false, false, false,
+            false, false, false, false,
+        ],
+        (0, 1),
+    )]
+    #[case(
+        4,
+        4,
+        vec![
+            true, true, true, true,
+            false, false, false, false,
+            false, false, false, false,
+            false, false, false, false,
+        ],
+        vec![
+            false, false, false, false,
+            false, false, false, false,
+            false, false, false, false,
+            false, false, false, false,
+        ],
+        (0, -1),
+    )]
+    fn shift_signal_check(
+        #[case] field_width: usize,
+        #[case] field_height: usize,
+        #[case] bit_vec: Vec<bool>,
+        #[case] expected_res: Vec<bool>,
+        #[case] shift: (i8, i8),
+    ) {
+        let res = shift_signal(
+            &bit_vec,
+            field_width * field_height,
+            &LayerParams {
+                field_height,
+                field_width,
+                layer_height: 1,
+                layer_width: 1,
+            },
+            &shift,
+        );
+
+        assert_eq!(res, expected_res);
+    }
 }

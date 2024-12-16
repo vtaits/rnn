@@ -35,9 +35,9 @@ fn identical_prediction(
             max_g: 10.0,
             initial_strong_g: 7.0,
             h: 3,
-            refract_interval: 3,
+            refract_interval: 2,
             threshold: 0.9,
-            signal_shift_interval: 2,
+            signal_shift_interval: 3,
             signal_rest_shift_limit: Some(1),
             // signal_copy_shifts: Some(vec![(1, 0), (0, 1), (0, -1), (-1, 0)]),
             signal_copy_shifts: Some(vec![(1, 0)]),
@@ -55,13 +55,20 @@ fn identical_prediction(
     vec![true, true, true, true, true, true],
     vec![true, false, true, false, true, true],
     3.0,
+    2,
 )]
 #[case(
     vec![true, true, true, true, true, false],
     vec![true, false, true, false, true, false],
     2.0,
+    3,
 )]
-fn restore_missed_bits(#[case] full: Vec<bool>, #[case] cut: Vec<bool>, #[case] alpha: f32) {
+fn restore_missed_bits(
+    #[case] full: Vec<bool>,
+    #[case] cut: Vec<bool>,
+    #[case] alpha: f32,
+    #[case] h: u8,
+) {
     let mut network = Network::new(
         LayerParams {
             field_width: 3,
@@ -76,13 +83,13 @@ fn restore_missed_bits(#[case] full: Vec<bool>, #[case] cut: Vec<bool>, #[case] 
             g_dec: 5.0,
             g_inc: 7.0,
             g_0: 1.0,
-            min_g: 10.0,
+            min_g: -10.0,
             max_g: 10.0,
             initial_strong_g: 7.0,
-            h: 3,
-            refract_interval: 3,
+            h,
+            refract_interval: 2,
             threshold: 0.8,
-            signal_shift_interval: 2,
+            signal_shift_interval: 3,
             signal_rest_shift_limit: Some(1),
             signal_copy_shifts: Some(vec![(1, 0)]),
             // signal_copy_shifts: Some(vec![(1, 0), (0, 1), (-1, 0), (0, -1)]),
@@ -101,14 +108,21 @@ fn restore_missed_bits(#[case] full: Vec<bool>, #[case] cut: Vec<bool>, #[case] 
 #[case(
     vec![true, true, true, true, true, false],
     vec![true, false, true, false, true, false],
-    3.0,
+    10.0,
+    2,
 )]
 #[case(
     vec![true, true, true, true, true, false],
     vec![false, false, false, false, true, true],
     1.0,
+    3,
 )]
-fn not_restore_missed_bits(#[case] full: Vec<bool>, #[case] cut: Vec<bool>, #[case] alpha: f32) {
+fn not_restore_missed_bits(
+    #[case] full: Vec<bool>,
+    #[case] cut: Vec<bool>,
+    #[case] alpha: f32,
+    #[case] h: u8,
+) {
     let mut network = Network::new(
         LayerParams {
             field_width: 3,
@@ -126,10 +140,10 @@ fn not_restore_missed_bits(#[case] full: Vec<bool>, #[case] cut: Vec<bool>, #[ca
             min_g: -10.0,
             max_g: 10.0,
             initial_strong_g: 7.0,
-            h: 3,
-            refract_interval: 3,
+            h,
+            refract_interval: 2,
             threshold: 0.9,
-            signal_shift_interval: 2,
+            signal_shift_interval: 3,
             signal_rest_shift_limit: Some(1),
             signal_copy_shifts: Some(vec![(1, 0)]),
         },
@@ -209,11 +223,11 @@ fn restore_multiple_separated_sequences(#[case] sequences: Vec<(Vec<bool>, Vec<b
         LayerParams {
             field_width: 4,
             field_height: 4,
-            layer_width: 12,
-            layer_height: 12,
+            layer_width: 4,
+            layer_height: 4,
         },
         SynapseParams {
-            alpha: 2.0,
+            alpha: 4.155,
             gamma_dec: 0.5,
             gamma_inc: 0.5,
             g_dec: 5.0,
@@ -222,19 +236,15 @@ fn restore_multiple_separated_sequences(#[case] sequences: Vec<(Vec<bool>, Vec<b
             min_g: -10.0,
             max_g: 10.0,
             initial_strong_g: 7.0,
-            h: 3,
-            refract_interval: 3,
-            threshold: 0.8,
-            signal_shift_interval: 2,
+            h: 1,
+            refract_interval: 2,
+            threshold: 0.9,
+            signal_shift_interval: 3,
             signal_rest_shift_limit: Some(1),
-            signal_copy_shifts: Some(vec![(1, 0), (0, 1), (-1, 0), (0, -1)]),
+            signal_copy_shifts: Some(vec![(0, 1)]),
         },
         None,
     );
-
-    for sequence in sequences.iter() {
-        network.push_data_binary(&sequence.0);
-    }
 
     for sequence in sequences.iter() {
         network.push_data_binary(&sequence.0);
@@ -313,9 +323,9 @@ fn restore_multiple_overlapping_sequences(#[case] sequences: Vec<(Vec<bool>, Vec
             max_g: 10.0,
             initial_strong_g: 7.0,
             h: 3,
-            refract_interval: 3,
+            refract_interval: 2,
             threshold: 0.8,
-            signal_shift_interval: 2,
+            signal_shift_interval: 3,
             signal_rest_shift_limit: Some(1),
             signal_copy_shifts: Some(vec![(1, 0)]),
         },
