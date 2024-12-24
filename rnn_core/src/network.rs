@@ -749,6 +749,17 @@ impl Network {
         }
     }
 
+    /**
+     * Split signal into frames and apply them immediately
+     */
+    pub fn push_data_and_apply(&mut self, bit_vec: &[bool]) {
+        self.push_data_binary(bit_vec);
+        self.apply_buffer();
+    }
+
+    /**
+     * Split signal into frames and push them to buffer
+     */
     pub fn push_data_binary(&mut self, bit_vec: &[bool]) {
         let data_len = bit_vec.len();
         let field_size = self.field_size;
@@ -764,8 +775,6 @@ impl Network {
 
             self.push_to_buffer(bit_vec[start..end].to_vec());
         }
-
-        self.apply_buffer();
     }
 
     fn get_tick_count(&self, bit_vec: &[bool]) -> usize {
@@ -792,7 +801,7 @@ impl Network {
             self.computed_params.field_count,
         ));
 
-        self.push_data_binary(bit_vec);
+        self.push_data_and_apply(bit_vec);
 
         self.prediction.as_ref().unwrap().get_prediction()
     }
@@ -1174,7 +1183,7 @@ impl Network {
         self.signal_buffer.push(signal);
     }
 
-    fn read_from_buffer(&mut self) {
+    pub fn read_from_buffer(&mut self) {
         if self.signal_buffer.len() == 0 {
             return;
         }

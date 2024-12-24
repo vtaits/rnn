@@ -31,7 +31,7 @@ async fn push_data(
 
     let mut data_layer = data.data_layer.lock().unwrap();
 
-    data_layer.push_data(timeline_data);
+    data_layer.push_data_and_apply(timeline_data);
 
     HttpResponse::Ok().finish()
 }

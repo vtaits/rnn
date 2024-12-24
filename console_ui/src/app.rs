@@ -6,6 +6,7 @@ use std::{sync::Arc, sync::RwLock};
 use rnn_core::Network;
 
 pub enum CurrentScreen {
+    Help,
     Neurons,
     AccumulatedWeights,
     DistanceWeights,
@@ -42,21 +43,47 @@ impl App {
         Arc::clone(&self.network)
     }
 
-    pub fn tick_buffer(&mut self) {
-        let mut data = Vec::<bool>::new();
+    fn pop_buffer(&mut self) -> Vec<bool> {
+        let mut res = Vec::<bool>::new();
 
         for c in self.buffer.chars() {
             match c {
-                '0' => data.push(false),
-                '.' => data.push(false),
-                '-' => data.push(false),
-                _ => data.push(true),
+                '0' => res.push(false),
+                '.' => res.push(false),
+                '-' => res.push(false),
+                _ => res.push(true),
             }
         }
 
         self.buffer = String::new();
 
+        res
+    }
+
+    pub fn push_data_and_apply(&mut self) {
+        let data = self.pop_buffer();
+
+        self.network.write().unwrap().push_data_and_apply(&data);
+    }
+
+    pub fn push_data_to_buffer(&mut self) {
+        let data = self.pop_buffer();
+
         self.network.write().unwrap().push_data_binary(&data);
+    }
+
+    pub fn step(&mut self) {
+        let mut network = self.network.write().unwrap();
+
+        if network.has_next_action() {
+            network.apply_next_action();
+            return;
+        }
+
+        if network.has_signal_in_buffer() {
+            network.read_from_buffer();
+            network.apply_next_action();
+        }
     }
 
     pub fn left(&mut self) {

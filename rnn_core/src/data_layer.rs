@@ -26,6 +26,14 @@ impl<T> DataLayer<T> {
         *current_network = network;
     }
 
+    pub fn push_data_and_apply(&mut self, data: T) {
+        let bit_vec_result = (self.params.data_to_binary)(data);
+
+        if let Ok(bit_vec) = bit_vec_result {
+            self.network.write().unwrap().push_data_and_apply(&bit_vec);
+        }
+    }
+
     pub fn push_data(&mut self, data: T) {
         let bit_vec_result = (self.params.data_to_binary)(data);
 

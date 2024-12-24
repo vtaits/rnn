@@ -1,5 +1,6 @@
 mod render_accumulated_weights;
 mod render_distance_weights;
+mod render_help;
 mod render_neurons;
 mod render_refract_intervals;
 
@@ -15,6 +16,7 @@ use render_distance_weights::render_distance_weights;
 use crate::app::{App, CurrentScreen, Layer};
 
 use render_accumulated_weights::render_accumulated_weights;
+use render_help::render_help;
 use render_neurons::render_neurons;
 use render_refract_intervals::render_refract_intervals;
 
@@ -28,6 +30,7 @@ fn get_title(app: &App) -> Paragraph {
         .to_owned(),
         Span::styled(" | ", Style::default()),
         match app.current_screen {
+            CurrentScreen::Help => Span::styled("Help", Style::default()),
             CurrentScreen::Neurons => Span::styled("Neurons", Style::default()),
             CurrentScreen::AccumulatedWeights => Span::styled(
                 format!("Accumulated for {}, {}", app.neuron_x, app.neuron_y),
@@ -48,27 +51,11 @@ fn get_title(app: &App) -> Paragraph {
     return Paragraph::new(Line::from(text)).block(Block::default().borders(Borders::ALL));
 }
 
-fn get_keys_hint(app: &App) -> Paragraph {
-    let current_keys_hint = {
-        match app.current_screen {
-              CurrentScreen::Neurons => Span::styled(
-                  "(Tab) to switch layer / (q) to quit / arrows to select neuron / (a) to show accumulated weights / (d) to show distance weights / (r) to show refract timeouts / (s) to save network state into file",
-                  Style::default().fg(Color::Red),
-              ),
-              CurrentScreen::AccumulatedWeights => Span::styled(
-                  "(Tab) to switch layer / (q) to quit / arrows to select neuron / (n) to state of the layer / (d) to show distance weights / (r) to show refract timeouts / (s) to save network state into file",
-                  Style::default().fg(Color::Red),
-              ),
-              CurrentScreen::DistanceWeights => Span::styled(
-                  "(Tab) to switch layer / (q) to quit / arrows to select neuron / (n) to state of the layer / (a) to show accumulated weights / (r) to show refract timeouts / (s) to save network state into file",
-                  Style::default().fg(Color::Red),
-              ),
-              CurrentScreen::RefractTimeouts => Span::styled(
-                "(Tab) to switch layer / (q) to quit / arrows to select neuron / (n) to state of the layer / (a) to show accumulated weights / (d) to show distance weights / (s) to save network state into file",
-                Style::default().fg(Color::Red),
-            ),
-          }
-    };
+fn get_keys_hint(_app: &App) -> Paragraph {
+    let current_keys_hint = Span::styled(
+        "(q) (h) (Tab) (arrows) (n) (d) (r) (s) (1) (0) (b) (t)",
+        Style::default().fg(Color::Red),
+    );
 
     return Paragraph::new(Line::from(current_keys_hint))
         .block(Block::default().borders(Borders::ALL));
@@ -90,6 +77,9 @@ pub fn ui(f: &mut Frame, app: &mut App) {
     f.render_widget(title, chunks[0]);
 
     match app.current_screen {
+        CurrentScreen::Help => {
+            render_help(f, chunks[1]);
+        }
         CurrentScreen::AccumulatedWeights => {
             render_accumulated_weights(f, chunks[1], app);
         }

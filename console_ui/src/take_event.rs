@@ -13,6 +13,9 @@ pub fn take_event(app: &mut App) -> io::Result<bool> {
             KeyCode::Char('q') => {
                 return Ok(true);
             }
+            KeyCode::Char('h') => {
+                app.current_screen = CurrentScreen::Help;
+            }
             KeyCode::Char('n') => {
                 app.current_screen = CurrentScreen::Neurons;
             }
@@ -38,7 +41,13 @@ pub fn take_event(app: &mut App) -> io::Result<bool> {
                 app.buffer.push('-');
             }
             KeyCode::Enter => {
-                app.tick_buffer();
+                app.push_data_and_apply();
+            }
+            KeyCode::Char('b') => {
+                app.push_data_to_buffer();
+            }
+            KeyCode::Char('t') => {
+                app.step();
             }
             KeyCode::Esc => {
                 app.current_screen = CurrentScreen::Neurons;

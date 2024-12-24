@@ -97,7 +97,7 @@ fn restore_missed_bits(
         None,
     );
 
-    network.push_data_binary(&full);
+    network.push_data_and_apply(&full);
 
     let result = network.predict(&cut);
 
@@ -150,7 +150,7 @@ fn not_restore_missed_bits(
         None,
     );
 
-    network.push_data_binary(&full);
+    network.push_data_and_apply(&full);
 
     let result = network.predict(&cut);
 
@@ -247,7 +247,7 @@ fn restore_multiple_separated_sequences(#[case] sequences: Vec<(Vec<bool>, Vec<b
     );
 
     for sequence in sequences.iter() {
-        network.push_data_binary(&sequence.0);
+        network.push_data_and_apply(&sequence.0);
     }
 
     for sequence in sequences.iter() {
@@ -333,11 +333,11 @@ fn restore_multiple_overlapping_sequences(#[case] sequences: Vec<(Vec<bool>, Vec
     );
 
     for sequence in sequences.iter() {
-        network.push_data_binary(&sequence.0);
+        network.push_data_and_apply(&sequence.0);
     }
 
     for sequence in sequences.iter() {
-        network.push_data_binary(&sequence.0);
+        network.push_data_and_apply(&sequence.0);
     }
 
     for sequence in sequences.iter() {
