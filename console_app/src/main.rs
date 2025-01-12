@@ -68,7 +68,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
             data_to_binary: Box::new(move |number| {
                 Ok(timeline.get_bits(&ComplexTimelineValue::Integer(number)))
             }),
-            binary_to_data: Box::new(|_data| Ok(0_i32)),
+            binary_to_data: Box::new(|_data| Ok(0_i64)),
         },
         Arc::clone(&network),
     );

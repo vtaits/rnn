@@ -9,7 +9,7 @@ use crate::{
 pub enum ComplexTimelineValue {
     Float(f32),
     Datetime(String),
-    Integer(i32),
+    Integer(i64),
     Enum(String),
 }
 

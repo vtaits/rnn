@@ -15,8 +15,18 @@ min_g = -10.0
 max_g = 10.0
 initial_strong_g = 7.0
 h = 2
-refract_interval = 2
+refract_interval = 4
 threshold = 0.9
-signal_shift_interval = 3
+signal_shift_interval = 5
 signal_rest_shift_limit = 1
 signal_copy_shifts = [[1, 0]]
+
+[[timelines]]
+type = "Float"
+min_value = 0
+max_value = 68719476736.0
+capacity = 36
+
+[[training_streams]]
+type = "Csv"
+path = "../configs/letters_6x6.csv"

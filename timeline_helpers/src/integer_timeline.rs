@@ -4,21 +4,21 @@ use crate::{bits_to_number, number_to_bits, ComplexTimelineValue, Timeline};
 
 #[derive(Deserialize)]
 pub struct IntegerTimelineConfig {
-    pub min_value: i32,
-    pub max_value: i32,
+    pub min_value: i64,
+    pub max_value: i64,
     pub capacity: u8,
 }
 
 pub struct IntegerTimelineParams {
-    pub min_value: i32,
-    pub max_value: i32,
+    pub min_value: i64,
+    pub max_value: i64,
     pub capacity: u8,
     pub get_multiplier: Option<Box<dyn Fn(f32) -> f32 + Send + Sync>>,
     pub get_reverse_multiplier: Option<Box<dyn Fn(f32) -> f32 + Send + Sync>>,
 }
 
 pub struct IntegerTimeline {
-    range: i32,
+    range: i64,
     max_normalize_value: usize,
     params: IntegerTimelineParams,
 }
@@ -61,7 +61,7 @@ impl IntegerTimeline {
         default_multiplier
     }
 
-    fn normalize_value(&self, value: i32) -> usize {
+    fn normalize_value(&self, value: i64) -> usize {
         let multiplier =
             self.get_multiplier((value - self.params.min_value) as f32 / self.range as f32);
 
@@ -86,7 +86,7 @@ impl Timeline for IntegerTimeline {
         let reverse_multiplier = self.get_reverse_multiplier(multiplier);
 
         let result =
-            self.params.min_value + (self.range as f32 * reverse_multiplier).round() as i32;
+            self.params.min_value + (self.range as f32 * reverse_multiplier).round() as i64;
 
         ComplexTimelineValue::Integer(result)
     }
@@ -96,6 +96,13 @@ impl Timeline for IntegerTimeline {
     }
 
     fn get_bits(&self, timeline_value: &ComplexTimelineValue) -> Vec<bool> {
+        match timeline_value {
+            ComplexTimelineValue::Datetime(hui) => println!("{} hui1", hui),
+            ComplexTimelineValue::Enum(hui) => println!("{} hui2", hui),
+            ComplexTimelineValue::Float(hui) => println!("{} hui3", hui),
+            ComplexTimelineValue::Integer(hui) => println!("{} hui4", hui),
+        };
+
         if let ComplexTimelineValue::Integer(value) = timeline_value {
             if *value > self.params.max_value {
                 return vec![true; self.params.capacity as usize];
