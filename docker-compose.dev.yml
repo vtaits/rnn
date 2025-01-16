@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  prediction_server:
+    image: rnn
+    entrypoint: ["cargo", "run", "--manifest-path", "prediction_server/Cargo.toml"]
+    environment:
+      CONFIG_DIR: /config
+      CONFIG_PATH: ${CONFIG_PATH}
+    devices:
+      - "/dev/dri"
+    ports:
+      - "8001:8001"
+    volumes:
+      - ${CONFIG_DIR}:/config
+
+  training_server:
+    image: rnn
+    entrypoint: ["cargo", "run", "--manifest-path", "training_server/Cargo.toml"]
+    environment:
+      CONFIG_DIR: /config
+      CONFIG_PATH: ${CONFIG_PATH}
+      RECEIVERS: http://127.0.0.1:8001/update_network
+    devices:
+      - "/dev/dri"
+    volumes:
+      - ${CONFIG_DIR}:/config
+    ports:
+      - "8000:8000"
+
+  scheduler:
+    image: rnn
+    entrypoint: ["cargo", "run", "--manifest-path", "scheduler/Cargo.toml"]
+    environment:
+      TRAINING_SERVER: http://127.0.0.1:8000
+
+  webui:
+    build:
+      context: webui
+      dockerfile: Dockerfile.dev
+    environment:
+      CONFIG_DIR: /config
+      CONFIG_PATH: ${CONFIG_PATH}
+      TRAINING_SERVER: http://127.0.0.1:8000
+      PREDICTION_SERVER: http://127.0.0.1:8001
+    volumes:
+      - ${CONFIG_DIR}:/config
+    ports:
+      - "5173:5173"

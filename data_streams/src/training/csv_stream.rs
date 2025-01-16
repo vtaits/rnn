@@ -36,8 +36,17 @@ pub struct CsvStreamConfig {
 }
 
 impl CsvStream {
-    pub fn from_config(config: &CsvStreamConfig) -> Self {
-        CsvStream::new(&config.path).unwrap()
+    pub fn from_config(config: &CsvStreamConfig, config_dir: &Option<String>) -> Self {
+        let full_path = match config_dir {
+            Some(config_dir) => {
+                let path = Path::new(&config_dir).join(&config.path);
+
+                &path.to_str().unwrap().to_string()
+            }
+            None => &config.path,
+        };
+
+        CsvStream::new(full_path).unwrap()
     }
 
     pub fn new<P: AsRef<Path>>(file_path: P) -> Result<CsvStream, Error> {

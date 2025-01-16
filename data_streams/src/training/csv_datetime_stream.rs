@@ -37,8 +37,17 @@ impl CsvDateTimeStream {
         DEFAULT_FORMAT
     }
 
-    pub fn from_config(config: &CsvDateTimeStreamConfig) -> Self {
-        CsvDateTimeStream::new(&config.path).unwrap()
+    pub fn from_config(config: &CsvDateTimeStreamConfig, config_dir: &Option<String>) -> Self {
+        let full_path = match config_dir {
+            Some(config_dir) => {
+                let path = Path::new(&config_dir).join(&config.path);
+
+                &path.to_str().unwrap().to_string()
+            }
+            None => &config.path,
+        };
+
+        CsvDateTimeStream::new(full_path).unwrap()
     }
 
     pub fn new<P: AsRef<Path>>(file_path: P) -> Result<CsvDateTimeStream, Error> {

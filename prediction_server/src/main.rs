@@ -66,6 +66,7 @@ async fn update_network(bytes: web::Bytes, data: web::Data<AppState>) -> impl Re
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let config_dir = env::var("CONFIG_DIR").ok();
     let config_path = env::var("CONFIG_PATH").expect("CONFIG_PATH should be defined");
     let port = match env::var("PORT") {
         Ok(port_str) => match port_str.parse::<u16>() {
@@ -77,7 +78,7 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    let mut data_layer = init_by_toml(config_path);
+    let mut data_layer = init_by_toml(config_path, &config_dir);
 
     if let Ok(dump_path) = env::var("DUMP_PATH") {
         let dump = std::fs::read_to_string(dump_path).unwrap();
@@ -116,7 +117,7 @@ async fn main() -> std::io::Result<()> {
                 .service(predict)
                 .service(update_network)
         })
-        .bind(("127.0.0.1", port))?
+        .bind(("0.0.0.0", port))?
         .run(),
         run_console_app(Arc::clone(&network)),
     );

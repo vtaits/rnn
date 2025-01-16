@@ -15,8 +15,20 @@ struct InitConfig {
     timelines: Option<Vec<TimelineConfig>>,
 }
 
-pub fn init_by_toml<P: AsRef<Path>>(file_path: P) -> DataLayer<Vec<ComplexTimelineValue>> {
-    let toml_str = fs::read_to_string(file_path).expect("Failed to read TOML file");
+pub fn init_by_toml(
+    file_path: String,
+    config_dir: &Option<String>,
+) -> DataLayer<Vec<ComplexTimelineValue>> {
+    let full_path = match config_dir {
+        Some(config_dir) => {
+            let path = Path::new(&config_dir).join(file_path);
+
+            path.to_str().unwrap().to_string()
+        }
+        None => file_path,
+    };
+
+    let toml_str = fs::read_to_string(full_path).expect("Failed to read TOML file");
 
     let config: InitConfig = toml::from_str(&toml_str).expect("Failed to parse TOML");
 
@@ -27,7 +39,7 @@ pub fn init_by_toml<P: AsRef<Path>>(file_path: P) -> DataLayer<Vec<ComplexTimeli
     let training_streams = config.training_streams.map_or(vec![], |training_streams| {
         training_streams
             .iter()
-            .map(init_training_stream_by_config)
+            .map(|config| init_training_stream_by_config(config, config_dir))
             .collect()
     });
 

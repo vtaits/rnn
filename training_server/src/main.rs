@@ -103,6 +103,7 @@ async fn update_receivers(data: web::Data<AppState>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let config_dir = env::var("CONFIG_DIR").ok();
     let config_path = env::var("CONFIG_PATH").expect("CONFIG_PATH should be defined");
     let port = match env::var("PORT") {
         Ok(port_str) => match port_str.parse::<u16>() {
@@ -121,7 +122,7 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    let data_layer = init_by_toml(config_path);
+    let data_layer = init_by_toml(config_path, &config_dir);
 
     let network = data_layer.get_network();
 
@@ -155,7 +156,7 @@ async fn main() -> std::io::Result<()> {
                 .service(push_data)
                 .service(update_receivers)
         })
-        .bind(("127.0.0.1", port))?
+        .bind(("0.0.0.0", port))?
         .run(),
         run_console_app(Arc::clone(&network)),
     );

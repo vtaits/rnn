@@ -29,4 +29,4 @@ capacity = 36
 
 [[training_streams]]
 type = "Csv"
-path = "../configs/letters_6x6.csv"
+path = "./letters_6x6.csv"

@@ -2,13 +2,16 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import fs from 'fs';
 import toml from '@iarna/toml';
+import path from 'path';
 
-function loadConfig(configPath: string) {
+function loadConfig(configPath: string, configDir: string | undefined) {
   if (!configPath) {
     throw new Error('CONFIG_PATH is not defined in the environment variables');
   }
 
-  const configFile = fs.readFileSync(configPath, 'utf-8');
+  const fullPath = configDir ? path.join(configDir, configPath) : configPath;
+
+  const configFile = fs.readFileSync(fullPath, 'utf-8');
   const config = toml.parse(configFile);
   return config;
 };
@@ -17,7 +20,7 @@ function loadConfig(configPath: string) {
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
-  const config = loadConfig(env.CONFIG_PATH);
+  const config = loadConfig(env.CONFIG_PATH, env.CONFIG_DIR);
 
   return {
     define: {
