@@ -1,9 +1,13 @@
+import { Tabs, TabsItem } from "@vkontakte/vkui";
 import axios from "axios";
 import { useCallback, useState } from "react";
+import { BinaryForm } from "./BinaryForm";
 import { Form } from "./Form";
 import type { ITimelineValue } from "./types";
 
 export function App() {
+	const [isBinary, setIsBinary] = useState(false);
+
 	const [lastPrediction, setLastPrediction] = useState<
 		readonly ITimelineValue[] | null
 	>(null);
@@ -20,14 +24,53 @@ export function App() {
 		await axios.post(`${__TRAINING_SERVER__}/push_data`, values);
 	}, []);
 
+	const onPredictBinary = useCallback(async (values: readonly boolean[]) => {
+		const response = await axios.post<boolean[]>(
+			`${__PREDICTION_SERVER__}/predict_binary`,
+			values,
+		);
+		setLastPrediction(response.data);
+	}, []);
+
+	const onTrainBinary = useCallback(async (values: readonly boolean[]) => {
+		await axios.post(`${__TRAINING_SERVER__}/push_data_binary`, values);
+	}, []);
+
 	return (
 		<>
+			<Tabs>
+				<TabsItem
+					selected={!isBinary}
+					onClick={() => {
+						setIsBinary(false);
+					}}
+				>
+					Data
+				</TabsItem>
+
+				<TabsItem
+					selected={isBinary}
+					onClick={() => {
+						setIsBinary(true);
+					}}
+				>
+					Binary
+				</TabsItem>
+			</Tabs>
+
 			<div
 				style={{
 					maxWidth: 600,
 				}}
 			>
-				<Form onPredict={onPredict} onTrain={onTrain} />
+				{isBinary ? (
+					<BinaryForm
+						onPredictBinary={onPredictBinary}
+						onTrainBinary={onTrainBinary}
+					/>
+				) : (
+					<Form onPredict={onPredict} onTrain={onTrain} />
+				)}
 			</div>
 
 			{lastPrediction && (

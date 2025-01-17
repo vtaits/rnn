@@ -12,11 +12,11 @@
     "preview": "bunx --bun vite preview"
   },
   "dependencies": {
+    "@vkontakte/vkui": "^6.7.3",
     "@vtaits/form-schema": "^2.3.0-alpha.9",
     "@vtaits/react-form-schema-base-ui": "^1.0.0-alpha.9",
-    "@vtaits/react-form-schema-ui-antd": "^1.0.0-alpha.9",
+    "@vtaits/react-form-schema-ui-vkui": "^1.0.0-alpha.8",
     "@vtaits/react-hook-form-schema": "^1.2.0-alpha.12",
-    "antd": "^5.23.0",
     "axios": "^1.7.9",
     "krustykrab": "^1.1.0",
     "react": "^19.0.0",

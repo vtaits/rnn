@@ -1,11 +1,11 @@
 import type { FieldSchemaBase } from "@vtaits/form-schema";
-import { AntdProvider } from "@vtaits/react-form-schema-ui-antd";
+import { VKUIProvider } from "@vtaits/react-form-schema-ui-vkui";
 import {
 	Form as BaseForm,
 	type DefaultFieldSchema,
 } from "@vtaits/react-hook-form-schema/form";
-import { Button, Flex } from "antd";
 import { Fragment, useCallback, useRef } from "react";
+import { Actions } from "./Actions";
 import type { ITimelineValue } from "./types";
 
 const schemas = __APP_CONFIG__.timelines.reduce<
@@ -116,7 +116,7 @@ export function Form({ onPredict, onTrain }: IFormProps) {
 	);
 
 	return (
-		<AntdProvider>
+		<VKUIProvider>
 			<BaseForm
 				onSubmit={handleSubmit}
 				schemas={schemas}
@@ -128,27 +128,18 @@ export function Form({ onPredict, onTrain }: IFormProps) {
 					</>
 				)}
 				renderActions={({ onSubmit }) => (
-					<Flex gap="small">
-						<Button
-							onClick={() => {
-								submitTypeRef.current = "train";
-								onSubmit();
-							}}
-						>
-							Train
-						</Button>
-
-						<Button
-							onClick={() => {
-								submitTypeRef.current = "predict";
-								onSubmit();
-							}}
-						>
-							Predict
-						</Button>
-					</Flex>
+					<Actions
+						onTrain={() => {
+							submitTypeRef.current = "train";
+							onSubmit();
+						}}
+						onPredict={() => {
+							submitTypeRef.current = "predict";
+							onSubmit();
+						}}
+					/>
 				)}
 			/>
-		</AntdProvider>
+		</VKUIProvider>
 	);
 }

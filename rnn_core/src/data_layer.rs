@@ -26,11 +26,15 @@ impl<T> DataLayer<T> {
         *current_network = network;
     }
 
+    pub fn push_data_binary_and_apply(&mut self, bit_vec: &[bool]) {
+        self.network.write().unwrap().push_data_and_apply(bit_vec);
+    }
+
     pub fn push_data_and_apply(&mut self, data: T) {
         let bit_vec_result = (self.params.data_to_binary)(data);
 
         if let Ok(bit_vec) = bit_vec_result {
-            self.network.write().unwrap().push_data_and_apply(&bit_vec);
+            self.push_data_binary_and_apply(&bit_vec);
         }
     }
 
@@ -42,10 +46,16 @@ impl<T> DataLayer<T> {
         }
     }
 
+    pub fn predict_binary(&mut self, bit_vec: &[bool]) -> Vec<bool> {
+        let binary_result = self.network.write().unwrap().predict(&bit_vec);
+
+        binary_result
+    }
+
     pub fn predict(&mut self, data: T) -> Result<T, ()> {
         let bit_vec = (self.params.data_to_binary)(data)?;
 
-        let binary_result = self.network.write().unwrap().predict(&bit_vec);
+        let binary_result = self.predict_binary(&bit_vec);
 
         let data_result = (self.params.binary_to_data)(binary_result);
 

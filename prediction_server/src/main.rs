@@ -22,6 +22,22 @@ struct AppState {
     data_layer: Mutex<DataLayer<Vec<ComplexTimelineValue>>>,
 }
 
+#[post("/predict_binary")]
+async fn predict_binary(
+    req_body: web::Json<Vec<bool>>,
+    data: web::Data<AppState>,
+) -> impl Responder {
+    let bit_vec = req_body.into_inner();
+
+    let mut data_layer = data.data_layer.lock().unwrap();
+
+    let prediction = data_layer.predict_binary(&bit_vec);
+
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .json(prediction)
+}
+
 #[post("/predict")]
 async fn predict(
     req_body: web::Json<Vec<ComplexTimelineValue>>,
@@ -114,6 +130,7 @@ async fn main() -> std::io::Result<()> {
                 .wrap(cors)
                 .app_data(web::PayloadConfig::new(100 * 1024 * 1024))
                 .app_data(app_data.clone())
+                .service(predict_binary)
                 .service(predict)
                 .service(update_network)
         })

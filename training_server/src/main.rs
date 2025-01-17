@@ -22,6 +22,20 @@ struct AppState {
     receivers: Vec<String>,
 }
 
+#[post("/push_data_binary")]
+async fn push_data_binary(
+    req_body: web::Json<Vec<bool>>,
+    data: web::Data<AppState>,
+) -> impl Responder {
+    let bit_vec = req_body.into_inner();
+
+    let mut data_layer = data.data_layer.lock().unwrap();
+
+    data_layer.push_data_binary_and_apply(&bit_vec);
+
+    HttpResponse::Ok().finish()
+}
+
 #[post("/push_data")]
 async fn push_data(
     req_body: web::Json<Vec<ComplexTimelineValue>>,
@@ -153,6 +167,7 @@ async fn main() -> std::io::Result<()> {
                 .wrap(Logger::default())
                 .wrap(cors)
                 .app_data(app_data.clone())
+                .service(push_data_binary)
                 .service(push_data)
                 .service(update_receivers)
         })

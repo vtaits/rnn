@@ -1,6 +1,7 @@
 import { unwrap } from "krustykrab";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import "@vkontakte/vkui/dist/vkui.css";
 import { App } from "./App.tsx";
 
 createRoot(unwrap(document.getElementById("root"))).render(

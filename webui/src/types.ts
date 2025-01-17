@@ -23,6 +23,12 @@ export type ITimelineItem =
 
 export type IConfig = {
 	timelines: readonly ITimelineItem[];
+	layer_params: {
+		field_width: number;
+		field_height: number;
+		layer_width: number;
+		layer_height: number;
+	};
 };
 
 export type ITimelineValue =
