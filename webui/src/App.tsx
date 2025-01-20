@@ -1,19 +1,20 @@
 import { Tabs, TabsItem } from "@vkontakte/vkui";
 import axios from "axios";
 import { useCallback, useState } from "react";
+import { BinaryField } from "./BinaryField";
 import { BinaryForm } from "./BinaryForm";
 import { Form } from "./Form";
-import type { ITimelineValue } from "./types";
+import type { IPrediction, ITimelineValue } from "./types";
 
 export function App() {
 	const [isBinary, setIsBinary] = useState(false);
 
-	const [lastPrediction, setLastPrediction] = useState<
-		readonly ITimelineValue[] | null
-	>(null);
+	const [lastPrediction, setLastPrediction] = useState<IPrediction | null>(
+		null,
+	);
 
 	const onPredict = useCallback(async (values: readonly ITimelineValue[]) => {
-		const response = await axios.post<ITimelineValue[]>(
+		const response = await axios.post<IPrediction>(
 			`${__PREDICTION_SERVER__}/predict`,
 			values,
 		);
@@ -25,7 +26,7 @@ export function App() {
 	}, []);
 
 	const onPredictBinary = useCallback(async (values: readonly boolean[]) => {
-		const response = await axios.post<boolean[]>(
+		const response = await axios.post<IPrediction>(
 			`${__PREDICTION_SERVER__}/predict_binary`,
 			values,
 		);
@@ -77,9 +78,13 @@ export function App() {
 				<div>
 					<h3>Last prediction</h3>
 
-					<pre>
-						<code>{JSON.stringify(lastPrediction, null, 2)}</code>
-					</pre>
+					{isBinary ? (
+						<BinaryField values={lastPrediction.raw} />
+					) : (
+						<pre>
+							<code>{JSON.stringify(lastPrediction, null, 2)}</code>
+						</pre>
+					)}
 				</div>
 			)}
 		</>

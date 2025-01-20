@@ -1,11 +1,25 @@
-import { Checkbox } from "@vkontakte/vkui";
-import { type ReactNode, useMemo, useState } from "react";
+import { useState } from "react";
 import { Actions } from "./Actions";
+import { BinaryField } from "./BinaryField";
 
 type IBinaryFormProps = Readonly<{
 	onPredictBinary: (bitVec: readonly boolean[]) => void;
 	onTrainBinary: (bitVec: readonly boolean[]) => void;
 }>;
+
+const FIELD_SIZE =
+	__APP_CONFIG__.layer_params.field_height *
+	__APP_CONFIG__.layer_params.field_width;
+
+function processValues(values: readonly unknown[]): boolean[] {
+	const res: boolean[] = [];
+
+	for (let i = 0; i < FIELD_SIZE; ++i) {
+		res[i] = !!values[i];
+	}
+
+	return res;
+}
 
 export function BinaryForm({
 	onPredictBinary,
@@ -13,51 +27,25 @@ export function BinaryForm({
 }: IBinaryFormProps) {
 	const [values, setValues] = useState<boolean[]>([]);
 
-	const rows = useMemo(() => {
-		const res: ReactNode[] = [];
-
-		let collectedIndex = 0;
-
-		for (let y = 0; y < __APP_CONFIG__.layer_params.field_height; ++y) {
-			const row: ReactNode[] = [];
-
-			for (let x = 0; x < __APP_CONFIG__.layer_params.field_width; ++x) {
-				row.push(
-					<td key={x}>
-						<Checkbox
-							checked={Boolean(values[collectedIndex])}
-							onChange={((index) => () => {
-								setValues((prevValues) => {
-									const nextValues = [...prevValues];
-									nextValues[index] = !nextValues[index];
-									return nextValues;
-								});
-							})(collectedIndex)}
-						/>
-					</td>,
-				);
-
-				++collectedIndex;
-			}
-
-			res.push(<tr key={y}>{row}</tr>);
-		}
-
-		return res;
-	}, [values]);
-
 	return (
 		<>
-			<table>
-				<tbody>{rows}</tbody>
-			</table>
+			<BinaryField
+				values={values}
+				onChagne={(index) => {
+					setValues((prevValues) => {
+						const nextValues = [...prevValues];
+						nextValues[index] = !nextValues[index];
+						return nextValues;
+					});
+				}}
+			/>
 
 			<Actions
 				onTrain={() => {
-					onTrainBinary(values);
+					onTrainBinary(processValues(values));
 				}}
 				onPredict={() => {
-					onPredictBinary(values);
+					onPredictBinary(processValues(values));
 				}}
 			/>
 		</>
