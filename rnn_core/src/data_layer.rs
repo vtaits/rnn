@@ -3,7 +3,7 @@ use std::{sync::Arc, sync::RwLock};
 use crate::Network;
 
 pub struct DataLayerParams<T> {
-    pub binary_to_data: Box<dyn Fn(Vec<bool>) -> Result<T, ()> + Send + Sync>,
+    pub binary_to_data: Box<dyn Fn(&[bool]) -> Result<T, ()> + Send + Sync>,
     pub data_to_binary: Box<dyn Fn(T) -> Result<Vec<bool>, ()> + Send + Sync>,
 }
 
@@ -52,13 +52,21 @@ impl<T> DataLayer<T> {
         binary_result
     }
 
-    pub fn predict(&mut self, data: T) -> Result<T, ()> {
-        let bit_vec = (self.params.data_to_binary)(data)?;
-
-        let binary_result = self.predict_binary(&bit_vec);
-
+    pub fn deserialize(&mut self, binary_result: &[bool]) -> Result<T, ()> {
         let data_result = (self.params.binary_to_data)(binary_result);
 
         data_result
+    }
+
+    pub fn predict(&mut self, data: T) -> Vec<bool> {
+        let bit_vec = (self.params.data_to_binary)(data).unwrap();
+
+       self.predict_binary(&bit_vec)
+    }
+
+    pub fn predict_and_deserialize(&mut self, data: T) -> Result<T, ()> {
+        let binary_result = self.predict(data);
+
+        self.deserialize(&binary_result)
     }
 }

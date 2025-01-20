@@ -48,7 +48,7 @@ pub fn init_data_layer(
             binary_to_data: {
                 let complex_timeline = Arc::clone(&complex_timeline);
 
-                Box::new(move |binary| Ok(complex_timeline.reverse(&binary)))
+                Box::new(move |binary| Ok(complex_timeline.reverse(binary)))
             },
         },
         Arc::new(RwLock::new(network)),

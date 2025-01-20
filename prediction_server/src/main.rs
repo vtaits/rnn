@@ -18,6 +18,13 @@ struct ErrorResponse {
     error: String,
 }
 
+#[derive(Serialize)]
+struct PredictionResponse {
+    raw: Vec<bool>,
+    data: Vec<ComplexTimelineValue>,
+}
+
+
 struct AppState {
     data_layer: Mutex<DataLayer<Vec<ComplexTimelineValue>>>,
 }
@@ -31,11 +38,15 @@ async fn predict_binary(
 
     let mut data_layer = data.data_layer.lock().unwrap();
 
-    let prediction = data_layer.predict_binary(&bit_vec);
+    let raw = data_layer.predict_binary(&bit_vec);
+    let data = data_layer.deserialize(&raw).unwrap();
 
     HttpResponse::Ok()
         .content_type("application/json")
-        .json(prediction)
+        .json(PredictionResponse {
+            raw,
+            data
+        })
 }
 
 #[post("/predict")]
@@ -47,15 +58,15 @@ async fn predict(
 
     let mut data_layer = data.data_layer.lock().unwrap();
 
-    let result = data_layer.predict(timeline_data);
+    let raw = data_layer.predict(timeline_data);
+    let data = data_layer.deserialize(&raw).unwrap();
 
-    match result {
-        Ok(prediction) => HttpResponse::Ok()
-            .content_type("application/json")
-            .json(prediction),
-
-        _ => HttpResponse::BadRequest().finish(),
-    }
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .json(PredictionResponse {
+            raw,
+            data
+        })
 }
 
 #[post("/update_network")]
