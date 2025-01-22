@@ -1,0 +1,28 @@
+[layer_params]
+field_width = 4
+field_height = 6
+layer_width = 8
+layer_height = 1
+
+[synapse_params]
+alpha = 2.77
+gamma_dec = 0.5
+gamma_inc = 0.5
+g_dec = 5.0
+g_inc = 7.0
+g_0 = 1.0
+min_g = -10.0
+max_g = 10.0
+initial_strong_g = 7.0
+h = 2
+refract_interval = 1
+threshold = 0.9
+signal_shift_interval = 2
+signal_rest_shift_limit = 1
+
+[[timelines]]
+type = "Datetime"
+
+[[training_streams]]
+type = "CsvDateTime"
+path = "./datetime.csv"

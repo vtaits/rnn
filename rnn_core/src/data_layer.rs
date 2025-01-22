@@ -61,7 +61,7 @@ impl<T> DataLayer<T> {
     pub fn predict(&mut self, data: T) -> Vec<bool> {
         let bit_vec = (self.params.data_to_binary)(data).unwrap();
 
-       self.predict_binary(&bit_vec)
+        self.predict_binary(&bit_vec)
     }
 
     pub fn predict_and_deserialize(&mut self, data: T) -> Result<T, ()> {

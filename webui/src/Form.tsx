@@ -16,6 +16,7 @@ const schemas = __APP_CONFIG__.timelines.reduce<
 			res[index] = {
 				type: "datetime",
 				label: `#${index + 1} datetime`,
+				serverDateFormat: "yyyy-MM-dd HH:mm:ss",
 				required: true,
 			};
 			break;
@@ -121,11 +122,16 @@ export function Form({ onPredict, onTrain }: IFormProps) {
 				onSubmit={handleSubmit}
 				schemas={schemas}
 				renderFields={({ renderField }) => (
-					<>
+					<div
+						style={{
+							position: "relative",
+							zIndex: 2,
+						}}
+					>
 						{names.map((name) => (
 							<Fragment key={name}>{renderField(name)}</Fragment>
 						))}
-					</>
+					</div>
 				)}
 				renderActions={({ onSubmit }) => (
 					<Actions

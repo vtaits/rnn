@@ -4,5 +4,8 @@ build-image:
 
 .PHONY: servers-dev
 servers-dev:
-	CONFIG_DIR=/home/vadim/projects/rnn/configs CONFIG_PATH=letters_6x6.toml docker compose -f docker-compose.dev.yml up
+	CONFIG_DIR=$(CONFIG_DIR) CONFIG_PATH=$(CONFIG_PATH) docker compose -f docker-compose.dev.yml up
 
+.PHONY: servers-dev-build
+servers-dev-build:
+	CONFIG_DIR=$(CONFIG_DIR) CONFIG_PATH=$(CONFIG_PATH) docker compose -f docker-compose.dev.yml up --build

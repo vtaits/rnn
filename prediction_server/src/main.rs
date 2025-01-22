@@ -24,7 +24,6 @@ struct PredictionResponse {
     data: Vec<ComplexTimelineValue>,
 }
 
-
 struct AppState {
     data_layer: Mutex<DataLayer<Vec<ComplexTimelineValue>>>,
 }
@@ -43,10 +42,7 @@ async fn predict_binary(
 
     HttpResponse::Ok()
         .content_type("application/json")
-        .json(PredictionResponse {
-            raw,
-            data
-        })
+        .json(PredictionResponse { raw, data })
 }
 
 #[post("/predict")]
@@ -63,10 +59,7 @@ async fn predict(
 
     HttpResponse::Ok()
         .content_type("application/json")
-        .json(PredictionResponse {
-            raw,
-            data
-        })
+        .json(PredictionResponse { raw, data })
 }
 
 #[post("/update_network")]

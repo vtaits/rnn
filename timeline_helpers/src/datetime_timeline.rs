@@ -62,7 +62,7 @@ impl Timeline for DatetimeTimeline {
                         res.push(value);
                     }
 
-                    for value in number_to_bits(date.minute() as usize / 4, 2, 16) {
+                    for value in number_to_bits(date.minute() as usize / 15, 2, 4) {
                         res.push(value);
                     }
 
@@ -78,11 +78,11 @@ impl Timeline for DatetimeTimeline {
     fn reverse(&self, bits: &[bool]) -> ComplexTimelineValue {
         let format = self.get_date_format();
 
-        let year = bits_to_number(&bits[0..8]);
+        let year = bits_to_number(&bits[0..8]) + 1900;
         let month = std::cmp::max(std::cmp::min(bits_to_number(&bits[8..12]), 12), 1);
         let day = std::cmp::max(std::cmp::min(bits_to_number(&bits[12..17]), 31), 1);
         let hour = std::cmp::min(bits_to_number(&bits[17..22]), 23);
-        let minute = std::cmp::min(bits_to_number(&bits[22..24]) * 4, 59);
+        let minute = std::cmp::min(bits_to_number(&bits[22..24]) * 15, 59);
 
         let date_opt = NaiveDate::from_ymd_opt(year as i32, month as u32, day as u32);
 
@@ -103,5 +103,38 @@ impl Timeline for DatetimeTimeline {
 
     fn get_capacity(&self) -> &u8 {
         &(CAPACITY as u8)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn datetime_encode_and_decode() {
+        let timeline = DatetimeTimeline::new(DatetimeTimelineConfig { format: None });
+
+        let cases: Vec<(&str, &str)> = vec![
+            ("2025-01-23 13:45:00", "2025-01-23 13:45:00"),
+            ("2024-01-23 13:50:00", "2024-01-23 13:45:00"),
+            ("2025-02-01 13:33:00", "2025-02-01 13:30:00"),
+            ("2022-12-31 23:19:00", "2022-12-31 23:15:00"),
+            ("2150-01-01 00:00:00", "2150-01-01 00:00:00"),
+            ("1950-08-04 00:02:00", "1950-08-04 00:00:00"),
+        ];
+
+        for case in cases {
+            let result = timeline
+                .reverse(&timeline.get_bits(&ComplexTimelineValue::Datetime(String::from(case.0))));
+
+            match result {
+                ComplexTimelineValue::Datetime(res) => {
+                    assert_eq!(res, case.1);
+                }
+                _ => {
+                    panic!("Invalid type of result")
+                }
+            }
+        }
     }
 }
