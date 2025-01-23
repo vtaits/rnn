@@ -82,7 +82,7 @@ export function App() {
 						<BinaryField values={lastPrediction.raw} />
 					) : (
 						<pre>
-							<code>{JSON.stringify(lastPrediction, null, 2)}</code>
+							<code>{JSON.stringify(lastPrediction.data, null, 2)}</code>
 						</pre>
 					)}
 				</div>

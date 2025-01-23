@@ -18,6 +18,7 @@ struct InitConfig {
 pub fn init_by_toml(
     file_path: String,
     config_dir: &Option<String>,
+    train: bool,
 ) -> DataLayer<Vec<ComplexTimelineValue>> {
     let full_path = match config_dir {
         Some(config_dir) => {
@@ -36,12 +37,16 @@ pub fn init_by_toml(
         timelines.iter().map(init_timeline_by_config).collect()
     });
 
-    let training_streams = config.training_streams.map_or(vec![], |training_streams| {
-        training_streams
-            .iter()
-            .map(|config| init_training_stream_by_config(config, config_dir))
-            .collect()
-    });
+    let training_streams = if train {
+        config.training_streams.map_or(vec![], |training_streams| {
+            training_streams
+                .iter()
+                .map(|config| init_training_stream_by_config(config, config_dir))
+                .collect()
+        })
+    } else {
+        vec![]
+    };
 
     init_data_layer(
         config.layer_params,

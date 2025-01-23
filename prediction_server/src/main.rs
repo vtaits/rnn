@@ -6,7 +6,7 @@ use std::{
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{http, post, web, App, HttpResponse, HttpServer, Responder};
-use console_ui::run_console_app;
+// use console_ui::run_console_app;
 use env_logger::Env;
 use rnn_core::{DataLayer, Network, NetworkParseError};
 use rnn_instance::init_by_toml;
@@ -98,7 +98,7 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    let mut data_layer = init_by_toml(config_path, &config_dir);
+    let mut data_layer = init_by_toml(config_path, &config_dir, false);
 
     if let Ok(dump_path) = env::var("DUMP_PATH") {
         let dump = std::fs::read_to_string(dump_path).unwrap();
@@ -130,7 +130,7 @@ async fn main() -> std::io::Result<()> {
                 .supports_credentials();
 
             App::new()
-                // .wrap(Logger::default())
+                .wrap(Logger::default())
                 .wrap(cors)
                 .app_data(web::PayloadConfig::new(100 * 1024 * 1024))
                 .app_data(app_data.clone())
@@ -140,7 +140,7 @@ async fn main() -> std::io::Result<()> {
         })
         .bind(("0.0.0.0", port))?
         .run(),
-        run_console_app(Arc::clone(&network)),
+        // run_console_app(Arc::clone(&network)),
     );
 
     Ok(())

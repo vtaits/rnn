@@ -29,7 +29,7 @@ async fn main() -> Result<(), JobSchedulerError> {
 
     scheduler.start().await?;
 
-    tokio::time::sleep(Duration::from_secs(3600)).await;
+    tokio::time::sleep(Duration::from_secs(3600 * 10)).await;
 
     scheduler.shutdown().await.unwrap();
 

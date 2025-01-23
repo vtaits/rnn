@@ -7,7 +7,7 @@ use std::{
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{http, post, web, App, HttpResponse, HttpServer, Responder};
-use console_ui::run_console_app;
+// use console_ui::run_console_app;
 use env_logger::Env;
 use reqwest::Client;
 use rnn_core::DataLayer;
@@ -58,16 +58,16 @@ async fn send_data_to_receiver(
 ) -> tokio::io::Result<()> {
     let permit = semaphore.acquire().await.unwrap();
 
-    let _response = client.post(receiver).body(data.to_vec()).send().await;
+    let response = client.post(receiver).body(data.to_vec()).send().await;
 
-    /* match response {
+    match response {
         Ok(res) => {
             println!("Request sent, response: {:?}", res);
             let response_text = res.text().await;
             println!("Response body: {:?}", response_text);
         }
         Err(err) => eprintln!("Error sending request: {:?}", err),
-    } */
+    }
 
     drop(permit);
 
@@ -136,7 +136,7 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    let data_layer = init_by_toml(config_path, &config_dir);
+    let data_layer = init_by_toml(config_path, &config_dir, true);
 
     let network = data_layer.get_network();
 
@@ -173,7 +173,7 @@ async fn main() -> std::io::Result<()> {
         })
         .bind(("0.0.0.0", port))?
         .run(),
-        run_console_app(Arc::clone(&network)),
+        // run_console_app(Arc::clone(&network)),
     );
 
     Ok(())

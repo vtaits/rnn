@@ -20,7 +20,7 @@ services:
     environment:
       CONFIG_DIR: /config
       CONFIG_PATH: ${CONFIG_PATH}
-      RECEIVERS: http://127.0.0.1:8001/update_network
+      RECEIVERS: http://prediction_server:8001/update_network
     devices:
       - "/dev/dri"
     volumes:
@@ -32,7 +32,7 @@ services:
     image: rnn
     entrypoint: ["cargo", "run", "--manifest-path", "scheduler/Cargo.toml"]
     environment:
-      TRAINING_SERVER: http://127.0.0.1:8000
+      TRAINING_SERVER: http://training_server:8000
 
   webui:
     build:
