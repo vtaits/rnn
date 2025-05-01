@@ -7,7 +7,7 @@ float get_weight_coefficient(
     float shifted_accumulated_weight = accumulated_weight - g_0;
 
     if (shifted_accumulated_weight < 0) {
-        return exp(-gamma_inc * shifted_accumulated_weight) - 1.0;
+        return exp(-gamma_dec * shifted_accumulated_weight) - 1.0;
     }
 
     return 1.0 - exp(-gamma_inc * shifted_accumulated_weight);
