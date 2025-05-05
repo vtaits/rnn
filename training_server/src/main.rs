@@ -6,12 +6,12 @@ use std::{
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
-use actix_web::{http, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, http, post, web, App, HttpResponse, HttpServer, Responder};
 // use console_ui::run_console_app;
 use env_logger::Env;
 use reqwest::Client;
 use rnn_core::DataLayer;
-use rnn_instance::init_by_toml;
+use rnn_instance::init_data_layer_by_env;
 use timeline_helpers::ComplexTimelineValue;
 use tokio::sync::Semaphore;
 use tokio::time::timeout;
@@ -20,6 +20,26 @@ struct AppState {
     client: Arc<Client>,
     data_layer: Mutex<DataLayer<Vec<ComplexTimelineValue>>>,
     receivers: Vec<String>,
+}
+
+#[get("/download_dump")]
+async fn download_dump(data: web::Data<AppState>) -> impl Responder {
+    let data_layer = data.data_layer.lock().unwrap();
+
+    let compressed_data = data_layer
+        .get_network()
+        .read()
+        .unwrap()
+        .get_gzip_dump()
+        .unwrap();
+
+    HttpResponse::Ok()
+        .insert_header((http::header::CONTENT_TYPE, "application/octet-stream"))
+        .insert_header((
+            http::header::CONTENT_DISPOSITION,
+            "attachment; filename=\"network_dump.gzip\"",
+        ))
+        .body(compressed_data)
 }
 
 #[post("/push_data_binary")]
@@ -117,8 +137,6 @@ async fn update_receivers(data: web::Data<AppState>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let config_dir = env::var("CONFIG_DIR").ok();
-    let config_path = env::var("CONFIG_PATH").expect("CONFIG_PATH should be defined");
     let port = match env::var("PORT") {
         Ok(port_str) => match port_str.parse::<u16>() {
             Ok(port) => port,
@@ -136,9 +154,7 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    let data_layer = init_by_toml(config_path, &config_dir, true);
-
-    let network = data_layer.get_network();
+    let data_layer = init_data_layer_by_env(true);
 
     let client = Client::new();
 
@@ -167,6 +183,7 @@ async fn main() -> std::io::Result<()> {
                 .wrap(Logger::default())
                 .wrap(cors)
                 .app_data(app_data.clone())
+                .service(download_dump)
                 .service(push_data_binary)
                 .service(push_data)
                 .service(update_receivers)

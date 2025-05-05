@@ -12,7 +12,8 @@ use super::structures::TrainingStream;
 
 #[derive(Debug, Deserialize)]
 struct Record {
-    Date: String,
+    #[serde(rename = "Date")]
+    date: String,
 }
 
 const DEFAULT_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
@@ -62,12 +63,12 @@ impl CsvDateTimeStream {
         if let Some(result) = first {
             let record: Record = result?;
 
-            let current_date_result = parse_date(&record.Date);
+            let current_date_result = parse_date(&record.date);
 
             if let Ok(current_date) = current_date_result {
                 if let Some(second_result) = second {
                     let second_record: Record = second_result?;
-                    let second_date_result = parse_date(&second_record.Date);
+                    let second_date_result = parse_date(&second_record.date);
 
                     if let Ok(second_date) = second_date_result {
                         return Ok(CsvDateTimeStream {
@@ -108,7 +109,7 @@ impl CsvDateTimeStream {
             if let Some(second_result) = next {
                 if let Ok(next_record) = second_result {
                     let next_record: Record = next_record;
-                    let next_date_result = parse_date(&next_record.Date);
+                    let next_date_result = parse_date(&next_record.date);
 
                     if let Ok(next_date) = next_date_result {
                         self.next_date = Some(next_date);

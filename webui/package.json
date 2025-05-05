@@ -12,6 +12,7 @@
     "preview": "bunx --bun vite preview"
   },
   "dependencies": {
+    "@vkontakte/icons": "^2.162.0",
     "@vkontakte/vkui": "^6.7.3",
     "@vtaits/form-schema": "^2.3.0-alpha.9",
     "@vtaits/react-form-schema-base-ui": "^1.0.0-alpha.9",

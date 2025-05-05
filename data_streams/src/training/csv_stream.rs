@@ -12,8 +12,10 @@ use super::structures::TrainingStream;
 
 #[derive(Debug, Deserialize)]
 struct Record {
-    Date: String,
-    Value: f32,
+    #[serde(rename = "Date")]
+    date: String,
+    #[serde(rename = "value")]
+    value: f32,
 }
 
 const FORMAT: &str = "%Y-%m-%d %H:%M:%S";
@@ -61,19 +63,19 @@ impl CsvStream {
         if let Some(result) = first {
             let record: Record = result?;
 
-            let current_date_result = parse_date(&record.Date);
+            let current_date_result = parse_date(&record.date);
 
             if let Ok(current_date) = current_date_result {
                 if let Some(second_result) = second {
                     let second_record: Record = second_result?;
-                    let second_date_result = parse_date(&second_record.Date);
+                    let second_date_result = parse_date(&second_record.date);
 
                     if let Ok(second_date) = second_date_result {
                         return Ok(CsvStream {
                             current_date: Some(current_date),
                             next_date: Some(second_date),
-                            value: record.Value,
-                            next_value: second_record.Value,
+                            value: record.value,
+                            next_value: second_record.value,
                             reader,
                         });
                     }
@@ -82,8 +84,8 @@ impl CsvStream {
                 return Ok(CsvStream {
                     current_date: Some(current_date),
                     next_date: None,
-                    value: record.Value,
-                    next_value: record.Value,
+                    value: record.value,
+                    next_value: record.value,
                     reader,
                 });
             }
@@ -116,11 +118,11 @@ impl CsvStream {
             if let Some(second_result) = next {
                 if let Ok(next_record) = second_result {
                     let next_record: Record = next_record;
-                    let next_date_result = parse_date(&next_record.Date);
+                    let next_date_result = parse_date(&next_record.date);
 
                     if let Ok(next_date) = next_date_result {
                         self.next_date = Some(next_date);
-                        self.next_value = next_record.Value;
+                        self.next_value = next_record.value;
                     } else {
                         self.next_date = None;
                     }

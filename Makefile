@@ -8,4 +8,4 @@ servers-dev:
 
 .PHONY: servers-dev-build
 servers-dev-build:
-	CONFIG_DIR=$(CONFIG_DIR) CONFIG_PATH=$(CONFIG_PATH) docker compose -f docker-compose.dev.yml up --build
+	DUMP_GZIP_PATH=${(DUMP_GZIP_PATH)} CONFIG_DIR=$(CONFIG_DIR) CONFIG_PATH=$(CONFIG_PATH) docker compose -f docker-compose.dev.yml up --build

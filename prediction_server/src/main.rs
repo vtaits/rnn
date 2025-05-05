@@ -1,7 +1,4 @@
-use std::{
-    env,
-    sync::{Arc, Mutex},
-};
+use std::{env, sync::Mutex};
 
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
@@ -9,7 +6,7 @@ use actix_web::{http, post, web, App, HttpResponse, HttpServer, Responder};
 // use console_ui::run_console_app;
 use env_logger::Env;
 use rnn_core::{DataLayer, Network, NetworkParseError};
-use rnn_instance::init_by_toml;
+use rnn_instance::init_data_layer_by_env;
 use serde_derive::Serialize;
 use timeline_helpers::ComplexTimelineValue;
 
@@ -98,17 +95,7 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    let mut data_layer = init_by_toml(config_path, &config_dir, false);
-
-    if let Ok(dump_path) = env::var("DUMP_PATH") {
-        let dump = std::fs::read_to_string(dump_path).unwrap();
-
-        let network = Network::from_json_dump(&dump).unwrap();
-
-        data_layer.replace_network(network);
-    }
-
-    let network = data_layer.get_network();
+    let mut data_layer = init_data_layer_by_env(false);
 
     let app_data = web::Data::new(AppState {
         data_layer: Mutex::new(data_layer),
