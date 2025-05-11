@@ -156,6 +156,8 @@ impl TrainingStream for CsvDateTimeStream {
         while !self.is_date_in_interval(date) {
             self.step();
         }
+
+        self.current_date = Some(date);
     }
 
     fn is_finish(&self) -> bool {

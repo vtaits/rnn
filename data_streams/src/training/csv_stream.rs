@@ -14,7 +14,7 @@ use super::structures::TrainingStream;
 struct Record {
     #[serde(rename = "Date")]
     date: String,
-    #[serde(rename = "value")]
+    #[serde(rename = "Value")]
     value: f32,
 }
 
@@ -162,6 +162,8 @@ impl TrainingStream for CsvStream {
         while !self.is_date_in_interval(date) {
             self.step();
         }
+
+        self.current_date = Some(date);
     }
 
     fn is_finish(&self) -> bool {

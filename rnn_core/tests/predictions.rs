@@ -54,7 +54,7 @@ fn identical_prediction(
 #[case(
     vec![true, true, true, true, true, true],
     vec![true, false, true, false, true, true],
-    3.0,
+    2.0,
     2,
 )]
 #[case(
@@ -227,7 +227,7 @@ fn restore_multiple_separated_sequences(#[case] sequences: Vec<(Vec<bool>, Vec<b
             layer_height: 4,
         },
         SynapseParams {
-            alpha: 2.0,
+            alpha: 1.5,
             gamma_dec: 0.5,
             gamma_inc: 0.5,
             g_dec: 5.0,
