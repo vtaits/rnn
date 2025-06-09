@@ -96,13 +96,6 @@ impl Timeline for IntegerTimeline {
     }
 
     fn get_bits(&self, timeline_value: &ComplexTimelineValue) -> Vec<bool> {
-        match timeline_value {
-            ComplexTimelineValue::Datetime(hui) => println!("{} hui1", hui),
-            ComplexTimelineValue::Enum(hui) => println!("{} hui2", hui),
-            ComplexTimelineValue::Float(hui) => println!("{} hui3", hui),
-            ComplexTimelineValue::Integer(hui) => println!("{} hui4", hui),
-        };
-
         if let ComplexTimelineValue::Integer(value) = timeline_value {
             if *value > self.params.max_value {
                 return vec![true; self.params.capacity as usize];
