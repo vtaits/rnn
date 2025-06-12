@@ -34,7 +34,7 @@ async fn predict_binary(
 
     let mut data_layer = data.data_layer.lock().unwrap();
 
-    let raw = data_layer.predict_binary(&bit_vec);
+    let raw = data_layer.predict_binary(&bit_vec, 0);
     let data = data_layer.deserialize(&raw).unwrap();
 
     HttpResponse::Ok()
@@ -51,7 +51,7 @@ async fn predict(
 
     let mut data_layer = data.data_layer.lock().unwrap();
 
-    let raw = data_layer.predict(timeline_data);
+    let raw = data_layer.predict(timeline_data, 0);
     let data = data_layer.deserialize(&raw).unwrap();
 
     HttpResponse::Ok()

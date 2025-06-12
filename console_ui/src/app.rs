@@ -63,13 +63,13 @@ impl App {
     pub fn push_data_and_apply(&mut self) {
         let data = self.pop_buffer();
 
-        self.network.write().unwrap().push_data_and_apply(&data);
+        self.network.write().unwrap().push_data_and_apply(&data, 0);
     }
 
     pub fn push_data_to_buffer(&mut self) {
         let data = self.pop_buffer();
 
-        self.network.write().unwrap().push_data_binary(&data);
+        self.network.write().unwrap().push_data_binary(&data, 0);
     }
 
     pub fn step(&mut self) {

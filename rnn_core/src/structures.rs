@@ -27,6 +27,8 @@ pub struct SynapseParams {
     pub signal_rest_shift_limit: Option<u8>,
     /// Apply additional signals that copy original signal with the shift
     pub signal_copy_shifts: Option<Vec<(i8, i8)>>,
+    /// Percentage of maximum number of excited neurons after the step of neural network
+    pub excite_neuron_limit: f32,
 }
 
 #[derive(Serialize, Deserialize)]

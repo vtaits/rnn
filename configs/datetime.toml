@@ -19,6 +19,7 @@ refract_interval = 1
 threshold = 0.9
 signal_shift_interval = 2
 signal_rest_shift_limit = 1
+excite_neuron_limit = 0.8
 
 [[timelines]]
 type = "Datetime"

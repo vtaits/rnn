@@ -41,11 +41,12 @@ fn identical_prediction(
             signal_rest_shift_limit: Some(1),
             // signal_copy_shifts: Some(vec![(1, 0), (0, 1), (0, -1), (-1, 0)]),
             signal_copy_shifts: Some(vec![(1, 0)]),
+            excite_neuron_limit: 0.8,
         },
         None,
     );
 
-    let result = network.predict(&bits);
+    let result = network.predict(&bits, 0);
 
     assert_eq!(result, bits);
 }
@@ -92,14 +93,15 @@ fn restore_missed_bits(
             signal_shift_interval: 3,
             signal_rest_shift_limit: Some(1),
             signal_copy_shifts: Some(vec![(1, 0)]),
+            excite_neuron_limit: 0.8,
             // signal_copy_shifts: Some(vec![(1, 0), (0, 1), (-1, 0), (0, -1)]),
         },
         None,
     );
 
-    network.push_data_and_apply(&full);
+    network.push_data_and_apply(&full, 0);
 
-    let result = network.predict(&cut);
+    let result = network.predict(&cut, 0);
 
     assert_eq!(result, full);
 }
@@ -146,13 +148,14 @@ fn not_restore_missed_bits(
             signal_shift_interval: 3,
             signal_rest_shift_limit: Some(1),
             signal_copy_shifts: Some(vec![(1, 0)]),
+            excite_neuron_limit: 0.8,
         },
         None,
     );
 
-    network.push_data_and_apply(&full);
+    network.push_data_and_apply(&full, 0);
 
-    let result = network.predict(&cut);
+    let result = network.predict(&cut, 0);
 
     assert_eq!(result, cut);
 }
@@ -242,16 +245,17 @@ fn restore_multiple_separated_sequences(#[case] sequences: Vec<(Vec<bool>, Vec<b
             signal_shift_interval: 3,
             signal_rest_shift_limit: Some(1),
             signal_copy_shifts: Some(vec![(0, 1)]),
+            excite_neuron_limit: 0.8,
         },
         None,
     );
 
     for sequence in sequences.iter() {
-        network.push_data_and_apply(&sequence.0);
+        network.push_data_and_apply(&sequence.0, 0);
     }
 
     for sequence in sequences.iter() {
-        let result = network.predict(&sequence.1);
+        let result = network.predict(&sequence.1, 0);
 
         assert_eq!(result, sequence.0);
     }
@@ -328,20 +332,21 @@ fn restore_multiple_overlapping_sequences(#[case] sequences: Vec<(Vec<bool>, Vec
             signal_shift_interval: 3,
             signal_rest_shift_limit: Some(1),
             signal_copy_shifts: Some(vec![(1, 0)]),
+            excite_neuron_limit: 0.8,
         },
         None,
     );
 
     for sequence in sequences.iter() {
-        network.push_data_and_apply(&sequence.0);
+        network.push_data_and_apply(&sequence.0, 0);
     }
 
     for sequence in sequences.iter() {
-        network.push_data_and_apply(&sequence.0);
+        network.push_data_and_apply(&sequence.0, 0);
     }
 
     for sequence in sequences.iter() {
-        let result = network.predict(&sequence.1);
+        let result = network.predict(&sequence.1, 0);
 
         assert_eq!(result, sequence.0);
     }

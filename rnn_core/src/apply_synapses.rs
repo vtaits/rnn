@@ -34,6 +34,30 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
     })
 }
 
+fn remove_extra_neurons(neurons: &mut Vec<u8>, limit: usize) {
+    let mut excited_count: usize = 0;
+    for i in neurons.iter() {
+        if *i > 0 {
+            excited_count += 1;
+        }
+    }
+
+    if excited_count <= limit {
+        return;
+    }
+
+    let mut neurons_to_remove = excited_count - limit;
+
+    while neurons_to_remove > 0 {
+        let index = rand::random_range(0..neurons.iter().count());
+
+        if neurons[index] > 0 {
+            neurons[index] = 0;
+            neurons_to_remove -= 1;
+        }
+    }
+}
+
 /**
  * Recount receiver layer
  */
@@ -49,6 +73,7 @@ pub fn apply_synapses(
     gamma_inc: f32,
     gamma_dec: f32,
     g_0: f32,
+    excited_neurons_limit: usize,
 ) -> ocl::Result<Array1<u8>> {
     let buffer_accumulated_weights = Buffer::<f32>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
@@ -100,6 +125,8 @@ pub fn apply_synapses(
     buffer_next_neurons_to
         .read(&mut vec_next_neurons_to)
         .enq()?;
+
+    remove_extra_neurons(&mut vec_next_neurons_to, excited_neurons_limit);
 
     let next_neurons_to = Array1::from_vec(vec_next_neurons_to);
 

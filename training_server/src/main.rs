@@ -51,7 +51,7 @@ async fn push_data_binary(
 
     let mut data_layer = data.data_layer.lock().unwrap();
 
-    data_layer.push_data_binary_and_apply(&bit_vec);
+    data_layer.push_data_binary_and_apply(&bit_vec, 0);
 
     HttpResponse::Ok().finish()
 }
@@ -65,7 +65,7 @@ async fn push_data(
 
     let mut data_layer = data.data_layer.lock().unwrap();
 
-    data_layer.push_data_and_apply(timeline_data);
+    data_layer.push_data_and_apply(timeline_data, 0);
 
     HttpResponse::Ok().finish()
 }

@@ -10,7 +10,7 @@ pub fn train_network(
     while !complex_stream.is_finish() {
         let data = complex_stream.get_value();
 
-        data_layer.push_data_and_apply(data);
+        data_layer.push_data_and_apply(data, 0);
 
         complex_stream.step();
     }

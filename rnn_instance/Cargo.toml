@@ -9,6 +9,6 @@ rnn_core = { path = "../rnn_core" }
 data_streams = { path = "../data_streams" }
 timeline_helpers = { path = "../timeline_helpers" }
 toml = "0.8.19"
-serde = "1.0.208"
-serde_derive = "1.0.208"
+serde = "1.0.219"
+serde_derive = "1.0.219"
 tokio = { version = "1.40.0", features = ["full"]}

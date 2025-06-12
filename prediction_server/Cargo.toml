@@ -10,8 +10,8 @@ console_ui = { path = "../console_ui" }
 env_logger = "0.11.5"
 rnn_core = { path = "../rnn_core" }
 rnn_instance = { path = "../rnn_instance" }
-serde = "1.0.209"
-serde_derive = "1.0.209"
+serde = "1.0.219"
+serde_derive = "1.0.219"
 timeline_helpers = { path = "../timeline_helpers" }
 tokio = { version = "1.40.0", features = ["full"] }
 tokio-macros = "2.4.0"

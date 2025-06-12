@@ -37,6 +37,8 @@ struct ComputedParams {
     column_height: usize,
     // number of empty shifts that should be fulfiled after the last step of the prediction
     prediction_rest_shifts: usize,
+    // maximal number of excited neurons
+    excited_neurons_limit: usize,
 }
 
 // TO DO: bit-vec / bitfield
@@ -346,6 +348,9 @@ fn get_computed_params(
         0
     };
 
+    let excited_neurons_limit =
+        ((field_size * field_count) as f32 * synapse_params.excite_neuron_limit) as usize;
+
     ComputedParams {
         field_size,
         field_count,
@@ -353,6 +358,7 @@ fn get_computed_params(
         row_width,
         column_height,
         prediction_rest_shifts,
+        excited_neurons_limit,
     }
 }
 
@@ -564,6 +570,7 @@ impl Network {
             self.synapse_params.gamma_inc,
             self.synapse_params.gamma_dec,
             0.0,
+            self.computed_params.excited_neurons_limit,
         )
         .unwrap();
 
@@ -615,6 +622,7 @@ impl Network {
             self.synapse_params.gamma_inc,
             self.synapse_params.gamma_dec,
             self.synapse_params.g_0,
+            self.computed_params.excited_neurons_limit,
         )
         .unwrap();
 
@@ -752,15 +760,15 @@ impl Network {
     /**
      * Split signal into frames and apply them immediately
      */
-    pub fn push_data_and_apply(&mut self, bit_vec: &[bool]) {
-        self.push_data_binary(bit_vec);
+    pub fn push_data_and_apply(&mut self, bit_vec: &[bool], prediction_depth: usize) {
+        self.push_data_binary(bit_vec, prediction_depth);
         self.apply_buffer();
     }
 
     /**
      * Split signal into frames and push them to buffer
      */
-    pub fn push_data_binary(&mut self, bit_vec: &[bool]) {
+    pub fn push_data_binary(&mut self, bit_vec: &[bool], prediction_depth: usize) {
         let data_len = bit_vec.len();
         let field_size = self.field_size;
         let tick_count = self.get_tick_count(bit_vec);
@@ -792,7 +800,7 @@ impl Network {
         (data_len / field_size) + 1
     }
 
-    pub fn predict(&mut self, bit_vec: &[bool]) -> Vec<bool> {
+    pub fn predict(&mut self, bit_vec: &[bool], prediction_depth: usize) -> Vec<bool> {
         let tick_count = self.get_tick_count(bit_vec);
 
         self.prediction = Some(PredictionProcessing::new(
@@ -801,7 +809,7 @@ impl Network {
             self.computed_params.field_count,
         ));
 
-        self.push_data_and_apply(bit_vec);
+        self.push_data_and_apply(bit_vec, prediction_depth);
 
         self.prediction.as_ref().unwrap().get_prediction()
     }

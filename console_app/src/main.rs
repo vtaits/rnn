@@ -36,6 +36,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         signal_shift_interval: 2,
         signal_rest_shift_limit: Some(0),
         signal_copy_shifts: Some(vec![(1, 0), (0, 1), (0, -1), (-1, 0)]),
+        excite_neuron_limit: 0.8,
     };
 
     let capacity = params.field_width * params.field_height;
@@ -144,7 +145,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
     // let numbers = vec![];
 
     for number in numbers {
-        data_layer.push_data(number);
+        data_layer.push_data(number, 0);
     }
 
     Arc::clone(&network)
