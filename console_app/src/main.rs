@@ -47,6 +47,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         capacity: capacity as u8,
         get_multiplier: None,
         get_reverse_multiplier: None,
+        is_target: None,
     });
 
     let network = Arc::new(RwLock::new(Network::new(

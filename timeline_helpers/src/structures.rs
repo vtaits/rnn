@@ -23,6 +23,8 @@ pub enum TimelineConfig {
 }
 
 pub trait Timeline: Send + Sync {
+    fn is_target(&self) -> bool;
+
     fn get_bits(&self, value: &ComplexTimelineValue) -> Vec<bool>;
 
     fn get_capacity(&self) -> &u8;

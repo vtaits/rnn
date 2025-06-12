@@ -65,6 +65,7 @@ mod tests {
                 max_value: 110.0,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
+                is_target: None,
             })),
             Box::new(IntegerTimeline::new(IntegerTimelineParams {
                 capacity: 5,
@@ -72,6 +73,7 @@ mod tests {
                 max_value: 110,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
+                is_target: None,
             })),
             Box::new(EnumTimeline::<String>::new(EnumTimelineParams {
                 capacity: 3,
@@ -93,6 +95,7 @@ mod tests {
                         _ => "zero",
                     })
                 }),
+                is_target: None,
             })),
         ]);
 
@@ -117,6 +120,7 @@ mod tests {
                 max_value: 110.0,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
+                is_target: None,
             })),
             Box::new(IntegerTimeline::new(IntegerTimelineParams {
                 capacity: 5,
@@ -124,6 +128,7 @@ mod tests {
                 max_value: 110,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
+                is_target: None,
             })),
             Box::new(EnumTimeline::<String>::new(EnumTimelineParams {
                 capacity: 3,
@@ -145,6 +150,7 @@ mod tests {
                         _ => "zero",
                     })
                 }),
+                is_target: None,
             })),
         ]);
 

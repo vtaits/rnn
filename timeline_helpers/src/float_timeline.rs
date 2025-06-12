@@ -7,6 +7,7 @@ pub struct FloatTimelineConfig {
     pub min_value: f32,
     pub max_value: f32,
     pub capacity: u8,
+    pub is_target: Option<bool>,
 }
 
 pub struct FloatTimelineParams {
@@ -15,23 +16,27 @@ pub struct FloatTimelineParams {
     pub capacity: u8,
     pub get_multiplier: Option<Box<dyn Fn(f32) -> f32 + Send + Sync>>,
     pub get_reverse_multiplier: Option<Box<dyn Fn(f32) -> f32 + Send + Sync>>,
+    pub is_target: Option<bool>,
 }
 
 pub struct FloatTimeline {
     range: f32,
     max_normalize_value: usize,
     params: FloatTimelineParams,
+    is_target: bool,
 }
 
 impl FloatTimeline {
     pub fn new(params: FloatTimelineParams) -> Self {
         let max_normalize_value = 2usize.pow(params.capacity as u32) - 1;
         let range = params.max_value - params.min_value;
+        let is_target = params.is_target.unwrap_or_default();
 
         FloatTimeline {
             max_normalize_value,
             params,
             range,
+            is_target,
         }
     }
 
@@ -40,6 +45,7 @@ impl FloatTimeline {
             min_value,
             max_value,
             capacity,
+            is_target,
         } = config;
 
         let params = FloatTimelineParams {
@@ -48,6 +54,7 @@ impl FloatTimeline {
             capacity: *capacity,
             get_multiplier: None,
             get_reverse_multiplier: None,
+            is_target: *is_target,
         };
 
         FloatTimeline::new(params)
@@ -77,6 +84,10 @@ impl FloatTimeline {
 }
 
 impl Timeline for FloatTimeline {
+    fn is_target(&self) -> bool {
+        self.is_target
+    }
+
     fn get_bits(&self, timeline_value: &ComplexTimelineValue) -> Vec<bool> {
         if let ComplexTimelineValue::Float(value) = timeline_value {
             if *value > self.params.max_value {
@@ -127,6 +138,7 @@ mod tests {
                 capacity: 5,
                 min_value: 10.0,
                 max_value: 110.0,
+                is_target: None,
             }),
             FloatTimeline::new(FloatTimelineParams {
                 capacity: 5,
@@ -134,6 +146,7 @@ mod tests {
                 max_value: 110.0,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
+                is_target: None,
             }),
         ];
 
@@ -151,6 +164,7 @@ mod tests {
                 capacity: 5,
                 min_value: 10.0,
                 max_value: 110.0,
+                is_target: None,
             }),
             FloatTimeline::new(FloatTimelineParams {
                 capacity: 5,
@@ -158,6 +172,7 @@ mod tests {
                 max_value: 110.0,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
+                is_target: None,
             }),
         ];
 
@@ -199,6 +214,7 @@ mod tests {
             max_value: 110.0,
             get_multiplier: Some(Box::new(|value| value * value)),
             get_reverse_multiplier: None,
+            is_target: None,
         });
 
         assert_eq!(
@@ -237,6 +253,7 @@ mod tests {
             max_value: 110.0,
             get_multiplier: None,
             get_reverse_multiplier: None,
+            is_target: None,
         });
 
         if let ComplexTimelineValue::Float(result) =
@@ -272,6 +289,7 @@ mod tests {
             max_value: 110.0,
             get_multiplier: None,
             get_reverse_multiplier: Some(Box::new(|value| value.sqrt())),
+            is_target: None,
         });
 
         if let ComplexTimelineValue::Float(result) =

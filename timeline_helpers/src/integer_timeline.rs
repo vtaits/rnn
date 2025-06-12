@@ -7,6 +7,7 @@ pub struct IntegerTimelineConfig {
     pub min_value: i64,
     pub max_value: i64,
     pub capacity: u8,
+    pub is_target: Option<bool>,
 }
 
 pub struct IntegerTimelineParams {
@@ -15,23 +16,27 @@ pub struct IntegerTimelineParams {
     pub capacity: u8,
     pub get_multiplier: Option<Box<dyn Fn(f32) -> f32 + Send + Sync>>,
     pub get_reverse_multiplier: Option<Box<dyn Fn(f32) -> f32 + Send + Sync>>,
+    pub is_target: Option<bool>,
 }
 
 pub struct IntegerTimeline {
     range: i64,
     max_normalize_value: usize,
     params: IntegerTimelineParams,
+    is_target: bool,
 }
 
 impl IntegerTimeline {
     pub fn new(params: IntegerTimelineParams) -> Self {
         let max_normalize_value = 2usize.pow(params.capacity as u32) - 1;
         let range = params.max_value - params.min_value;
+        let is_target = params.is_target.unwrap_or_default();
 
         IntegerTimeline {
             max_normalize_value,
             params,
             range,
+            is_target,
         }
     }
 
@@ -40,6 +45,7 @@ impl IntegerTimeline {
             min_value,
             max_value,
             capacity,
+            is_target,
         } = config;
 
         let params = IntegerTimelineParams {
@@ -48,6 +54,7 @@ impl IntegerTimeline {
             capacity: *capacity,
             get_multiplier: None,
             get_reverse_multiplier: None,
+            is_target: *is_target,
         };
 
         IntegerTimeline::new(params)
@@ -78,6 +85,10 @@ impl IntegerTimeline {
 }
 
 impl Timeline for IntegerTimeline {
+    fn is_target(&self) -> bool {
+        self.is_target
+    }
+
     fn reverse(&self, bits: &[bool]) -> ComplexTimelineValue {
         let normalized_value = bits_to_number(bits);
 
@@ -130,6 +141,7 @@ mod tests {
             max_value: 110,
             get_multiplier: None,
             get_reverse_multiplier: None,
+            is_target: None,
         });
 
         assert_eq!(timeline.normalize_value(16), 2);
@@ -146,11 +158,13 @@ mod tests {
                 max_value: 110,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
+                is_target: None,
             }),
             IntegerTimeline::from_config(&IntegerTimelineConfig {
                 capacity: 5,
                 min_value: 10,
                 max_value: 110,
+                is_target: None,
             }),
         ];
 
@@ -192,6 +206,7 @@ mod tests {
             max_value: 110,
             get_multiplier: Some(Box::new(|value| value * value)),
             get_reverse_multiplier: None,
+            is_target: None,
         });
 
         assert_eq!(
@@ -230,6 +245,7 @@ mod tests {
             max_value: 110,
             get_multiplier: None,
             get_reverse_multiplier: None,
+            is_target: None,
         });
 
         assert_eq!(
@@ -254,6 +270,7 @@ mod tests {
             max_value: 110,
             get_multiplier: None,
             get_reverse_multiplier: Some(Box::new(|value| value.sqrt())),
+            is_target: None,
         });
 
         assert_eq!(

@@ -10,15 +10,19 @@ const CAPACITY: usize = 24;
 #[derive(Clone, Deserialize)]
 pub struct DatetimeTimelineConfig {
     pub format: Option<String>,
+    pub is_target: Option<bool>,
 }
 
 pub struct DatetimeTimeline {
     config: DatetimeTimelineConfig,
+    is_target: bool,
 }
 
 impl DatetimeTimeline {
     pub fn new(config: DatetimeTimelineConfig) -> Self {
-        DatetimeTimeline { config }
+        let is_target = config.is_target.unwrap_or_default();
+
+        DatetimeTimeline { config, is_target }
     }
 }
 
@@ -36,6 +40,10 @@ impl DatetimeTimeline {
 }
 
 impl Timeline for DatetimeTimeline {
+    fn is_target(&self) -> bool {
+        self.is_target
+    }
+
     fn get_bits(&self, timeline_value: &ComplexTimelineValue) -> Vec<bool> {
         if let ComplexTimelineValue::Datetime(date_str) = timeline_value {
             let format = self.get_date_format();
@@ -112,7 +120,10 @@ mod tests {
 
     #[test]
     fn datetime_encode_and_decode() {
-        let timeline = DatetimeTimeline::new(DatetimeTimelineConfig { format: None });
+        let timeline = DatetimeTimeline::new(DatetimeTimelineConfig {
+            format: None,
+            is_target: None,
+        });
 
         let cases: Vec<(&str, &str)> = vec![
             ("2025-01-23 13:45:00", "2025-01-23 13:45:00"),

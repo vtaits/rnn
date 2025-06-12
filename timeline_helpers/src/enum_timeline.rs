@@ -8,33 +8,42 @@ use crate::{bits_to_number, number_to_bits, ComplexTimelineValue, Timeline};
 pub struct EnumTimelineConfig {
     pub capacity: u8,
     pub options: Vec<String>,
+    pub is_target: Option<bool>,
 }
 
 pub struct EnumTimelineParams<T> {
     pub capacity: u8,
     pub to_number: Box<dyn Fn(T) -> usize + Send + Sync>,
     pub to_option: Box<dyn Fn(usize) -> T + Send + Sync>,
+    pub is_target: Option<bool>,
 }
 
 pub struct EnumTimeline<T> {
     max_normalize_value: usize,
     params: EnumTimelineParams<T>,
+    is_target: bool,
 }
 
 impl<T> EnumTimeline<T> {
     pub fn new(params: EnumTimelineParams<T>) -> Self {
         let max_normalize_value = 2usize.pow(params.capacity as u32) - 1;
+        let is_target = params.is_target.unwrap_or_default();
 
         EnumTimeline {
             max_normalize_value,
             params,
+            is_target,
         }
     }
 }
 
 impl EnumTimeline<String> {
     pub fn from_config(config: &EnumTimelineConfig) -> Self {
-        let EnumTimelineConfig { capacity, options } = config;
+        let EnumTimelineConfig {
+            capacity,
+            options,
+            is_target,
+        } = config;
         let mut option_to_index: HashMap<String, usize> = HashMap::new();
 
         for (index, option) in options.iter().enumerate() {
@@ -62,11 +71,16 @@ impl EnumTimeline<String> {
                     options[0].clone()
                 })
             },
+            is_target: *is_target,
         })
     }
 }
 
 impl Timeline for EnumTimeline<String> {
+    fn is_target(&self) -> bool {
+        self.is_target
+    }
+
     fn get_bits(&self, timeline_value: &ComplexTimelineValue) -> Vec<bool> {
         if let ComplexTimelineValue::Enum(value) = timeline_value {
             let number = (self.params.to_number)(value.clone());
@@ -112,6 +126,7 @@ mod tests {
                 5 => String::from("five"),
                 _ => String::from("zero"),
             }),
+            is_target: None,
         });
 
         assert_eq!(
@@ -165,6 +180,7 @@ mod tests {
                 5 => String::from("five"),
                 _ => String::from("zero"),
             }),
+            is_target: None,
         });
 
         if let ComplexTimelineValue::Enum(result) = timeline.reverse(&[false, false, true]) {
