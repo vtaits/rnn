@@ -4,6 +4,7 @@ resolver = "2"
 members = [
     "console_app",
     "console_ui",
+    "count_accuracy",
     "data_streams",
     "prediction_server",
     "rnn_core",

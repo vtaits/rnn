@@ -1,20 +1,24 @@
-use std::{sync::Arc, sync::RwLock};
+use std::sync::{Arc, RwLock};
 
 use crate::Network;
 
 pub struct DataLayerParams<T> {
     pub binary_to_data: Box<dyn Fn(&[bool]) -> Result<T, ()> + Send + Sync>,
     pub data_to_binary: Box<dyn Fn(T) -> Result<Vec<bool>, ()> + Send + Sync>,
+    pub get_target_mask: Box<dyn Fn() -> Vec<bool> + Send + Sync>
 }
 
 pub struct DataLayer<T> {
     params: DataLayerParams<T>,
     network: Arc<RwLock<Network>>,
+    target_mask: Vec<bool>,
 }
 
 impl<T> DataLayer<T> {
     pub fn new(params: DataLayerParams<T>, network: Arc<RwLock<Network>>) -> Self {
-        DataLayer { params, network }
+        let target_mask = (params.get_target_mask)();
+
+        DataLayer { params, network, target_mask }
     }
 
     pub fn get_network(&self) -> Arc<RwLock<Network>> {
@@ -31,6 +35,52 @@ impl<T> DataLayer<T> {
             .write()
             .unwrap()
             .push_data_and_apply(bit_vec, prediction_depth);
+    }
+
+    fn check(&mut self, bit_vec: &[bool]) -> bool {
+        let mut check_vec: Vec<bool> = vec![false; self.target_mask.len()];
+
+        for (index, is_target) in self.target_mask.iter().enumerate() {
+            let value = bit_vec[index];
+
+            if !*is_target && value {
+                check_vec[index] = true;
+            }
+        }
+
+        let prediction = self.predict_binary(&check_vec, 0);
+
+        for (index, is_target) in self.target_mask.iter().enumerate() {
+            let expected = bit_vec[index];
+            let received = prediction[index];
+
+            if *is_target && (expected != received) {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    pub fn count_accuracy(&mut self, measurement_data: Vec<Vec<bool>>) -> (usize, usize) {
+        let mut positive = 0usize;
+        let mut negative = 0usize;
+
+        for item in measurement_data.iter() {
+            let is_positive = self.check(&item);
+    
+            if is_positive {
+                positive += 1;
+            } else {
+                negative += 1;
+            }
+        }
+
+        (positive, negative)
+    }
+
+    pub fn process_for_measure(&mut self, data: T) -> Result<Vec<bool>, ()> {
+        (self.params.data_to_binary)(data)
     }
 
     pub fn push_data_and_apply(&mut self, data: T, prediction_depth: usize) {

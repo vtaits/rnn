@@ -5,7 +5,7 @@ use rnn_core::{DataLayer, LayerParams, SynapseParams};
 use serde_derive::Deserialize;
 use timeline_helpers::{init_timeline_by_config, ComplexTimelineValue, TimelineConfig};
 
-use crate::{get_file_path::get_file_path, init_data_layer};
+use crate::{get_file_path::get_file_path, init_data_layer, structs::InitDataLayerParams};
 
 #[derive(Deserialize)]
 struct InitConfig {
@@ -18,8 +18,10 @@ struct InitConfig {
 pub fn init_by_toml(
     file_path: &str,
     config_dir: &Option<String>,
-    train: bool,
-) -> DataLayer<Vec<ComplexTimelineValue>> {
+    params: &InitDataLayerParams,
+) -> (DataLayer<Vec<ComplexTimelineValue>>, Vec<Vec<bool>>) {
+    let train = params.train;
+
     let full_path = get_file_path(file_path, config_dir);
 
     let toml_str = fs::read_to_string(full_path).expect("Failed to read TOML file");
@@ -46,5 +48,6 @@ pub fn init_by_toml(
         config.synapse_params,
         timelines,
         training_streams,
+        params,
     )
 }

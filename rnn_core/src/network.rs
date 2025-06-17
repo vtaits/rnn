@@ -768,7 +768,7 @@ impl Network {
     /**
      * Split signal into frames and push them to buffer
      */
-    pub fn push_data_binary(&mut self, bit_vec: &[bool], prediction_depth: usize) {
+    pub fn push_data_binary(&mut self, bit_vec: &[bool], _prediction_depth: usize) {
         let data_len = bit_vec.len();
         let field_size = self.field_size;
         let tick_count = self.get_tick_count(bit_vec);

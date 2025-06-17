@@ -7,12 +7,15 @@ use rnn_core::{
 };
 use timeline_helpers::{ComplexTimeline, ComplexTimelineValue, Timeline};
 
+use crate::InitDataLayerParams;
+
 pub fn init_data_layer(
     layer_params: LayerParams,
     synapse_params: SynapseParams,
     timelines: Vec<Box<dyn Timeline>>,
     training_streams: Vec<Box<dyn TrainingStream>>,
-) -> DataLayer<Vec<ComplexTimelineValue>> {
+    params: &InitDataLayerParams,
+) -> (DataLayer<Vec<ComplexTimelineValue>>, Vec<Vec<bool>>) {
     let mut complex_stream = ComplexStream::new(training_streams);
 
     let complex_timeline = Arc::new(ComplexTimeline::new(timelines));
@@ -50,11 +53,18 @@ pub fn init_data_layer(
 
                 Box::new(move |binary| Ok(complex_timeline.reverse(&binary)))
             },
+            get_target_mask: Box::new(move || complex_timeline.get_target_mask()),
         },
         Arc::new(RwLock::new(network)),
     );
 
-    train_network(&mut data_layer, &mut complex_stream);
+    let start_end_measure_indexes = if let (Some(start), Some(end)) = (params.start_measurement_index, params.end_measurement_index) {
+        Some((start, end))
+    } else {
+        None
+    };
 
-    data_layer
+    let measurement_data = train_network(&mut data_layer, &mut complex_stream, start_end_measure_indexes);
+
+    (data_layer, measurement_data)
 }

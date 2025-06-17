@@ -6,7 +6,7 @@ use actix_web::{http, post, web, App, HttpResponse, HttpServer, Responder};
 // use console_ui::run_console_app;
 use env_logger::Env;
 use rnn_core::{DataLayer, Network, NetworkParseError};
-use rnn_instance::init_data_layer_by_env;
+use rnn_instance::{init_data_layer_by_env, InitDataLayerParams};
 use serde_derive::Serialize;
 use timeline_helpers::ComplexTimelineValue;
 
@@ -95,7 +95,7 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    let mut data_layer = init_data_layer_by_env(false);
+    let (data_layer, _) = init_data_layer_by_env(&InitDataLayerParams { train: false, end_measurement_index: None, start_measurement_index: None });
 
     let app_data = web::Data::new(AppState {
         data_layer: Mutex::new(data_layer),

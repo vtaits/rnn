@@ -9,6 +9,23 @@ impl ComplexTimeline {
         ComplexTimeline { items }
     }
 
+    /**
+     * Returns Vec<bool> where truthy elements are targets and falsy elements sorce data to calculate targets
+     */
+    pub fn get_target_mask(&self) -> Vec<bool> {
+        let mut result = vec![];
+
+        for timeline_item in self.items.iter() {
+            let bits = vec![timeline_item.is_target(); *timeline_item.get_capacity() as usize];
+
+            for bit in bits {
+                result.push(bit);
+            }
+        }
+
+        result
+    }
+
     pub fn get_bits(&self, value: &[ComplexTimelineValue]) -> Result<Vec<bool>, ()> {
         let mut result = vec![];
 
@@ -108,6 +125,61 @@ mod tests {
                 ])
                 .unwrap(),
             vec![false, true, false, false, true, true, true, true, true, false, false, true, true],
+        );
+    }
+
+    #[test]
+    fn get_value_bits_for_measure() {
+        let timeline = ComplexTimeline::new(vec![
+            Box::new(FloatTimeline::new(FloatTimelineParams {
+                capacity: 5,
+                min_value: 10.0,
+                max_value: 110.0,
+                get_multiplier: None,
+                get_reverse_multiplier: None,
+                is_target: None,
+            })),
+            Box::new(IntegerTimeline::new(IntegerTimelineParams {
+                capacity: 5,
+                min_value: 10,
+                max_value: 110,
+                get_multiplier: None,
+                get_reverse_multiplier: None,
+                is_target: Some(true),
+            })),
+            Box::new(EnumTimeline::<String>::new(EnumTimelineParams {
+                capacity: 3,
+                to_number: Box::new(|value| match &value[..] {
+                    "one" => 1,
+                    "two" => 2,
+                    "three" => 3,
+                    "four" => 4,
+                    "five" => 5,
+                    _ => 0,
+                }),
+                to_option: Box::new(|value| {
+                    String::from(match value {
+                        1 => "one",
+                        2 => "two",
+                        3 => "three",
+                        4 => "four",
+                        5 => "five",
+                        _ => "zero",
+                    })
+                }),
+                is_target: None,
+            })),
+        ]);
+
+        assert_eq!(
+            timeline
+                .get_bits(&[
+                    ComplexTimelineValue::Float(39.0),
+                    ComplexTimelineValue::Integer(106),
+                    ComplexTimelineValue::Enum(String::from("three")),
+                ])
+                .unwrap(),
+            vec![false, true, false, false, true, false, false, false, false, false, false, true, true],
         );
     }
 

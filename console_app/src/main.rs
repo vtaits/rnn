@@ -71,6 +71,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
                 Ok(timeline.get_bits(&ComplexTimelineValue::Integer(number)))
             }),
             binary_to_data: Box::new(|_data| Ok(0_i64)),
+            get_target_mask: Box::new(|| vec![]),
         },
         Arc::clone(&network),
     );

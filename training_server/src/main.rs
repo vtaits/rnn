@@ -11,7 +11,7 @@ use actix_web::{get, http, post, web, App, HttpResponse, HttpServer, Responder};
 use env_logger::Env;
 use reqwest::Client;
 use rnn_core::DataLayer;
-use rnn_instance::init_data_layer_by_env;
+use rnn_instance::{init_data_layer_by_env, InitDataLayerParams};
 use timeline_helpers::ComplexTimelineValue;
 use tokio::sync::Semaphore;
 use tokio::time::timeout;
@@ -154,7 +154,7 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    let data_layer = init_data_layer_by_env(true);
+    let (data_layer, _) = init_data_layer_by_env(&InitDataLayerParams { train: true, end_measurement_index: None, start_measurement_index: None });
 
     let client = Client::new();
 
