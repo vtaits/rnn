@@ -20,7 +20,7 @@ pub struct SynapseParams {
     pub min_g: f32,
     pub max_g: f32,
     pub initial_strong_g: f32,
-    pub h: u8,
+    pub h: f32,
     pub threshold: f32,
     pub refract_interval: u8,
     pub signal_shift_interval: u8,

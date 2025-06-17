@@ -95,7 +95,13 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    let (data_layer, _) = init_data_layer_by_env(&InitDataLayerParams { train: false, end_measurement_index: None, start_measurement_index: None });
+    let (data_layer, _) = init_data_layer_by_env(&InitDataLayerParams {
+        train: false,
+        start_index: None,
+        end_index: None,
+        start_measurement_index: None,
+        end_measurement_index: None,
+    });
 
     let app_data = web::Data::new(AppState {
         data_layer: Mutex::new(data_layer),

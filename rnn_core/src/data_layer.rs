@@ -5,7 +5,7 @@ use crate::Network;
 pub struct DataLayerParams<T> {
     pub binary_to_data: Box<dyn Fn(&[bool]) -> Result<T, ()> + Send + Sync>,
     pub data_to_binary: Box<dyn Fn(T) -> Result<Vec<bool>, ()> + Send + Sync>,
-    pub get_target_mask: Box<dyn Fn() -> Vec<bool> + Send + Sync>
+    pub get_target_mask: Box<dyn Fn() -> Vec<bool> + Send + Sync>,
 }
 
 pub struct DataLayer<T> {
@@ -18,7 +18,11 @@ impl<T> DataLayer<T> {
     pub fn new(params: DataLayerParams<T>, network: Arc<RwLock<Network>>) -> Self {
         let target_mask = (params.get_target_mask)();
 
-        DataLayer { params, network, target_mask }
+        DataLayer {
+            params,
+            network,
+            target_mask,
+        }
     }
 
     pub fn get_network(&self) -> Arc<RwLock<Network>> {
@@ -50,16 +54,24 @@ impl<T> DataLayer<T> {
 
         let prediction = self.predict_binary(&check_vec, 0);
 
-        for (index, is_target) in self.target_mask.iter().enumerate() {
-            let expected = bit_vec[index];
-            let received = prediction[index];
+        let mut has_error = false;
 
-            if *is_target && (expected != received) {
-                return false;
+        for (index, is_target) in self.target_mask.iter().enumerate() {
+            if *is_target {
+                let expected = bit_vec[index];
+                let received = prediction[index];
+
+                // print!("{}{} ", if expected {"+"} else {"."}, if received {"+"} else {"."});
+
+                if expected != received {
+                    has_error = true;
+                }
             }
         }
 
-        true
+        // println!();
+
+        !has_error
     }
 
     pub fn count_accuracy(&mut self, measurement_data: Vec<Vec<bool>>) -> (usize, usize) {
@@ -68,7 +80,7 @@ impl<T> DataLayer<T> {
 
         for item in measurement_data.iter() {
             let is_positive = self.check(&item);
-    
+
             if is_positive {
                 positive += 1;
             } else {

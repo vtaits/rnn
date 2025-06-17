@@ -34,7 +34,7 @@ fn identical_prediction(
             min_g: -10.0,
             max_g: 10.0,
             initial_strong_g: 7.0,
-            h: 3,
+            h: 3.0,
             refract_interval: 2,
             threshold: 0.9,
             signal_shift_interval: 3,
@@ -56,19 +56,19 @@ fn identical_prediction(
     vec![true, true, true, true, true, true],
     vec![true, false, true, false, true, true],
     2.0,
-    2,
+    2.0,
 )]
 #[case(
     vec![true, true, true, true, true, false],
     vec![true, false, true, false, true, false],
     2.0,
-    3,
+    3.0,
 )]
 fn restore_missed_bits(
     #[case] full: Vec<bool>,
     #[case] cut: Vec<bool>,
     #[case] alpha: f32,
-    #[case] h: u8,
+    #[case] h: f32,
 ) {
     let mut network = Network::new(
         LayerParams {
@@ -111,19 +111,19 @@ fn restore_missed_bits(
     vec![true, true, true, true, true, false],
     vec![true, false, true, false, true, false],
     10.0,
-    2,
+    2.0,
 )]
 #[case(
     vec![true, true, true, true, true, false],
     vec![false, false, false, false, true, true],
     1.0,
-    3,
+    3.0,
 )]
 fn not_restore_missed_bits(
     #[case] full: Vec<bool>,
     #[case] cut: Vec<bool>,
     #[case] alpha: f32,
-    #[case] h: u8,
+    #[case] h: f32,
 ) {
     let mut network = Network::new(
         LayerParams {
@@ -239,7 +239,7 @@ fn restore_multiple_separated_sequences(#[case] sequences: Vec<(Vec<bool>, Vec<b
             min_g: -10.0,
             max_g: 10.0,
             initial_strong_g: 7.0,
-            h: 2,
+            h: 2.0,
             refract_interval: 2,
             threshold: 0.9,
             signal_shift_interval: 3,
@@ -326,7 +326,7 @@ fn restore_multiple_overlapping_sequences(#[case] sequences: Vec<(Vec<bool>, Vec
             min_g: -10.0,
             max_g: 10.0,
             initial_strong_g: 7.0,
-            h: 2,
+            h: 2.0,
             refract_interval: 2,
             threshold: 0.9,
             signal_shift_interval: 3,

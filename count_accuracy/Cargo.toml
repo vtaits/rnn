@@ -1,0 +1,8 @@
+[package]
+name = "count_accuracy"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+rnn_instance = { path = "../rnn_instance" }
+tokio = { version = "1.40.0", features = ["full"]}

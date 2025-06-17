@@ -179,7 +179,10 @@ mod tests {
                     ComplexTimelineValue::Enum(String::from("three")),
                 ])
                 .unwrap(),
-            vec![false, true, false, false, true, false, false, false, false, false, false, true, true],
+            vec![
+                false, true, false, false, true, false, false, false, false, false, false, true,
+                true
+            ],
         );
     }
 

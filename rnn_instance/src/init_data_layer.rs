@@ -1,4 +1,7 @@
-use std::{sync::Arc, sync::RwLock};
+use std::{
+    env,
+    sync::{Arc, RwLock},
+};
 
 use data_streams::{train_network, ComplexStream, TrainingStream};
 use rnn_core::{
@@ -26,19 +29,25 @@ pub fn init_data_layer(
         ..
     } = layer_params;
 
+    let is_log_to_files = env::var("LOG_TO_FILES").map_or(false, |value| value == "1");
+
     let network = Network::new(
         layer_params,
         synapse_params,
-        Some(Box::new(MultipleFileLogger::new(
-            MultipleFileLoggerParams {
-                weights_diff_path_1: Some("diffs1.txt"),
-                weights_diff_path_2: Some("diffs2.txt"),
-                sum_path_1: Some("total1.txt"),
-                sum_path_2: Some("total2.txt"),
-                count_path: Some("count.txt"),
-            },
-            field_width * field_height,
-        ))),
+        if is_log_to_files {
+            Some(Box::new(MultipleFileLogger::new(
+                MultipleFileLoggerParams {
+                    weights_diff_path_1: Some("diffs1.txt"),
+                    weights_diff_path_2: Some("diffs2.txt"),
+                    sum_path_1: Some("total1.txt"),
+                    sum_path_2: Some("total2.txt"),
+                    count_path: Some("count.txt"),
+                },
+                field_width * field_height,
+            )))
+        } else {
+            None
+        },
     );
 
     let mut data_layer = DataLayer::new(
@@ -58,13 +67,27 @@ pub fn init_data_layer(
         Arc::new(RwLock::new(network)),
     );
 
-    let start_end_measure_indexes = if let (Some(start), Some(end)) = (params.start_measurement_index, params.end_measurement_index) {
+    let start_end_indexes = if let (Some(start), Some(end)) = (params.start_index, params.end_index)
+    {
         Some((start, end))
     } else {
         None
     };
 
-    let measurement_data = train_network(&mut data_layer, &mut complex_stream, start_end_measure_indexes);
+    let start_end_measure_indexes = if let (Some(start), Some(end)) =
+        (params.start_measurement_index, params.end_measurement_index)
+    {
+        Some((start, end))
+    } else {
+        None
+    };
+
+    let measurement_data = train_network(
+        &mut data_layer,
+        &mut complex_stream,
+        start_end_indexes,
+        start_end_measure_indexes,
+    );
 
     (data_layer, measurement_data)
 }

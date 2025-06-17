@@ -8,7 +8,12 @@ use crate::{get_file_path::get_file_path, init_by_toml, structs::InitDataLayerPa
 pub fn init_data_layer_by_env(
     params: &InitDataLayerParams,
 ) -> (DataLayer<Vec<ComplexTimelineValue>>, Vec<Vec<bool>>) {
-    let InitDataLayerParams { train, end_measurement_index, start_measurement_index } = params;
+    let InitDataLayerParams {
+        train,
+        end_measurement_index,
+        start_measurement_index,
+        ..
+    } = params;
 
     let config_dir: Option<String> = env::var("CONFIG_DIR").ok();
     let config_path = env::var("CONFIG_PATH").expect("CONFIG_PATH should be defined");
@@ -16,13 +21,18 @@ pub fn init_data_layer_by_env(
     let dump_gzip_path = env::var("DUMP_GZIP_PATH");
     let dump_path = env::var("DUMP_PATH");
 
+    let start_index = env::var("START_INDEX").map_or(None, |value| value.parse::<usize>().ok());
+    let end_index = env::var("END_INDEX").map_or(None, |value| value.parse::<usize>().ok());
+
     let (mut data_layer, measurement_data) = init_by_toml(
         &config_path,
         &config_dir,
         &InitDataLayerParams {
             train: *train && dump_gzip_path.is_err() && dump_path.is_err(),
-            end_measurement_index: end_measurement_index.clone(),
+            start_index,
+            end_index,
             start_measurement_index: start_measurement_index.clone(),
+            end_measurement_index: end_measurement_index.clone(),
         },
     );
 
