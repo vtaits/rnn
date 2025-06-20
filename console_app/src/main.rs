@@ -30,7 +30,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         min_g: -10.0,
         max_g: 10.0,
         initial_strong_g: 7.0,
-        h: 3,
+        h: 3.0,
         refract_interval: 3,
         threshold: 0.9,
         signal_shift_interval: 2,

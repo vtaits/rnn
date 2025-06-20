@@ -6,6 +6,8 @@ mod float_timeline;
 mod init_timeline_by_config;
 mod integer_timeline;
 mod number_to_bits;
+mod number_to_single_bit;
+mod single_bit_to_number;
 mod structures;
 
 pub use bits_to_number::bits_to_number;
@@ -16,4 +18,6 @@ pub use float_timeline::{FloatTimeline, FloatTimelineParams};
 pub use init_timeline_by_config::init_timeline_by_config;
 pub use integer_timeline::{IntegerTimeline, IntegerTimelineParams};
 pub use number_to_bits::number_to_bits;
+pub use number_to_single_bit::number_to_single_bit;
+pub use single_bit_to_number::single_bit_to_number;
 pub use structures::{ComplexTimelineValue, Timeline, TimelineConfig};

@@ -2544,6 +2544,7 @@ version = "1.0.0"
 dependencies = [
  "chrono",
  "rnn_core",
+ "rstest",
  "serde",
  "serde_derive",
 ]

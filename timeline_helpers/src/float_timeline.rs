@@ -1,6 +1,9 @@
 use serde_derive::Deserialize;
 
-use crate::{bits_to_number, number_to_bits, ComplexTimelineValue, Timeline};
+use crate::{
+    bits_to_number, number_to_bits, number_to_single_bit, single_bit_to_number,
+    ComplexTimelineValue, Timeline,
+};
 
 #[derive(Deserialize)]
 pub struct FloatTimelineConfig {
@@ -8,6 +11,7 @@ pub struct FloatTimelineConfig {
     pub max_value: f32,
     pub capacity: u8,
     pub is_target: Option<bool>,
+    pub is_single_bit: Option<bool>,
 }
 
 pub struct FloatTimelineParams {
@@ -16,7 +20,8 @@ pub struct FloatTimelineParams {
     pub capacity: u8,
     pub get_multiplier: Option<Box<dyn Fn(f32) -> f32 + Send + Sync>>,
     pub get_reverse_multiplier: Option<Box<dyn Fn(f32) -> f32 + Send + Sync>>,
-    pub is_target: Option<bool>,
+    pub is_target: bool,
+    pub is_single_bit: bool,
 }
 
 pub struct FloatTimeline {
@@ -24,19 +29,27 @@ pub struct FloatTimeline {
     max_normalize_value: usize,
     params: FloatTimelineParams,
     is_target: bool,
+    is_single_bit: bool,
 }
 
 impl FloatTimeline {
     pub fn new(params: FloatTimelineParams) -> Self {
-        let max_normalize_value = 2usize.pow(params.capacity as u32) - 1;
+        let max_normalize_value = if params.is_single_bit {
+            params.capacity as usize
+        } else {
+            2usize.pow(params.capacity as u32) - 1
+        };
+
         let range = params.max_value - params.min_value;
-        let is_target = params.is_target.unwrap_or_default();
+        let is_target = params.is_target;
+        let is_single_bit = params.is_single_bit;
 
         FloatTimeline {
             max_normalize_value,
             params,
             range,
             is_target,
+            is_single_bit,
         }
     }
 
@@ -46,6 +59,7 @@ impl FloatTimeline {
             max_value,
             capacity,
             is_target,
+            is_single_bit,
         } = config;
 
         let params = FloatTimelineParams {
@@ -54,7 +68,8 @@ impl FloatTimeline {
             capacity: *capacity,
             get_multiplier: None,
             get_reverse_multiplier: None,
-            is_target: *is_target,
+            is_target: is_target.unwrap_or_default(),
+            is_single_bit: is_single_bit.unwrap_or_default(),
         };
 
         FloatTimeline::new(params)
@@ -71,7 +86,15 @@ impl FloatTimeline {
     fn normalize_value(&self, value: f32) -> usize {
         let multiplier = self.get_multiplier((value - self.params.min_value) / self.range);
 
-        (self.max_normalize_value as f32 * multiplier).round() as usize
+        println!("{} {}", self.max_normalize_value, multiplier);
+
+        let result = self.max_normalize_value as f32 * multiplier;
+
+        if self.is_single_bit {
+            return result.floor() as usize;
+        }
+
+        result.round() as usize
     }
 
     fn get_reverse_multiplier(&self, multiplier: f32) -> f32 {
@@ -90,6 +113,16 @@ impl Timeline for FloatTimeline {
 
     fn get_bits(&self, timeline_value: &ComplexTimelineValue) -> Vec<bool> {
         if let ComplexTimelineValue::Float(value) = timeline_value {
+            if self.is_single_bit {
+                let normalized_value = self.normalize_value(*value);
+
+                return number_to_single_bit(
+                    normalized_value,
+                    self.params.capacity as usize,
+                    self.max_normalize_value,
+                );
+            }
+
             if *value > self.params.max_value {
                 return vec![true; self.params.capacity as usize];
             }
@@ -115,7 +148,11 @@ impl Timeline for FloatTimeline {
     }
 
     fn reverse(&self, bits: &[bool]) -> ComplexTimelineValue {
-        let normalized_value = bits_to_number(bits);
+        let normalized_value = if self.is_single_bit {
+            single_bit_to_number(bits)
+        } else {
+            bits_to_number(bits)
+        };
 
         let multiplier = normalized_value as f32 / self.max_normalize_value as f32;
 
@@ -139,14 +176,23 @@ mod tests {
                 min_value: 10.0,
                 max_value: 110.0,
                 is_target: None,
+                is_single_bit: None,
             }),
             FloatTimeline::new(FloatTimelineParams {
                 capacity: 5,
                 min_value: 10.0,
                 max_value: 110.0,
+                is_target: false,
+                is_single_bit: false,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
+            }),
+            FloatTimeline::from_config(&FloatTimelineConfig {
+                capacity: 32,
+                min_value: 10.0,
+                max_value: 110.0,
                 is_target: None,
+                is_single_bit: Some(true),
             }),
         ];
 
@@ -165,6 +211,7 @@ mod tests {
                 min_value: 10.0,
                 max_value: 110.0,
                 is_target: None,
+                is_single_bit: None,
             }),
             FloatTimeline::new(FloatTimelineParams {
                 capacity: 5,
@@ -172,7 +219,8 @@ mod tests {
                 max_value: 110.0,
                 get_multiplier: None,
                 get_reverse_multiplier: None,
-                is_target: None,
+                is_target: false,
+                is_single_bit: false,
             }),
         ];
 
@@ -207,6 +255,54 @@ mod tests {
     }
 
     #[test]
+    fn get_linear_value_single_bits() {
+        let timelines = vec![
+            FloatTimeline::from_config(&FloatTimelineConfig {
+                capacity: 5,
+                min_value: 10.0,
+                max_value: 110.0,
+                is_target: None,
+                is_single_bit: Some(true),
+            }),
+            FloatTimeline::new(FloatTimelineParams {
+                capacity: 5,
+                min_value: 10.0,
+                max_value: 110.0,
+                get_multiplier: None,
+                get_reverse_multiplier: None,
+                is_target: false,
+                is_single_bit: true,
+            }),
+        ];
+
+        for timeline in timelines {
+            assert_eq!(
+                timeline.get_bits(&ComplexTimelineValue::Float(5.0)),
+                vec![false, false, false, false, false],
+                "too small value"
+            );
+            assert_eq!(
+                timeline.get_bits(&ComplexTimelineValue::Float(115.0)),
+                vec![false, false, false, false, true],
+                "too big value"
+            );
+
+            assert_eq!(
+                timeline.get_bits(&ComplexTimelineValue::Float(16.4)),
+                vec![false, false, false, false, false]
+            );
+            assert_eq!(
+                timeline.get_bits(&ComplexTimelineValue::Float(39.0)),
+                vec![true, false, false, false, false]
+            );
+            assert_eq!(
+                timeline.get_bits(&ComplexTimelineValue::Float(106.7)),
+                vec![false, false, false, true, false]
+            );
+        }
+    }
+
+    #[test]
     fn get_parabolic_value_bits() {
         let timeline = FloatTimeline::new(FloatTimelineParams {
             capacity: 5,
@@ -214,7 +310,8 @@ mod tests {
             max_value: 110.0,
             get_multiplier: Some(Box::new(|value| value * value)),
             get_reverse_multiplier: None,
-            is_target: None,
+            is_target: false,
+            is_single_bit: false,
         });
 
         assert_eq!(
@@ -253,7 +350,8 @@ mod tests {
             max_value: 110.0,
             get_multiplier: None,
             get_reverse_multiplier: None,
-            is_target: None,
+            is_target: false,
+            is_single_bit: false,
         });
 
         if let ComplexTimelineValue::Float(result) =
@@ -289,7 +387,8 @@ mod tests {
             max_value: 110.0,
             get_multiplier: None,
             get_reverse_multiplier: Some(Box::new(|value| value.sqrt())),
-            is_target: None,
+            is_target: false,
+            is_single_bit: false,
         });
 
         if let ComplexTimelineValue::Float(result) =
