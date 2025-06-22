@@ -1,11 +1,16 @@
 mod apply_synapses;
 mod data_layer;
+mod get_neuron_coordinates;
+mod get_neuron_full_coordinates;
+mod get_neuron_index;
+mod get_neuron_index_by_coordinates;
 mod get_synapse_mask;
 mod logger;
 mod network;
 mod prediction;
 mod recount_accumulated_weights;
 mod recount_refract_intervals;
+mod set_initial_connections;
 mod shift_signal;
 mod spiral;
 mod structures;

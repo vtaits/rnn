@@ -4,6 +4,23 @@ use ndarray::{Array1, Array2};
 use ocl::{Kernel, ProQue};
 use serde_derive::{Deserialize, Serialize};
 
+pub struct ComputedParams {
+    // number of fields in one layer
+    pub field_count: usize,
+    // number of neurons in one field
+    pub field_size: usize,
+    // number of neurons in one row of fields
+    pub row_size: usize,
+    // number of neurons in one row of neurons
+    pub row_width: usize,
+    // number of neurons in one column of neurons
+    pub column_height: usize,
+    // number of empty shifts that should be fulfiled after the last step of the prediction
+    pub prediction_rest_shifts: usize,
+    // maximal number of excited neurons
+    pub excited_neurons_limit: usize,
+}
+
 pub struct CompiledKernel {
     pub kernel: Arc<Mutex<Kernel>>,
     pub pro_que: ProQue,

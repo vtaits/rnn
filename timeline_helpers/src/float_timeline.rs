@@ -86,8 +86,6 @@ impl FloatTimeline {
     fn normalize_value(&self, value: f32) -> usize {
         let multiplier = self.get_multiplier((value - self.params.min_value) / self.range);
 
-        println!("{} {}", self.max_normalize_value, multiplier);
-
         let result = self.max_normalize_value as f32 * multiplier;
 
         if self.is_single_bit {
