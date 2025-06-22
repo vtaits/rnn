@@ -18,6 +18,9 @@ async fn main() -> Result<(), ()> {
     let mut total_positive = 0;
     let mut total_negative = 0;
 
+    let mut false_positive_neurons = 0usize;
+    let mut false_negative_neurons = 0usize;
+
     for page in 0..measures_count {
         println!("Try #{}", page + 1);
 
@@ -32,26 +35,33 @@ async fn main() -> Result<(), ()> {
             start_measurement_index: Some(start_index),
         });
 
-        let (positive, negative) = data_layer.count_accuracy(measurement_data);
+        let (positive, negative, false_positive_neurons_result, false_negative_neurons_result) =
+            data_layer.count_accuracy(measurement_data);
 
         total_positive += positive;
         total_negative += negative;
+        false_positive_neurons += false_positive_neurons_result;
+        false_negative_neurons += false_negative_neurons_result;
 
         println!(
-            "positive: {}, negative: {}, total: {}",
+            "positive: {}, negative: {}, total: {}, false positive: {}, false negative: {}",
             positive,
             negative,
-            positive + negative
+            positive + negative,
+            false_positive_neurons_result,
+            false_negative_neurons_result,
         );
     }
 
     println!("Total");
 
     println!(
-        "positive: {}, negative: {}, total: {}",
+        "positive: {}, negative: {}, total: {}, false positive: {}, false negative: {}",
         total_positive,
         total_negative,
-        total_positive + total_negative
+        total_positive + total_negative,
+        false_positive_neurons,
+        false_negative_neurons,
     );
 
     Ok(())
