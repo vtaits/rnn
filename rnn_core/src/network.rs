@@ -23,10 +23,9 @@ use crate::{
     recount_accumulated_weights::{
         build_recount_accumulated_weights_kernel, recount_accumulated_weights,
     },
-    spiral::{get_last_field, get_next_field},
+    spiral::get_last_field,
     structures::{
-        CompiledKernel, LayerParams, NetworkDumpDeserialize, NetworkDumpSerialize, SynapseMask,
-        SynapseParams,
+        CompiledKernel, LayerParams, NetworkDumpDeserialize, NetworkDumpSerialize, SynapseParams,
     },
 };
 

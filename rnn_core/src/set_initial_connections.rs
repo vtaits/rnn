@@ -17,6 +17,7 @@ fn apply_mask(
     mask: &SynapseMask,
     x: usize,
     y: usize,
+    has_connections: &Array2<bool>,
 ) {
     for iter_x in 0..mask.size {
         let offset_x = iter_x as i32 - mask.offset as i32;
@@ -43,8 +44,127 @@ fn apply_mask(
 
             let value = mask.mask[[iter_x, iter_y]];
 
-            distance_weights[[target_neuron_index, base_neuron_index]] = value;
+            if has_connections[[target_neuron_index, base_neuron_index]] {
+                distance_weights[[target_neuron_index, base_neuron_index]] = value;
+            }
         }
+    }
+}
+
+fn fill_conntected_fields(
+    layer_params: &LayerParams,
+    computed_params: &ComputedParams,
+    has_connections: &mut Array2<bool>,
+    layer_from_x: usize,
+    layer_from_y: usize,
+    layer_to_x: usize,
+    layer_to_y: usize,
+) {
+    for neuron_in_field_from_y in 0..layer_params.field_height {
+        for neuron_in_field_from_x in 0..layer_params.field_width {
+            let neuron_from_index = get_neuron_index(
+                layer_params,
+                computed_params,
+                layer_from_x,
+                layer_from_y,
+                neuron_in_field_from_x,
+                neuron_in_field_from_y,
+            );
+
+            for neuron_in_field_to_y in 0..layer_params.field_height {
+                for neuron_in_field_to_x in 0..layer_params.field_width {
+                    let neuron_to_index = get_neuron_index(
+                        layer_params,
+                        computed_params,
+                        layer_to_x,
+                        layer_to_y,
+                        neuron_in_field_to_x,
+                        neuron_in_field_to_y,
+                    );
+
+                    has_connections[[neuron_to_index, neuron_from_index]] = true;
+                }
+            }
+        }
+    }
+}
+
+fn fill_has_conntections(
+    layer_params: &LayerParams,
+    computed_params: &ComputedParams,
+    has_connections_1_to_2: &mut Array2<bool>,
+    has_connections_2_to_1: &mut Array2<bool>,
+) {
+    let (last_layer_x, last_layer_y) = get_last_field(layer_params);
+
+    let mut prev_fields = vec![];
+
+    let mut cur_layer_x = 0usize;
+    let mut cur_layer_y = 0usize;
+
+    loop {
+        for (prev_layer_x, prev_layer_y) in prev_fields.iter() {
+            fill_conntected_fields(
+                layer_params,
+                computed_params,
+                has_connections_1_to_2,
+                cur_layer_x,
+                cur_layer_y,
+                *prev_layer_x,
+                *prev_layer_y,
+            );
+
+            fill_conntected_fields(
+                layer_params,
+                computed_params,
+                has_connections_2_to_1,
+                cur_layer_x,
+                cur_layer_y,
+                *prev_layer_x,
+                *prev_layer_y,
+            );
+        }
+
+        fill_conntected_fields(
+            layer_params,
+            computed_params,
+            has_connections_1_to_2,
+            cur_layer_x,
+            cur_layer_y,
+            cur_layer_x,
+            cur_layer_y,
+        );
+
+        fill_conntected_fields(
+            layer_params,
+            computed_params,
+            has_connections_2_to_1,
+            cur_layer_x,
+            cur_layer_y,
+            cur_layer_x,
+            cur_layer_y,
+        );
+
+        if cur_layer_x == last_layer_x && cur_layer_y == last_layer_y {
+            return;
+        }
+
+        let (next_field_x, next_field_y) = get_next_field(layer_params, cur_layer_x, cur_layer_y);
+
+        fill_conntected_fields(
+            layer_params,
+            computed_params,
+            has_connections_2_to_1,
+            cur_layer_x,
+            cur_layer_y,
+            next_field_x,
+            next_field_y,
+        );
+
+        prev_fields.push((cur_layer_x, cur_layer_y));
+
+        cur_layer_x = next_field_x;
+        cur_layer_y = next_field_y;
     }
 }
 
@@ -73,6 +193,16 @@ pub fn set_initial_connections(
 
     let mut accumulated_weights_1_to_2 = Array2::<f32>::zeros([layer_size, layer_size]);
     let mut accumulated_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);
+
+    let mut has_conntections_1_to_2 = Array2::<bool>::default([layer_size, layer_size]);
+    let mut has_conntections_2_to_1 = Array2::<bool>::default([layer_size, layer_size]);
+
+    fill_has_conntections(
+        layer_params,
+        computed_params,
+        &mut has_conntections_1_to_2,
+        &mut has_conntections_2_to_1,
+    );
 
     let (finish_x, finish_y) = get_last_field(layer_params);
 
@@ -111,6 +241,7 @@ pub fn set_initial_connections(
                         mask,
                         x,
                         y,
+                        &has_conntections_1_to_2,
                     );
 
                     // the last field have no connection to the first layer
@@ -144,6 +275,7 @@ pub fn set_initial_connections(
                             mask,
                             x_2_to_1,
                             y_2_to_1,
+                            &has_conntections_2_to_1,
                         );
                     }
                 }
