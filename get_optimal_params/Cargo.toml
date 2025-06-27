@@ -1,0 +1,9 @@
+[package]
+name = "get_optimal_params"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+itertools = "0.14"
+rnn_instance = { path = "../rnn_instance" }
+tokio = { version = "1.40.0", features = ["full"]}

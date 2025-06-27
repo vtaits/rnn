@@ -67,6 +67,7 @@ pub fn apply_synapses(
     accumulated_weights: &Array2<f32>,
     distance_weights: &Array2<f32>,
     neurons_from: &Array1<u8>,
+    neurons_to: &mut Array1<u8>,
     refract_intervals_to: &Array1<u8>,
     initial_refract_interval: u8,
     threshold: f32,
@@ -74,7 +75,7 @@ pub fn apply_synapses(
     gamma_dec: f32,
     g_0: f32,
     excited_neurons_limit: usize,
-) -> ocl::Result<Array1<u8>> {
+) -> ocl::Result<()> {
     let buffer_accumulated_weights = Buffer::<f32>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .len(accumulated_weights.len())
@@ -101,6 +102,7 @@ pub fn apply_synapses(
 
     let buffer_next_neurons_to = Buffer::<u8>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
+        .flags(ocl::flags::MEM_READ_WRITE)
         .len(layer_size)
         .build()?;
 
@@ -121,14 +123,16 @@ pub fn apply_synapses(
         kernel.enq()?;
     }
 
-    let mut vec_next_neurons_to = vec![0u8; layer_size];
-    buffer_next_neurons_to
-        .read(&mut vec_next_neurons_to)
-        .enq()?;
+    let mut neurons_to_flat = neurons_to.as_slice().unwrap().to_vec();
 
-    remove_extra_neurons(&mut vec_next_neurons_to, excited_neurons_limit);
+    buffer_next_neurons_to.read(&mut neurons_to_flat).enq()?;
 
-    let next_neurons_to = Array1::from_vec(vec_next_neurons_to);
+    remove_extra_neurons(&mut neurons_to_flat, excited_neurons_limit);
 
-    Ok(next_neurons_to)
+    neurons_to
+        .as_slice_mut()
+        .unwrap()
+        .copy_from_slice(&neurons_to_flat);
+
+    Ok(())
 }

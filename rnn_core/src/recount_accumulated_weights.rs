@@ -22,7 +22,6 @@ pub fn build_recount_accumulated_weights_kernel(layer_size: usize) -> ocl::Resul
         .arg_named("neurons_from", None::<&Buffer<u8>>)
         .arg_named("neurons_to", None::<&Buffer<u8>>)
         .arg_named("refract_intervals_to", None::<&Buffer<u8>>)
-        .arg_named("next_accumulated_weights", None::<&Buffer<f32>>)
         .arg_named("layer_size", 0_u32)
         .arg_named("g_dec", 0.0_f32)
         .arg_named("g_inc", 0.0_f32)
@@ -41,7 +40,7 @@ pub fn build_recount_accumulated_weights_kernel(layer_size: usize) -> ocl::Resul
 pub fn recount_accumulated_weights(
     compiled_kernel: &CompiledKernel,
     layer_size: usize,
-    accumulated_weights: &Array2<f32>,
+    accumulated_weights: &mut Array2<f32>,
     neurons_from: &Array1<u8>,
     neurons_to: &Array1<u8>,
     refract_intervals_to: &Array1<u8>,
@@ -51,9 +50,12 @@ pub fn recount_accumulated_weights(
     max_g: f32,
     layer_index: usize,
     logger: &mut Option<Box<dyn Logger>>,
-) -> ocl::Result<Array2<f32>> {
+) -> ocl::Result<()> {
+    let mut accumulated_weights_flat = accumulated_weights.as_slice().unwrap().to_vec();
+
     let buffer_accumulated_weights = Buffer::<f32>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
+        .flags(ocl::flags::MEM_READ_WRITE)
         .len(accumulated_weights.len())
         .copy_host_slice(accumulated_weights.as_slice().unwrap())
         .build()?;
@@ -74,11 +76,6 @@ pub fn recount_accumulated_weights(
         .queue(compiled_kernel.pro_que.queue().clone())
         .len(refract_intervals_to.len())
         .copy_host_slice(refract_intervals_to.as_slice().unwrap())
-        .build()?;
-
-    let buffer_next_accumulated_weights = Buffer::<f32>::builder()
-        .queue(compiled_kernel.pro_que.queue().clone())
-        .len(accumulated_weights.len())
         .build()?;
 
     let buffer_inc_counter = Buffer::<i32>::builder()
@@ -104,7 +101,6 @@ pub fn recount_accumulated_weights(
         kernel.set_arg("neurons_from", &buffer_neurons_from)?;
         kernel.set_arg("neurons_to", &buffer_neurons_to)?;
         kernel.set_arg("refract_intervals_to", &buffer_refract_intervals_to)?;
-        kernel.set_arg("next_accumulated_weights", &buffer_next_accumulated_weights)?;
         kernel.set_arg("layer_size", layer_size as u32)?;
         kernel.set_arg("g_dec", g_dec)?;
         kernel.set_arg("g_inc", g_inc)?;
@@ -115,13 +111,14 @@ pub fn recount_accumulated_weights(
         kernel.enq()?;
     }
 
-    let mut vec_next_accumulated_weights = vec![0.0f32; layer_size * layer_size];
-    buffer_next_accumulated_weights
-        .read(&mut vec_next_accumulated_weights)
+    buffer_accumulated_weights
+        .read(&mut accumulated_weights_flat)
         .enq()?;
 
-    let next_accumulated_weights =
-        Array2::from_shape_vec((layer_size, layer_size), vec_next_accumulated_weights).unwrap();
+    accumulated_weights
+        .as_slice_mut()
+        .unwrap()
+        .copy_from_slice(&accumulated_weights_flat);
 
     let mut inc_counter_result = vec![0i32; 1];
     buffer_inc_counter
@@ -143,5 +140,5 @@ pub fn recount_accumulated_weights(
         ));
     }
 
-    Ok(next_accumulated_weights)
+    Ok(())
 }

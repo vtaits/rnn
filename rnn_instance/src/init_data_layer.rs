@@ -31,9 +31,32 @@ pub fn init_data_layer(
 
     let is_log_to_files = env::var("LOG_TO_FILES").map_or(false, |value| value == "1");
 
+    let merged_synapse_params = if let Some(redefine_params) = &params.redefine_params {
+        SynapseParams {
+            alpha: redefine_params.alpha,
+            gamma_inc: redefine_params.gamma_inc,
+            gamma_dec: redefine_params.gamma_dec,
+            g_dec: redefine_params.g_dec,
+            g_inc: redefine_params.g_inc,
+            g_0: redefine_params.g_0,
+            min_g: synapse_params.min_g,
+            max_g: synapse_params.max_g,
+            initial_strong_g: synapse_params.initial_strong_g,
+            h: redefine_params.h,
+            threshold: redefine_params.threshold,
+            refract_interval: synapse_params.refract_interval,
+            signal_shift_interval: synapse_params.signal_shift_interval,
+            signal_rest_shift_limit: synapse_params.signal_rest_shift_limit,
+            signal_copy_shifts: synapse_params.signal_copy_shifts,
+            excite_neuron_limit: synapse_params.excite_neuron_limit,
+        }
+    } else {
+        synapse_params
+    };
+
     let network = Network::new(
         layer_params,
-        synapse_params,
+        merged_synapse_params,
         if is_log_to_files {
             Some(Box::new(MultipleFileLogger::new(
                 MultipleFileLoggerParams {

@@ -11,6 +11,7 @@ async fn main() -> Result<(), ()> {
         end_index: None,
         start_measurement_index: None,
         end_measurement_index: None,
+        redefine_params: None,
     });
 
     let _ = run_console_app(data_layer.get_network()).await;

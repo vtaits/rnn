@@ -330,12 +330,13 @@ impl Network {
     }
 
     fn shift_1_to_2(&mut self) {
-        let next_neurons_2 = apply_synapses(
+        apply_synapses(
             &self.kernel_synapses,
             self.layer_size,
             &self.accumulated_weights_1_to_2,
             &self.distance_weights_1_to_2,
             &self.neurons_1,
+            &mut self.neurons_2,
             &self.refract_intervals_2,
             self.synapse_params.refract_interval,
             self.synapse_params.threshold,
@@ -346,12 +347,12 @@ impl Network {
         )
         .unwrap();
 
-        let next_accumulated_weights_1_to_2 = recount_accumulated_weights(
+        recount_accumulated_weights(
             &self.kernel_accumulated_weights,
             self.layer_size,
-            &self.accumulated_weights_1_to_2,
+            &mut self.accumulated_weights_1_to_2,
             &self.neurons_1,
-            &next_neurons_2,
+            &self.neurons_2,
             &self.refract_intervals_2,
             self.synapse_params.g_dec,
             self.synapse_params.g_inc,
@@ -368,9 +369,7 @@ impl Network {
             &self.synapse_params.refract_interval,
         );
 
-        self.neurons_2 = next_neurons_2;
         self.refract_intervals_1 = next_refract_intervals_1;
-        self.accumulated_weights_1_to_2 = next_accumulated_weights_1_to_2;
 
         if self.logger.is_some() {
             let total_2 = self.get_accumulated_weights_sum(2);
@@ -382,12 +381,13 @@ impl Network {
     }
 
     fn shift_2_to_1(&mut self) {
-        let next_neurons_1 = apply_synapses(
+        apply_synapses(
             &self.kernel_synapses,
             self.layer_size,
             &self.accumulated_weights_2_to_1,
             &self.distance_weights_2_to_1,
             &self.neurons_2,
+            &mut self.neurons_1,
             &self.refract_intervals_1,
             self.synapse_params.refract_interval,
             self.synapse_params.threshold,
@@ -398,12 +398,12 @@ impl Network {
         )
         .unwrap();
 
-        let next_accumulated_weights_2_to_1 = recount_accumulated_weights(
+        recount_accumulated_weights(
             &self.kernel_accumulated_weights,
             self.layer_size,
-            &self.accumulated_weights_2_to_1,
+            &mut self.accumulated_weights_2_to_1,
             &self.neurons_2,
-            &next_neurons_1,
+            &self.neurons_1,
             &self.refract_intervals_1,
             self.synapse_params.g_dec,
             self.synapse_params.g_inc,
@@ -420,9 +420,7 @@ impl Network {
             &self.synapse_params.refract_interval,
         );
 
-        self.neurons_1 = next_neurons_1;
         self.refract_intervals_2 = next_refract_intervals_2;
-        self.accumulated_weights_2_to_1 = next_accumulated_weights_2_to_1;
 
         if self.logger.is_some() {
             let total_1 = self.get_accumulated_weights_sum(1);

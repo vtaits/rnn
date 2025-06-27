@@ -12,6 +12,7 @@ pub fn init_data_layer_by_env(
         train,
         end_measurement_index,
         start_measurement_index,
+        redefine_params,
         ..
     } = params;
 
@@ -33,6 +34,7 @@ pub fn init_data_layer_by_env(
             end_index,
             start_measurement_index: start_measurement_index.clone(),
             end_measurement_index: end_measurement_index.clone(),
+            redefine_params: redefine_params.clone(),
         },
     );
 
