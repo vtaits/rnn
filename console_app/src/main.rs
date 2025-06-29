@@ -55,11 +55,11 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         synapse_params,
         Some(Box::new(MultipleFileLogger::new(
             MultipleFileLoggerParams {
-                weights_diff_path_1: Some("diffs1.txt"),
-                weights_diff_path_2: Some("diffs2.txt"),
-                sum_path_1: Some("total1.txt"),
-                sum_path_2: Some("total2.txt"),
-                count_path: Some("count.txt"),
+                weights_diff_path_1: Some("diffs1.log"),
+                weights_diff_path_2: Some("diffs2.log"),
+                sum_path_1: Some("total1.log"),
+                sum_path_2: Some("total2.log"),
+                count_path: Some("count.log"),
             },
             20,
         ))),

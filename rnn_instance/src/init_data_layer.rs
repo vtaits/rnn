@@ -60,11 +60,11 @@ pub fn init_data_layer(
         if is_log_to_files {
             Some(Box::new(MultipleFileLogger::new(
                 MultipleFileLoggerParams {
-                    weights_diff_path_1: Some("diffs1.txt"),
-                    weights_diff_path_2: Some("diffs2.txt"),
-                    sum_path_1: Some("total1.txt"),
-                    sum_path_2: Some("total2.txt"),
-                    count_path: Some("count.txt"),
+                    weights_diff_path_1: Some("diffs1.log"),
+                    weights_diff_path_2: Some("diffs2.log"),
+                    sum_path_1: Some("total1.log"),
+                    sum_path_2: Some("total2.log"),
+                    count_path: Some("count.log"),
                 },
                 field_width * field_height,
             )))
