@@ -20,9 +20,6 @@ use crate::LoggerEvent;
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
     get_synapse_mask::get_synapse_mask,
-    recount_accumulated_weights::{
-        build_recount_accumulated_weights_kernel, recount_accumulated_weights,
-    },
     spiral::get_last_field,
     structures::{
         CompiledKernel, LayerParams, NetworkDumpDeserialize, NetworkDumpSerialize, SynapseParams,
@@ -40,8 +37,6 @@ pub struct Network {
     distance_weights_1_to_2: Array2<f32>,
     // distance weights of synapses from the second layer to the first layer
     distance_weights_2_to_1: Array2<f32>,
-    // compiled kernel for recount accumulated weights with opencl
-    kernel_accumulated_weights: CompiledKernel,
     // compiled kernel for recount neurons and refract intervals with opencl
     kernel_synapses: CompiledKernel,
     // computed array of indexes of neurons in last field to receive prediction data
@@ -179,8 +174,6 @@ impl Network {
             accumulated_weights_2_to_1,
         ) = set_initial_connections(&layer_params, &computed_params, &synapse_params, &mask);
 
-        let kernel_accumulated_weights =
-            build_recount_accumulated_weights_kernel(layer_size).unwrap();
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
         let last_field_indexes = get_last_field_indexes(&layer_params, &computed_params);
@@ -191,7 +184,6 @@ impl Network {
             computed_params,
             distance_weights_1_to_2,
             distance_weights_2_to_1,
-            kernel_accumulated_weights,
             kernel_synapses,
             last_field_indexes,
             layer_width,
@@ -228,8 +220,6 @@ impl Network {
 
         let layer_size = get_layer_size(&parsed_dump.layer_params, &computed_params);
 
-        let kernel_accumulated_weights =
-            build_recount_accumulated_weights_kernel(layer_size).unwrap();
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
         let last_field_indexes =
@@ -241,7 +231,6 @@ impl Network {
             computed_params,
             distance_weights_1_to_2: parsed_dump.distance_weights_1_to_2,
             distance_weights_2_to_1: parsed_dump.distance_weights_2_to_1,
-            kernel_accumulated_weights,
             kernel_synapses,
             last_field_indexes,
             layer_width,
@@ -333,7 +322,7 @@ impl Network {
         apply_synapses(
             &self.kernel_synapses,
             self.layer_size,
-            &self.accumulated_weights_1_to_2,
+            &mut self.accumulated_weights_1_to_2,
             &self.distance_weights_1_to_2,
             &self.neurons_1,
             &mut self.neurons_2,
@@ -344,16 +333,6 @@ impl Network {
             self.synapse_params.gamma_dec,
             0.0,
             self.computed_params.excited_neurons_limit,
-        )
-        .unwrap();
-
-        recount_accumulated_weights(
-            &self.kernel_accumulated_weights,
-            self.layer_size,
-            &mut self.accumulated_weights_1_to_2,
-            &self.neurons_1,
-            &self.neurons_2,
-            &self.refract_intervals_2,
             self.synapse_params.g_dec,
             self.synapse_params.g_inc,
             self.synapse_params.min_g,
@@ -384,7 +363,7 @@ impl Network {
         apply_synapses(
             &self.kernel_synapses,
             self.layer_size,
-            &self.accumulated_weights_2_to_1,
+            &mut self.accumulated_weights_2_to_1,
             &self.distance_weights_2_to_1,
             &self.neurons_2,
             &mut self.neurons_1,
@@ -395,16 +374,6 @@ impl Network {
             self.synapse_params.gamma_dec,
             self.synapse_params.g_0,
             self.computed_params.excited_neurons_limit,
-        )
-        .unwrap();
-
-        recount_accumulated_weights(
-            &self.kernel_accumulated_weights,
-            self.layer_size,
-            &mut self.accumulated_weights_2_to_1,
-            &self.neurons_2,
-            &self.neurons_1,
-            &self.refract_intervals_1,
             self.synapse_params.g_dec,
             self.synapse_params.g_inc,
             self.synapse_params.min_g,

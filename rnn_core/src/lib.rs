@@ -8,7 +8,6 @@ mod get_synapse_mask;
 mod logger;
 mod network;
 mod prediction;
-mod recount_accumulated_weights;
 mod recount_refract_intervals;
 mod set_initial_connections;
 mod shift_signal;

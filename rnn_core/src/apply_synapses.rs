@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use ndarray::{Array1, Array2};
 use ocl::{Buffer, Kernel, ProQue};
 
+use crate::logger::{Logger, LoggerEvent};
 use crate::structures::CompiledKernel;
 
 pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKernel> {
@@ -26,6 +27,12 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
         .arg_named("gamma_inc", 0.0_f32)
         .arg_named("gamma_dec", 0.0_f32)
         .arg_named("g_0", 0.0_f32)
+        .arg_named("g_dec", 0.0_f32)
+        .arg_named("g_inc", 0.0_f32)
+        .arg_named("min_g", 0.0_f32)
+        .arg_named("max_g", 0.0_f32)
+        .arg_named("inc_counter", None::<&Buffer<i32>>)
+        .arg_named("dec_counter", None::<&Buffer<i32>>)
         .build()?;
 
     Ok(CompiledKernel {
@@ -64,7 +71,7 @@ fn remove_extra_neurons(neurons: &mut Vec<u8>, limit: usize) {
 pub fn apply_synapses(
     compiled_kernel: &CompiledKernel,
     layer_size: usize,
-    accumulated_weights: &Array2<f32>,
+    accumulated_weights: &mut Array2<f32>,
     distance_weights: &Array2<f32>,
     neurons_from: &Array1<u8>,
     neurons_to: &mut Array1<u8>,
@@ -75,9 +82,18 @@ pub fn apply_synapses(
     gamma_dec: f32,
     g_0: f32,
     excited_neurons_limit: usize,
+    g_dec: f32,
+    g_inc: f32,
+    min_g: f32,
+    max_g: f32,
+    layer_index: usize,
+    logger: &mut Option<Box<dyn Logger>>,
 ) -> ocl::Result<()> {
+    let mut accumulated_weights_flat = accumulated_weights.as_slice().unwrap().to_vec();
+
     let buffer_accumulated_weights = Buffer::<f32>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
+        .flags(ocl::flags::MEM_READ_WRITE)
         .len(accumulated_weights.len())
         .copy_host_slice(accumulated_weights.as_slice().unwrap())
         .build()?;
@@ -106,6 +122,22 @@ pub fn apply_synapses(
         .len(layer_size)
         .build()?;
 
+    let buffer_inc_counter = Buffer::<i32>::builder()
+        .queue(compiled_kernel.pro_que.queue().clone())
+        .flags(ocl::flags::MEM_READ_WRITE)
+        .len(1)
+        .fill_val(0)
+        .build()
+        .unwrap();
+
+    let buffer_dec_counter = Buffer::<i32>::builder()
+        .queue(compiled_kernel.pro_que.queue().clone())
+        .flags(ocl::flags::MEM_READ_WRITE)
+        .len(1)
+        .fill_val(0)
+        .build()
+        .unwrap();
+
     let kernel = compiled_kernel.kernel.lock().unwrap();
 
     unsafe {
@@ -120,6 +152,12 @@ pub fn apply_synapses(
         kernel.set_arg("gamma_inc", gamma_inc)?;
         kernel.set_arg("gamma_dec", gamma_dec)?;
         kernel.set_arg("g_0", g_0)?;
+        kernel.set_arg("g_dec", g_dec)?;
+        kernel.set_arg("g_inc", g_inc)?;
+        kernel.set_arg("min_g", min_g)?;
+        kernel.set_arg("max_g", max_g)?;
+        kernel.set_arg("inc_counter", &buffer_inc_counter)?;
+        kernel.set_arg("dec_counter", &buffer_dec_counter)?;
         kernel.enq()?;
     }
 
@@ -133,6 +171,35 @@ pub fn apply_synapses(
         .as_slice_mut()
         .unwrap()
         .copy_from_slice(&neurons_to_flat);
+
+    buffer_accumulated_weights
+        .read(&mut accumulated_weights_flat)
+        .enq()?;
+
+    accumulated_weights
+        .as_slice_mut()
+        .unwrap()
+        .copy_from_slice(&accumulated_weights_flat);
+
+    let mut inc_counter_result = vec![0i32; 1];
+    buffer_inc_counter
+        .read(&mut inc_counter_result)
+        .enq()
+        .unwrap();
+
+    let mut dec_counter_result = vec![0i32; 1];
+    buffer_dec_counter
+        .read(&mut dec_counter_result)
+        .enq()
+        .unwrap();
+
+    if let Some(logger) = logger {
+        logger.log_event(LoggerEvent::ChangeLayerWeights(
+            layer_index,
+            inc_counter_result[0] as u8,
+            dec_counter_result[0] as u8,
+        ));
+    }
 
     Ok(())
 }
