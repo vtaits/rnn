@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:24-alpine
 
 RUN curl -fsSL https://bun.sh/install | bash
 
