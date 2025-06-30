@@ -17,6 +17,7 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
         .queue(pro_que.queue().clone())
         .global_work_size(layer_size)
         .arg_named("accumulated_weights", None::<&Buffer<f32>>)
+        .arg_named("strong_synapses", None::<&Buffer<u64>>)
         .arg_named("distance_weights", None::<&Buffer<f32>>)
         .arg_named("neurons_from", None::<&Buffer<u8>>)
         .arg_named("refract_intervals_to", None::<&Buffer<u8>>)
@@ -31,6 +32,7 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
         .arg_named("g_inc", 0.0_f32)
         .arg_named("min_g", 0.0_f32)
         .arg_named("max_g", 0.0_f32)
+        .arg_named("is_prediction", 0_u8)
         .arg_named("inc_counter", None::<&Buffer<i32>>)
         .arg_named("dec_counter", None::<&Buffer<i32>>)
         .build()?;
@@ -70,8 +72,10 @@ fn remove_extra_neurons(neurons: &mut Vec<u8>, limit: usize) {
  */
 pub fn apply_synapses(
     compiled_kernel: &CompiledKernel,
+    is_prediction: bool,
     layer_size: usize,
     accumulated_weights: &mut Array2<f32>,
+    strong_synapses: &Array1<u64>,
     distance_weights: &Array2<f32>,
     neurons_from: &Array1<u8>,
     neurons_to: &mut Array1<u8>,
@@ -96,6 +100,12 @@ pub fn apply_synapses(
         .flags(ocl::flags::MEM_READ_WRITE)
         .len(accumulated_weights.len())
         .copy_host_slice(accumulated_weights.as_slice().unwrap())
+        .build()?;
+
+    let buffer_strong_synapses = Buffer::<u64>::builder()
+        .queue(compiled_kernel.pro_que.queue().clone())
+        .len(strong_synapses.len())
+        .copy_host_slice(strong_synapses.as_slice().unwrap())
         .build()?;
 
     let buffer_distance_weights = Buffer::<f32>::builder()
@@ -142,6 +152,7 @@ pub fn apply_synapses(
 
     unsafe {
         kernel.set_arg("accumulated_weights", &buffer_accumulated_weights)?;
+        kernel.set_arg("strong_synapses", &buffer_strong_synapses)?;
         kernel.set_arg("distance_weights", &buffer_distance_weights)?;
         kernel.set_arg("neurons_from", &buffer_neurons_from)?;
         kernel.set_arg("refract_intervals_to", &buffer_refract_intervals_to)?;
@@ -156,6 +167,7 @@ pub fn apply_synapses(
         kernel.set_arg("g_inc", g_inc)?;
         kernel.set_arg("min_g", min_g)?;
         kernel.set_arg("max_g", max_g)?;
+        kernel.set_arg("is_prediction", if is_prediction { 1_u8 } else { 0_u8 })?;
         kernel.set_arg("inc_counter", &buffer_inc_counter)?;
         kernel.set_arg("dec_counter", &buffer_dec_counter)?;
         kernel.enq()?;

@@ -33,6 +33,7 @@ async fn main() -> Result<(), ()> {
             end_index: None,
             end_measurement_index: Some(end_index),
             start_measurement_index: Some(start_index),
+            redefine_params: None,
         });
 
         let (positive, negative, false_positive_neurons_result, false_negative_neurons_result) =

@@ -1,11 +1,11 @@
-use ndarray::Array2;
+use ndarray::{Array1, Array2};
 
 use crate::{
     get_neuron_coordinates::get_neuron_coordinates,
     get_neuron_index::get_neuron_index,
     get_neuron_index_by_coordinates::get_neuron_index_by_coordinates,
     spiral::{get_last_field, get_next_field},
-    structures::{ComputedParams, SynapseMask},
+    structures::{ComputedParams, InitialConnections, SynapseMask},
     LayerParams, SynapseParams,
 };
 
@@ -173,16 +173,7 @@ pub fn set_initial_connections(
     computed_params: &ComputedParams,
     synapse_params: &SynapseParams,
     mask: &SynapseMask,
-) -> (
-    // distance_weights of synapses from the first layer to the second layer
-    Array2<f32>,
-    // distance_weights of synapses from the second layer to the first layer
-    Array2<f32>,
-    // accumulated of synapses from the first layer to the second layer
-    Array2<f32>,
-    // accumulated of synapses from the second layer to the first layer
-    Array2<f32>,
-) {
+) -> InitialConnections {
     let layer_size = layer_params.field_width
         * layer_params.field_height
         * layer_params.layer_width
@@ -190,6 +181,11 @@ pub fn set_initial_connections(
 
     let mut distance_weights_1_to_2 = Array2::<f32>::zeros([layer_size, layer_size]);
     let mut distance_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);
+
+    // synapses to identical map from the first layer to the second layer
+    let mut strong_synapses_1_to_2 = Array1::<u64>::zeros([layer_size]);
+    // synapses to identical map from the second layer to the first layer
+    let mut strong_synapses_2_to_1 = Array1::<u64>::zeros([layer_size]);
 
     let mut accumulated_weights_1_to_2 = Array2::<f32>::zeros([layer_size, layer_size]);
     let mut accumulated_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);
@@ -225,6 +221,8 @@ pub fn set_initial_connections(
                     accumulated_weights_1_to_2[[neuron_index, neuron_index]] =
                         synapse_params.initial_strong_g;
 
+                    strong_synapses_1_to_2[neuron_index] = neuron_index as u64;
+
                     let (x, y) = get_neuron_coordinates(
                         layer_params,
                         layer_x,
@@ -244,6 +242,10 @@ pub fn set_initial_connections(
                         &has_conntections_1_to_2,
                     );
 
+                    if layer_x == 0 && layer_y == 0 {
+                        strong_synapses_2_to_1[neuron_index] = layer_size as u64;
+                    }
+
                     // the last field have no connection to the first layer
                     if layer_x != finish_x || layer_y != finish_y {
                         // from 2 to 1
@@ -258,6 +260,8 @@ pub fn set_initial_connections(
 
                         accumulated_weights_2_to_1[[neuron_2_to_1_index, neuron_index]] =
                             synapse_params.initial_strong_g;
+
+                        strong_synapses_2_to_1[neuron_2_to_1_index] = neuron_index as u64;
 
                         let (x_2_to_1, y_2_to_1) = get_neuron_coordinates(
                             layer_params,
@@ -283,10 +287,12 @@ pub fn set_initial_connections(
         }
     }
 
-    (
+    InitialConnections {
         distance_weights_1_to_2,
         distance_weights_2_to_1,
+        strong_synapses_1_to_2,
+        strong_synapses_2_to_1,
         accumulated_weights_1_to_2,
         accumulated_weights_2_to_1,
-    )
+    }
 }

@@ -16,6 +16,7 @@ use crate::set_initial_connections::set_initial_connections;
 use crate::shift_signal::shift_signal;
 use crate::structures::Action;
 use crate::structures::ComputedParams;
+use crate::structures::InitialConnections;
 use crate::LoggerEvent;
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
@@ -33,6 +34,10 @@ pub struct Network {
     accumulated_weights_1_to_2: Array2<f32>,
     // acumulated weights of synapses from the second layer to the first layer
     accumulated_weights_2_to_1: Array2<f32>,
+    // synapses to identical map from the first layer to the second layer
+    strong_synapses_1_to_2: Array1<u64>,
+    // synapses to identical map from the second layer to the first layer
+    strong_synapses_2_to_1: Array1<u64>,
     // distance weights of synapses from the first layer to the second layer
     distance_weights_1_to_2: Array2<f32>,
     // distance weights of synapses from the second layer to the first layer
@@ -167,12 +172,14 @@ impl Network {
 
         let mask = get_synapse_mask(&synapse_params);
 
-        let (
+        let InitialConnections {
             distance_weights_1_to_2,
             distance_weights_2_to_1,
+            strong_synapses_1_to_2,
+            strong_synapses_2_to_1,
             accumulated_weights_1_to_2,
             accumulated_weights_2_to_1,
-        ) = set_initial_connections(&layer_params, &computed_params, &synapse_params, &mask);
+        } = set_initial_connections(&layer_params, &computed_params, &synapse_params, &mask);
 
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
@@ -184,6 +191,8 @@ impl Network {
             computed_params,
             distance_weights_1_to_2,
             distance_weights_2_to_1,
+            strong_synapses_1_to_2,
+            strong_synapses_2_to_1,
             kernel_synapses,
             last_field_indexes,
             layer_width,
@@ -231,6 +240,8 @@ impl Network {
             computed_params,
             distance_weights_1_to_2: parsed_dump.distance_weights_1_to_2,
             distance_weights_2_to_1: parsed_dump.distance_weights_2_to_1,
+            strong_synapses_1_to_2: parsed_dump.strong_synapses_1_to_2,
+            strong_synapses_2_to_1: parsed_dump.strong_synapses_2_to_1,
             kernel_synapses,
             last_field_indexes,
             layer_width,
@@ -273,6 +284,8 @@ impl Network {
         let dump = NetworkDumpSerialize {
             accumulated_weights_1_to_2: &self.accumulated_weights_1_to_2,
             accumulated_weights_2_to_1: &self.accumulated_weights_2_to_1,
+            strong_synapses_1_to_2: &self.strong_synapses_1_to_2,
+            strong_synapses_2_to_1: &self.strong_synapses_2_to_1,
             distance_weights_1_to_2: &self.distance_weights_1_to_2,
             distance_weights_2_to_1: &self.distance_weights_2_to_1,
             neurons_1: &self.neurons_1,
@@ -321,8 +334,10 @@ impl Network {
     fn shift_1_to_2(&mut self) {
         apply_synapses(
             &self.kernel_synapses,
+            self.prediction.is_some(),
             self.layer_size,
             &mut self.accumulated_weights_1_to_2,
+            &self.strong_synapses_1_to_2,
             &self.distance_weights_1_to_2,
             &self.neurons_1,
             &mut self.neurons_2,
@@ -362,8 +377,10 @@ impl Network {
     fn shift_2_to_1(&mut self) {
         apply_synapses(
             &self.kernel_synapses,
+            self.prediction.is_some(),
             self.layer_size,
             &mut self.accumulated_weights_2_to_1,
+            &self.strong_synapses_2_to_1,
             &self.distance_weights_2_to_1,
             &self.neurons_2,
             &mut self.neurons_1,
@@ -550,7 +567,11 @@ impl Network {
 
         self.push_data_and_apply(bit_vec, prediction_depth);
 
-        self.prediction.as_ref().unwrap().get_prediction()
+        let res = self.prediction.as_ref().unwrap().get_prediction();
+
+        self.prediction = None;
+
+        res
     }
 
     /**

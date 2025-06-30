@@ -160,6 +160,7 @@ async fn main() -> std::io::Result<()> {
         end_index: None,
         end_measurement_index: None,
         start_measurement_index: None,
+        redefine_params: None,
     });
 
     let client = Client::new();

@@ -26,6 +26,21 @@ pub struct CompiledKernel {
     pub pro_que: ProQue,
 }
 
+pub struct InitialConnections {
+    // distance_weights of synapses from the first layer to the second layer
+    pub distance_weights_1_to_2: Array2<f32>,
+    // distance_weights of synapses from the second layer to the first layer
+    pub distance_weights_2_to_1: Array2<f32>,
+    // synapses to identical map from the first layer to the second layer
+    pub strong_synapses_1_to_2: Array1<u64>,
+    // synapses to identical map from the second layer to the first layer
+    pub strong_synapses_2_to_1: Array1<u64>,
+    // accumulated of synapses from the first layer to the second layer
+    pub accumulated_weights_1_to_2: Array2<f32>,
+    // accumulated of synapses from the second layer to the first layer
+    pub accumulated_weights_2_to_1: Array2<f32>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct SynapseParams {
     pub alpha: f32,
@@ -71,6 +86,10 @@ pub struct NetworkDumpSerialize<'a> {
     pub accumulated_weights_1_to_2: &'a Array2<f32>,
     // acumulated weights of synapses from the second layer to the first layer
     pub accumulated_weights_2_to_1: &'a Array2<f32>,
+    // synapses to identical map from the first layer to the second layer
+    pub strong_synapses_1_to_2: &'a Array1<u64>,
+    // synapses to identical map from the second layer to the first layer
+    pub strong_synapses_2_to_1: &'a Array1<u64>,
     // distance weights of synapses from the first layer to the second layer
     pub distance_weights_1_to_2: &'a Array2<f32>,
     // distance weights of synapses from the second layer to the first layer
@@ -92,6 +111,10 @@ pub struct NetworkDumpDeserialize {
     pub accumulated_weights_1_to_2: Array2<f32>,
     // acumulated weights of synapses from the second layer to the first layer
     pub accumulated_weights_2_to_1: Array2<f32>,
+    // synapses to identical map from the first layer to the second layer
+    pub strong_synapses_1_to_2: Array1<u64>,
+    // synapses to identical map from the second layer to the first layer
+    pub strong_synapses_2_to_1: Array1<u64>,
     // distance weights of synapses from the first layer to the second layer
     pub distance_weights_1_to_2: Array2<f32>,
     // distance weights of synapses from the second layer to the first layer

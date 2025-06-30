@@ -101,6 +101,7 @@ async fn main() -> std::io::Result<()> {
         end_index: None,
         start_measurement_index: None,
         end_measurement_index: None,
+        redefine_params: None,
     });
 
     let app_data = web::Data::new(AppState {
