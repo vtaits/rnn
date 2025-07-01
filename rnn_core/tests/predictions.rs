@@ -2,7 +2,7 @@ use rnn_core::{LayerParams, Network, SynapseParams};
 use rstest::rstest;
 
 #[rstest]
-fn identical_prediction(
+fn identical_prediction_small_network(
     #[values(
         vec![true, false, false, false],
         vec![false, true, false, false],
@@ -14,8 +14,8 @@ fn identical_prediction(
         vec![false, true, false, true],
     )]
     bits: Vec<bool>,
-    #[values(1, 2, 3, 4)] layer_width: usize,
-    #[values(1, 2, 3, 4)] layer_height: usize,
+    #[values(1, 2)] layer_width: usize,
+    #[values(1, 2)] layer_height: usize,
 ) {
     let mut network = Network::new(
         LayerParams {
@@ -37,9 +37,57 @@ fn identical_prediction(
             h: 3.0,
             refract_interval: 2,
             threshold: 0.9,
-            signal_shift_interval: 3,
+            signal_shift_interval: 0,
             signal_rest_shift_limit: Some(1),
-            // signal_copy_shifts: Some(vec![(1, 0), (0, 1), (0, -1), (-1, 0)]),
+            signal_copy_shifts: None,
+            excite_neuron_limit: 0.8,
+        },
+        None,
+    );
+
+    let result = network.predict(&bits, 0);
+
+    assert_eq!(result, bits);
+}
+
+#[rstest]
+fn identical_prediction_big_network(
+    #[values(
+        vec![true, false, false, false],
+        vec![false, true, false, false],
+        vec![false, false, true, false],
+        vec![false, false, false, true],
+        vec![true, true, false, false],
+        vec![false, true, true, false],
+        vec![false, false, true, true],
+        vec![false, true, false, true],
+    )]
+    bits: Vec<bool>,
+    #[values(2, 3, 4)] layer_width: usize,
+    #[values(2, 3, 4)] layer_height: usize,
+) {
+    let mut network = Network::new(
+        LayerParams {
+            field_width: 2,
+            field_height: 2,
+            layer_width,
+            layer_height,
+        },
+        SynapseParams {
+            alpha: 3.0,
+            gamma_dec: 0.5,
+            gamma_inc: 0.5,
+            g_dec: 0.0,
+            g_inc: 0.0,
+            g_0: 1.0,
+            min_g: -10.0,
+            max_g: 10.0,
+            initial_strong_g: 7.0,
+            h: 3.0,
+            refract_interval: 2,
+            threshold: 0.9,
+            signal_shift_interval: 2,
+            signal_rest_shift_limit: Some(1),
             signal_copy_shifts: Some(vec![(1, 0)]),
             excite_neuron_limit: 0.8,
         },

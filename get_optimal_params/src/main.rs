@@ -29,13 +29,13 @@ async fn main() -> Result<(), ()> {
     let ranges = vec![
         // alpha
         // frange(1.1, 3.01, 0.1),
-        frange(1.5, 3.01, 0.1),
+        frange(1.1, 2.01, 0.1),
         // gamma_dec
-        // frange(0.3, 0.7, 0.1),
-        vec![0.5],
+        frange(0.3, 0.7, 0.1),
+        // vec![0.5],
         // gamma_inc
-        // frange(0.3, 0.7, 0.1),
-        vec![0.5],
+        frange(0.3, 0.7, 0.1),
+        // vec![0.5],
         // g_dec
         // frange(1.0, 3.01, 1.0),
         vec![1.0],
@@ -47,12 +47,11 @@ async fn main() -> Result<(), ()> {
         vec![1.0],
         // h = 1.4
         // frange(0.5, 3.1, 0.1),
-        frange(0.5, 3.1, 0.25),
+        frange(0.75, 2.6, 0.25),
         // refract_interval = 2
         // frange(1.0, 3.01, 1.0),
         // threshold
-        // frange(0.8, 0.961, 0.2),
-        vec![0.85],
+        frange(0.84, 0.941, 0.02),
         // signal_shift_interval = 1
         // frange(1.0, 3.01, 1.0),
     ];
@@ -79,8 +78,6 @@ async fn main() -> Result<(), ()> {
             h,
             threshold,
         };
-
-        println!("{:?}", redefine_params);
 
         let mut total_positive = 0;
         let mut total_negative = 0;
@@ -112,18 +109,22 @@ async fn main() -> Result<(), ()> {
             false_negative_neurons += false_negative_neurons_result;
         }
 
-        println!(
-            "positive: {}, negative: {}, total: {}, false positive: {}, false negative: {}",
-            total_positive,
-            total_negative,
-            total_positive + total_negative,
-            false_positive_neurons,
-            false_negative_neurons,
-        );
+        if total_positive > 32 {
+            println!("{:?}", redefine_params);
 
-        println!();
-        println!("=======================");
-        println!();
+            println!(
+                "positive: {}, negative: {}, total: {}, false positive: {}, false negative: {}",
+                total_positive,
+                total_negative,
+                total_positive + total_negative,
+                false_positive_neurons,
+                false_negative_neurons,
+            );
+
+            println!();
+            println!("=======================");
+            println!();
+        }
     }
 
     Ok(())

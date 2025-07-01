@@ -14,6 +14,7 @@ use crate::prediction::PredictionProcessing;
 use crate::recount_refract_intervals::recount_refract_intervals;
 use crate::set_initial_connections::set_initial_connections;
 use crate::shift_signal::shift_signal;
+use crate::spiral::get_output_field;
 use crate::structures::Action;
 use crate::structures::ComputedParams;
 use crate::structures::InitialConnections;
@@ -21,7 +22,6 @@ use crate::LoggerEvent;
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
     get_synapse_mask::get_synapse_mask,
-    spiral::get_last_field,
     structures::{
         CompiledKernel, LayerParams, NetworkDumpDeserialize, NetworkDumpSerialize, SynapseParams,
     },
@@ -44,8 +44,9 @@ pub struct Network {
     distance_weights_2_to_1: Array2<f32>,
     // compiled kernel for recount neurons and refract intervals with opencl
     kernel_synapses: CompiledKernel,
+    output_field_index: usize,
     // computed array of indexes of neurons in last field to receive prediction data
-    last_field_indexes: Vec<usize>,
+    output_field_neuron_indexes: Vec<usize>,
     layer_width: usize,
     layer_height: usize,
     // number of neurons
@@ -68,21 +69,30 @@ pub struct Network {
     prediction: Option<PredictionProcessing>,
 }
 
-fn get_last_field_indexes(
+fn get_output_field_index(synapse_params: &SynapseParams) -> usize {
+    synapse_params.signal_shift_interval as usize
+        + synapse_params
+            .signal_copy_shifts
+            .as_ref()
+            .map_or(0, |signal_copy_shifts| signal_copy_shifts.len())
+}
+
+fn get_output_field_neuron_indexes(
     layer_params: &LayerParams,
     computed_params: &ComputedParams,
+    output_field_index: usize,
 ) -> Vec<usize> {
     let mut res = vec![];
 
-    let (last_field_x, last_field_y) = get_last_field(layer_params);
+    let (output_field_x, output_field_y) = get_output_field(layer_params, output_field_index);
 
     for neuron_in_field_y in 0..layer_params.field_height {
         for neuron_in_field_x in 0..layer_params.field_width {
             res.push(get_neuron_index(
                 layer_params,
                 computed_params,
-                last_field_x,
-                last_field_y,
+                output_field_x,
+                output_field_y,
                 neuron_in_field_x,
                 neuron_in_field_y,
             ));
@@ -108,17 +118,23 @@ fn get_computed_params(
     let row_width = field_width * layer_width;
     let column_height = field_height * layer_height;
     let field_count = layer_width * layer_height;
-    let single_signal_shifts = 1
+
+    // uncomment to read from the last field
+
+    /* let single_signal_shifts = 1
         + synapse_params
             .signal_copy_shifts
             .as_ref()
             .map_or(0, |signal_copy_shifts| signal_copy_shifts.len())
         + synapse_params.signal_shift_interval as usize;
+
     let prediction_rest_shifts = if field_count > single_signal_shifts {
         field_count - single_signal_shifts
     } else {
         0
-    };
+    }; */
+
+    let prediction_rest_shifts = 0;
 
     let excited_neurons_limit =
         ((field_size * field_count) as f32 * synapse_params.excite_neuron_limit) as usize;
@@ -183,7 +199,10 @@ impl Network {
 
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
-        let last_field_indexes = get_last_field_indexes(&layer_params, &computed_params);
+        let output_field_index = get_output_field_index(&synapse_params);
+
+        let output_field_neuron_indexes =
+            get_output_field_neuron_indexes(&layer_params, &computed_params, output_field_index);
 
         Network {
             accumulated_weights_1_to_2,
@@ -194,7 +213,8 @@ impl Network {
             strong_synapses_1_to_2,
             strong_synapses_2_to_1,
             kernel_synapses,
-            last_field_indexes,
+            output_field_index,
+            output_field_neuron_indexes,
             layer_width,
             layer_height,
             field_size,
@@ -231,8 +251,13 @@ impl Network {
 
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
-        let last_field_indexes =
-            get_last_field_indexes(&parsed_dump.layer_params, &computed_params);
+        let output_field_index = get_output_field_index(&parsed_dump.synapse_params);
+
+        let output_field_neuron_indexes = get_output_field_neuron_indexes(
+            &parsed_dump.layer_params,
+            &computed_params,
+            output_field_index,
+        );
 
         let network = Network {
             accumulated_weights_1_to_2: parsed_dump.accumulated_weights_1_to_2,
@@ -243,7 +268,8 @@ impl Network {
             strong_synapses_1_to_2: parsed_dump.strong_synapses_1_to_2,
             strong_synapses_2_to_1: parsed_dump.strong_synapses_2_to_1,
             kernel_synapses,
-            last_field_indexes,
+            output_field_index,
+            output_field_neuron_indexes,
             layer_width,
             layer_height,
             field_size,
@@ -466,7 +492,7 @@ impl Network {
             prediction.add_tick_split();
 
             if prediction.should_read() {
-                prediction.read(&self.get_last_field_state());
+                prediction.read(&self.get_output_field_state());
             }
         } */
 
@@ -477,7 +503,7 @@ impl Network {
                 prediction.shift();
 
                 if prediction.should_read() {
-                    prediction.read(&self.get_last_field_state());
+                    prediction.read(&self.get_output_field_state());
                 }
             } */
         }
@@ -562,7 +588,7 @@ impl Network {
         self.prediction = Some(PredictionProcessing::new(
             tick_count,
             self.computed_params.field_size,
-            self.computed_params.field_count,
+            self.output_field_index + 1,
         ));
 
         self.push_data_and_apply(bit_vec, prediction_depth);
@@ -619,7 +645,7 @@ impl Network {
                 prediction.shift();
 
                 if prediction.should_read() {
-                    prediction.read(&self.get_last_field_state());
+                    prediction.read(&self.get_output_field_state());
                 }
             }
         }
@@ -627,10 +653,10 @@ impl Network {
         prediction.get_prediction()
     }
 
-    pub fn get_last_field_state(&self) -> Vec<u8> {
+    pub fn get_output_field_state(&self) -> Vec<u8> {
         let mut res: Vec<u8> = vec![];
 
-        for field_index in self.last_field_indexes.iter() {
+        for field_index in self.output_field_neuron_indexes.iter() {
             res.push(self.neurons_2[[*field_index]]);
         }
 
@@ -913,7 +939,7 @@ impl Network {
                     .map_or(false, |prediction| prediction.should_read());
 
                 if should_read {
-                    let last_field_state = self.get_last_field_state();
+                    let last_field_state = self.get_output_field_state();
 
                     self.prediction.as_mut().unwrap().read(&last_field_state);
                 }
@@ -922,7 +948,9 @@ impl Network {
                 self.shift_2_to_1();
 
                 if let Some(prediction) = &mut self.prediction {
-                    prediction.shift();
+                    if !prediction.is_finished() {
+                        prediction.shift();
+                    }
                 }
             }
         }

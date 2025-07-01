@@ -54,3 +54,16 @@ pub fn get_last_field(params: &LayerParams) -> (usize, usize) {
         params.layer_height - 1,
     )
 }
+
+pub fn get_output_field(params: &LayerParams, output_field_index: usize) -> (usize, usize) {
+    let output_field_y = output_field_index / params.layer_width;
+    let output_field_x_rest = output_field_index % params.layer_width;
+
+    let output_field_x = if output_field_y % 2 == 0 {
+        output_field_x_rest
+    } else {
+        params.layer_width - 1 - output_field_x_rest
+    };
+
+    (output_field_x, output_field_y)
+}
