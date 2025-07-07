@@ -6,7 +6,7 @@ use rnn_instance::{init_data_layer_by_env, InitDataLayerParams};
 #[tokio::main]
 async fn main() -> Result<(), ()> {
     let (data_layer, _) = init_data_layer_by_env(&InitDataLayerParams {
-        train: true,
+        train: false,
         start_index: None,
         end_index: None,
         start_measurement_index: None,

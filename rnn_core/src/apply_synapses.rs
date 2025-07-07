@@ -44,12 +44,7 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
 }
 
 fn remove_extra_neurons(neurons: &mut Vec<u8>, limit: usize) {
-    let mut excited_count: usize = 0;
-    for i in neurons.iter() {
-        if *i > 0 {
-            excited_count += 1;
-        }
-    }
+    let excited_count = neurons.iter().filter(|&&x| x != 0).count();
 
     if excited_count <= limit {
         return;
@@ -177,7 +172,9 @@ pub fn apply_synapses(
 
     buffer_next_neurons_to.read(&mut neurons_to_flat).enq()?;
 
-    remove_extra_neurons(&mut neurons_to_flat, excited_neurons_limit);
+    if is_prediction {
+        remove_extra_neurons(&mut neurons_to_flat, excited_neurons_limit);
+    }
 
     neurons_to
         .as_slice_mut()

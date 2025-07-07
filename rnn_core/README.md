@@ -16,10 +16,11 @@ beta(r[i][j]) = 1 / (1 + alpha * (r[i][j]) ^ ( 1 / h ) )
 * g_inc = 0.1
 * g_0 = 1.0
 * max_g = 10.0,
-* initial_strong_g: 5.0
 * h = 2
 * refract_interval = 3
-* threshold = 0.9
+* threshold_train = 0.9
+* threshold_predict_min = 0.8
+* threshold_predict_max = 0.9
 
 # Алгоритм
 
@@ -39,7 +40,7 @@ beta(r[i][j]) = 1 / (1 + alpha * (r[i][j]) ^ ( 1 / h ) )
 
 ## Инициализация
 
-1. Настройка accumulated_weights_1_to_2 и accumulated_weights_2_to_1: если нейроны в блоках друг другу соответствуют, вес равен initial_strong_g, в противном случае 0
+1. Настройка accumulated_weights_1_to_2 и accumulated_weights_2_to_1: если нейроны в блоках друг другу соответствуют, вес равен max_g, в противном случае 0
 
 2. Настройка distance_weights_1_to_2 и distance_weights_2_to_1:
 

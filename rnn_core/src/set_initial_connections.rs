@@ -135,15 +135,15 @@ fn fill_has_conntections(
             cur_layer_y,
         );
 
-        fill_conntected_fields(
-            layer_params,
-            computed_params,
-            has_connections_2_to_1,
-            cur_layer_x,
-            cur_layer_y,
-            cur_layer_x,
-            cur_layer_y,
-        );
+        // fill_conntected_fields(
+        //     layer_params,
+        //     computed_params,
+        //     has_connections_2_to_1,
+        //     cur_layer_x,
+        //     cur_layer_y,
+        //     cur_layer_x,
+        //     cur_layer_y,
+        // );
 
         if cur_layer_x == last_layer_x && cur_layer_y == last_layer_y {
             return;
@@ -161,7 +161,9 @@ fn fill_has_conntections(
             next_field_y,
         );
 
-        prev_fields.push((cur_layer_x, cur_layer_y));
+        if cur_layer_x == 0 && cur_layer_y == 0 {
+            //    prev_fields.push((cur_layer_x, cur_layer_y));
+        }
 
         cur_layer_x = next_field_x;
         cur_layer_y = next_field_y;
@@ -218,8 +220,7 @@ pub fn set_initial_connections(
                         neuron_in_field_y,
                     );
 
-                    accumulated_weights_1_to_2[[neuron_index, neuron_index]] =
-                        synapse_params.initial_strong_g;
+                    accumulated_weights_1_to_2[[neuron_index, neuron_index]] = synapse_params.max_g;
 
                     strong_synapses_1_to_2[neuron_index] = neuron_index as u64;
 
@@ -259,7 +260,7 @@ pub fn set_initial_connections(
                         );
 
                         accumulated_weights_2_to_1[[neuron_2_to_1_index, neuron_index]] =
-                            synapse_params.initial_strong_g;
+                            synapse_params.max_g;
 
                         strong_synapses_2_to_1[neuron_2_to_1_index] = neuron_index as u64;
 

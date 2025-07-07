@@ -29,10 +29,11 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         g_0: 1.0,
         min_g: -10.0,
         max_g: 10.0,
-        initial_strong_g: 7.0,
         h: 3.0,
         refract_interval: 3,
-        threshold: 0.9,
+        threshold_predict_max: 0.9,
+        threshold_predict_min: 0.9,
+        threshold_train: 0.9,
         signal_shift_interval: 2,
         signal_rest_shift_limit: Some(0),
         signal_copy_shifts: Some(vec![(1, 0), (0, 1), (0, -1), (-1, 0)]),
@@ -144,7 +145,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         7873, 7877, 7879, 7883, 7901, 7907, 7919,
     ];
 
-    // let numbers = vec![];
+    let numbers = vec![];
 
     for number in numbers {
         data_layer.push_data(number, 0);

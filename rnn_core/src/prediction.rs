@@ -1,6 +1,13 @@
+use crate::structures::InputPhase;
+
+struct PredictionProcessingTickSplit {
+    counter: usize,
+    input_phase: InputPhase,
+}
+
 pub struct PredictionProcessingTick {
     result: Vec<bool>,
-    tick_splits: Vec<usize>,
+    tick_splits: Vec<PredictionProcessingTickSplit>,
 }
 
 pub struct PredictionProcessing {
@@ -8,7 +15,7 @@ pub struct PredictionProcessing {
     ticks: Vec<PredictionProcessingTick>,
     input_index: usize,
     collect_prediction_index: Option<usize>,
-    field_size: usize,
+    prediction_size: usize,
     field_count: usize,
 }
 
@@ -19,7 +26,7 @@ impl PredictionProcessing {
             ticks: vec![],
             input_index: 0,
             collect_prediction_index: Some(0),
-            field_size,
+            prediction_size: field_size / 2,
             field_count,
         }
     }
@@ -36,7 +43,7 @@ impl PredictionProcessing {
 
         self.ticks.push(PredictionProcessingTick {
             tick_splits: vec![],
-            result: vec![false; self.field_size],
+            result: vec![false; self.prediction_size],
         });
 
         if self.collect_prediction_index.is_none() {
@@ -49,19 +56,24 @@ impl PredictionProcessing {
 
         for tick in self.ticks.iter_mut() {
             for tick_split in tick.tick_splits.iter_mut() {
-                if field_count == *tick_split {
+                if field_count == tick_split.counter {
                     panic!("Signal have not been read");
                 }
 
-                *tick_split += 1;
+                tick_split.counter += 1;
             }
         }
     }
 
-    pub fn add_tick_split(&mut self) {
+    pub fn add_tick_split(&mut self, input_phase: InputPhase) {
         self.shift();
 
-        self.ticks[self.input_index].tick_splits.push(1);
+        self.ticks[self.input_index]
+            .tick_splits
+            .push(PredictionProcessingTickSplit {
+                counter: 1,
+                input_phase,
+            });
     }
 
     pub fn should_read(&self) -> bool {
@@ -71,7 +83,7 @@ impl PredictionProcessing {
                     return false;
                 }
 
-                self.ticks[collect_prediction_index].tick_splits[0] == self.field_count
+                self.ticks[collect_prediction_index].tick_splits[0].counter == self.field_count
             }
             None => false,
         }
@@ -80,9 +92,18 @@ impl PredictionProcessing {
     pub fn read(&mut self, last_field_state: &[u8]) {
         match self.collect_prediction_index {
             Some(collect_prediction_index) => {
-                for (index, value) in last_field_state.iter().enumerate() {
-                    if *value > 0 {
-                        self.ticks[collect_prediction_index].result[index] = true;
+                let input_phase = self.ticks[collect_prediction_index].tick_splits[0].input_phase;
+
+                for pos in 0..self.prediction_size {
+                    let neuron_index = match input_phase {
+                        InputPhase::Even => pos * 2,
+                        InputPhase::Odd => pos * 2 + 1,
+                    };
+
+                    let value = last_field_state[neuron_index];
+
+                    if value > 0 {
+                        self.ticks[collect_prediction_index].result[pos] = true;
                     }
                 }
 
@@ -128,7 +149,7 @@ mod tests {
 
     #[test]
     fn flow() {
-        let mut prediction = PredictionProcessing::new(2, 5, 10);
+        let mut prediction = PredictionProcessing::new(2, 10, 10);
 
         prediction.add_tick(0); // []
 
@@ -136,7 +157,7 @@ mod tests {
         assert!(!prediction.is_finished());
         assert!(!prediction.is_all_ticks_added());
 
-        prediction.add_tick_split(); // [1]
+        prediction.add_tick_split(InputPhase::Even); // [1]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
@@ -150,7 +171,7 @@ mod tests {
 
         prediction.shift(); // [3]
 
-        prediction.add_tick_split(); // [4, 1]
+        prediction.add_tick_split(InputPhase::Odd); // [4, 1]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
@@ -174,7 +195,7 @@ mod tests {
         assert!(!prediction.is_finished());
         assert!(prediction.is_all_ticks_added());
 
-        prediction.add_tick_split(); // [7, 4] [1]
+        prediction.add_tick_split(InputPhase::Even); // [7, 4] [1]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
@@ -198,7 +219,7 @@ mod tests {
         assert!(!prediction.is_finished());
         assert!(prediction.is_all_ticks_added());
 
-        prediction.read(&[1, 0, 1, 0, 0]); // [7] [4]
+        prediction.read(&[1, 0, 0, 0, 1, 0, 0, 0, 0, 0]); // [7] [4]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
@@ -222,7 +243,7 @@ mod tests {
         assert!(!prediction.is_finished());
         assert!(prediction.is_all_ticks_added());
 
-        prediction.read(&[0, 0, 0, 0, 1]); // [] [7]
+        prediction.read(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 1]); // [] [7]
 
         assert!(!prediction.should_read());
         assert!(!prediction.is_finished());
@@ -246,7 +267,7 @@ mod tests {
         assert!(!prediction.is_finished());
         assert!(prediction.is_all_ticks_added());
 
-        prediction.read(&[0, 1, 1, 0, 0]); // [] []
+        prediction.read(&[0, 0, 1, 0, 1, 0, 0, 0, 0, 0]); // [] []
 
         assert!(!prediction.should_read());
         assert!(prediction.is_finished());

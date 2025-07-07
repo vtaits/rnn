@@ -17,8 +17,11 @@ pub struct ComputedParams {
     pub column_height: usize,
     // number of empty shifts that should be fulfiled after the last step of the prediction
     pub prediction_rest_shifts: usize,
-    // maximal number of excited neurons
+    // maximal number of excited neurons in layer after iteration
+    // excess neurons are disabled randomly
     pub excited_neurons_limit: usize,
+    // maximal number of excided neurons in layer according to shift interval
+    pub max_excited_neurons_number: f32,
 }
 
 pub struct CompiledKernel {
@@ -51,9 +54,10 @@ pub struct SynapseParams {
     pub g_0: f32,
     pub min_g: f32,
     pub max_g: f32,
-    pub initial_strong_g: f32,
     pub h: f32,
-    pub threshold: f32,
+    pub threshold_train: f32,
+    pub threshold_predict_min: f32,
+    pub threshold_predict_max: f32,
     pub refract_interval: u8,
     pub signal_shift_interval: u8,
     pub signal_rest_shift_limit: Option<u8>,
@@ -104,6 +108,7 @@ pub struct NetworkDumpSerialize<'a> {
     pub refract_intervals_2: &'a Array1<u8>,
     pub layer_params: &'a LayerParams,
     pub synapse_params: &'a SynapseParams,
+    pub input_phase: &'a InputPhase,
 }
 
 #[derive(Deserialize)]
@@ -129,6 +134,7 @@ pub struct NetworkDumpDeserialize {
     pub refract_intervals_2: Array1<u8>,
     pub layer_params: LayerParams,
     pub synapse_params: SynapseParams,
+    pub input_phase: InputPhase,
 }
 
 pub enum Action {
@@ -140,4 +146,10 @@ pub enum Action {
      * 1 - whether it a source signal that should be taken into account in prediction process
      */
     InputSignal(Vec<bool>, bool),
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize)]
+pub enum InputPhase {
+    Odd,
+    Even,
 }

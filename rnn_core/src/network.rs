@@ -18,6 +18,7 @@ use crate::spiral::get_output_field;
 use crate::structures::Action;
 use crate::structures::ComputedParams;
 use crate::structures::InitialConnections;
+use crate::structures::InputPhase;
 use crate::LoggerEvent;
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
@@ -67,6 +68,7 @@ pub struct Network {
     action_queue: Vec<Action>,
     signal_buffer: Vec<Vec<bool>>,
     prediction: Option<PredictionProcessing>,
+    input_phase: InputPhase,
 }
 
 fn get_output_field_index(synapse_params: &SynapseParams) -> usize {
@@ -136,8 +138,16 @@ fn get_computed_params(
 
     let prediction_rest_shifts = 0;
 
+    let signal_copy_shifts_count = synapse_params
+        .signal_copy_shifts
+        .as_ref()
+        .map_or(0, |signal_copy_shifts| signal_copy_shifts.len());
+
+    let max_excited_neurons_number = field_size * field_count * (1 + signal_copy_shifts_count)
+        / (1 + signal_copy_shifts_count + synapse_params.signal_shift_interval as usize);
+
     let excited_neurons_limit =
-        ((field_size * field_count) as f32 * synapse_params.excite_neuron_limit) as usize;
+        (max_excited_neurons_number as f32 * synapse_params.excite_neuron_limit) as usize;
 
     ComputedParams {
         field_size,
@@ -147,6 +157,7 @@ fn get_computed_params(
         column_height,
         prediction_rest_shifts,
         excited_neurons_limit,
+        max_excited_neurons_number: excited_neurons_limit as f32,
     }
 }
 
@@ -229,6 +240,7 @@ impl Network {
             action_queue: vec![],
             signal_buffer: vec![],
             prediction: None,
+            input_phase: InputPhase::Even,
         }
     }
 
@@ -284,6 +296,7 @@ impl Network {
             action_queue: vec![],
             signal_buffer: vec![],
             prediction: None,
+            input_phase: parsed_dump.input_phase,
         };
 
         Ok(network)
@@ -320,6 +333,7 @@ impl Network {
             refract_intervals_2: &self.refract_intervals_2,
             layer_params: &self.layer_params,
             synapse_params: &self.synapse_params,
+            input_phase: &self.input_phase,
         };
 
         serde_json::to_string(&dump).unwrap()
@@ -339,7 +353,7 @@ impl Network {
         &self.layer_params
     }
 
-    fn input_signal(&mut self, bit_vec: &[bool]) {
+    fn input_signal(&mut self, bit_vec: &[bool], input_phase: InputPhase) {
         let data_len = bit_vec.len();
 
         if data_len > self.field_size {
@@ -351,13 +365,40 @@ impl Network {
         }
 
         for (pos, value) in bit_vec.iter().enumerate() {
-            if *value && self.refract_intervals_1[[pos]] == 0 {
-                self.neurons_1[[pos]] = 1;
+            let neuron_index = match input_phase {
+                InputPhase::Even => pos * 2,
+                InputPhase::Odd => pos * 2 + 1,
+            };
+
+            if *value && self.refract_intervals_1[[neuron_index]] == 0 {
+                self.neurons_1[[neuron_index]] = 1;
             }
         }
     }
 
+    fn get_threshold(&self, neurons_from: &Array1<u8>) -> f32 {
+        if self.prediction.is_some() {
+            let excided_neurons_count = neurons_from.iter().filter(|&&x| x != 0).count() as f32;
+
+            let excited_percentage =
+                excided_neurons_count / self.computed_params.max_excited_neurons_number;
+
+            let threshold = self.synapse_params.threshold_predict_min
+                + (self.synapse_params.threshold_predict_max
+                    - self.synapse_params.threshold_predict_min)
+                    * excited_percentage;
+
+            // println!("{} {} {}", excided_neurons_count, self.computed_params.max_excited_neurons_number, threshold);
+
+            threshold
+        } else {
+            self.synapse_params.threshold_train
+        }
+    }
+
     fn shift_1_to_2(&mut self) {
+        let threshold = self.get_threshold(&self.neurons_1);
+
         apply_synapses(
             &self.kernel_synapses,
             self.prediction.is_some(),
@@ -369,7 +410,7 @@ impl Network {
             &mut self.neurons_2,
             &self.refract_intervals_2,
             self.synapse_params.refract_interval,
-            self.synapse_params.threshold,
+            threshold,
             self.synapse_params.gamma_inc,
             self.synapse_params.gamma_dec,
             0.0,
@@ -401,6 +442,8 @@ impl Network {
     }
 
     fn shift_2_to_1(&mut self) {
+        let threshold = self.get_threshold(&self.neurons_2);
+
         apply_synapses(
             &self.kernel_synapses,
             self.prediction.is_some(),
@@ -412,7 +455,7 @@ impl Network {
             &mut self.neurons_1,
             &self.refract_intervals_1,
             self.synapse_params.refract_interval,
-            self.synapse_params.threshold,
+            threshold,
             self.synapse_params.gamma_inc,
             self.synapse_params.gamma_dec,
             self.synapse_params.g_0,
@@ -443,12 +486,6 @@ impl Network {
         }
     }
 
-    fn shift(&mut self, bit_vec: &[bool]) {
-        self.input_signal(bit_vec);
-        self.shift_1_to_2();
-        self.shift_2_to_1();
-    }
-
     fn split_signal(&self, bit_vec: &[bool]) -> (Vec<bool>, Option<Vec<bool>>) {
         let mut has_intersection = false;
 
@@ -474,69 +511,6 @@ impl Network {
                 None
             },
         )
-    }
-
-    /**
-     * Set the values of neurons to the input field and make shifts before setting the second part
-     *
-     * The values are guaranteed not to overlap with the refractive neurons
-     */
-    fn tick_not_intersected(
-        &mut self,
-        bit_vec: &[bool],
-        _prediction: &mut Option<PredictionProcessing>,
-    ) {
-        self.shift(bit_vec);
-
-        /* if let Some(prediction) = prediction {
-            prediction.add_tick_split();
-
-            if prediction.should_read() {
-                prediction.read(&self.get_output_field_state());
-            }
-        } */
-
-        for _ in 0..self.synapse_params.signal_shift_interval {
-            self.shift(&vec![]);
-
-            /* if let Some(prediction) = prediction {
-                prediction.shift();
-
-                if prediction.should_read() {
-                    prediction.read(&self.get_output_field_state());
-                }
-            } */
-        }
-    }
-
-    /**
-     * Set the values of neurons to the input field and make shifts before setting the second part
-     *
-     * If there are values that overlap with the refractive neurons, make a tick without them and recursively call this method with that values
-     */
-    pub fn tick(
-        &mut self,
-        bit_vec: &[bool],
-        prediction: &mut Option<PredictionProcessing>,
-        apply_rest: bool,
-    ) {
-        let (mut apply_vec, mut rest_vec) = self.split_signal(bit_vec);
-
-        self.tick_not_intersected(&apply_vec, prediction);
-
-        if !apply_rest {
-            return;
-        }
-
-        let mut counter = 0u8;
-
-        let limit = self.synapse_params.signal_rest_shift_limit.unwrap_or(255);
-
-        while rest_vec.is_some() && counter < limit {
-            (apply_vec, rest_vec) = self.split_signal(&rest_vec.unwrap());
-            self.tick_not_intersected(&apply_vec, prediction);
-            counter += 1;
-        }
     }
 
     /**
@@ -610,47 +584,6 @@ impl Network {
         self.neurons_2 = Array1::<u8>::zeros(layer_size);
         self.refract_intervals_1 = Array1::<u8>::zeros(layer_size);
         self.refract_intervals_2 = Array1::<u8>::zeros(layer_size);
-    }
-
-    pub fn _predict(&mut self, bit_vec: &[bool]) -> Vec<bool> {
-        let data_len = bit_vec.len();
-
-        let tick_count = if data_len % self.field_size == 0 {
-            data_len / self.field_size
-        } else {
-            (data_len / self.field_size) + 1
-        };
-
-        let mut prediction = Some(PredictionProcessing::new(
-            tick_count,
-            self.computed_params.field_size,
-            self.computed_params.field_count,
-        ));
-
-        for i in 0..tick_count {
-            let start = i * self.field_size;
-            let end = std::cmp::min(start + self.field_size, data_len);
-
-            prediction.as_mut().unwrap().add_tick(i);
-
-            self.tick(&bit_vec[start..end], &mut prediction, true);
-        }
-
-        let prediction = prediction.as_mut().unwrap();
-
-        while !prediction.is_finished() {
-            for _ in 0..=self.synapse_params.signal_shift_interval {
-                self.shift(&vec![]);
-
-                prediction.shift();
-
-                if prediction.should_read() {
-                    prediction.read(&self.get_output_field_state());
-                }
-            }
-        }
-
-        prediction.get_prediction()
     }
 
     pub fn get_output_field_state(&self) -> Vec<u8> {
@@ -922,13 +855,20 @@ impl Network {
                 self.apply_signal(bit_vec, counter);
             }
             Action::InputSignal(bit_vec, is_source) => {
-                self.input_signal(bit_vec);
+                let input_phase = self.input_phase;
+
+                self.input_signal(bit_vec, input_phase);
 
                 if *is_source {
                     if let Some(prediction) = &mut self.prediction {
-                        prediction.add_tick_split();
+                        prediction.add_tick_split(input_phase);
                     }
                 }
+
+                self.input_phase = match self.input_phase {
+                    InputPhase::Even => InputPhase::Odd,
+                    InputPhase::Odd => InputPhase::Even,
+                };
             }
             Action::EmptyShift1to2 => {
                 self.shift_1_to_2();

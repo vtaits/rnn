@@ -47,11 +47,16 @@ async fn main() -> Result<(), ()> {
         vec![1.0],
         // h = 1.4
         // frange(0.5, 3.1, 0.1),
-        frange(0.75, 2.6, 0.25),
+        frange(0.75, 2.01, 0.25),
         // refract_interval = 2
         // frange(1.0, 3.01, 1.0),
-        // threshold
-        frange(0.84, 0.941, 0.02),
+        // threshold_train
+        vec![0.9],
+        //frange(0.84, 0.941, 0.02),
+        // threshold_predict_min
+        frange(0.65, 0.801, 0.05),
+        // threshold_predict_max
+        frange(0.84, 0.901, 0.02),
         // signal_shift_interval = 1
         // frange(1.0, 3.01, 1.0),
     ];
@@ -66,64 +71,75 @@ async fn main() -> Result<(), ()> {
         let g_inc = combo[4];
         let g_0 = combo[5];
         let h = combo[6];
-        let threshold = combo[7];
+        let threshold_train = combo[7];
+        let threshold_predict_min = combo[8];
+        let threshold_predict_max = combo[9];
 
-        let redefine_params = RedefineParams {
-            alpha,
-            gamma_dec,
-            gamma_inc,
-            g_dec,
-            g_inc,
-            g_0,
-            h,
-            threshold,
-        };
+        if threshold_predict_max > threshold_predict_min {
+            let redefine_params = RedefineParams {
+                alpha,
+                gamma_dec,
+                gamma_inc,
+                g_dec,
+                g_inc,
+                g_0,
+                h,
+                threshold_train,
+                threshold_predict_min,
+                threshold_predict_max,
+            };
 
-        let mut total_positive = 0;
-        let mut total_negative = 0;
+            let mut total_positive = 0;
+            let mut total_negative = 0;
 
-        let mut false_positive_neurons = 0usize;
-        let mut false_negative_neurons = 0usize;
+            let mut false_positive_neurons = 0usize;
+            let mut false_negative_neurons = 0usize;
 
-        for page in 0..measures_count {
-            let redefine_params = redefine_params.clone();
+            for page in 0..measures_count {
+                let redefine_params = redefine_params.clone();
 
-            let start_index = page * measure_data_length;
-            let end_index = start_index + measure_data_length;
+                let start_index = page * measure_data_length;
+                let end_index = start_index + measure_data_length;
 
-            let (mut data_layer, measurement_data) = init_data_layer_by_env(&InitDataLayerParams {
-                train: true,
-                start_index: None,
-                end_index: None,
-                end_measurement_index: Some(end_index),
-                start_measurement_index: Some(start_index),
-                redefine_params: Some(redefine_params),
-            });
+                let (mut data_layer, measurement_data) =
+                    init_data_layer_by_env(&InitDataLayerParams {
+                        train: true,
+                        start_index: None,
+                        end_index: None,
+                        end_measurement_index: Some(end_index),
+                        start_measurement_index: Some(start_index),
+                        redefine_params: Some(redefine_params),
+                    });
 
-            let (positive, negative, false_positive_neurons_result, false_negative_neurons_result) =
-                data_layer.count_accuracy(measurement_data);
+                let (
+                    positive,
+                    negative,
+                    false_positive_neurons_result,
+                    false_negative_neurons_result,
+                ) = data_layer.count_accuracy(measurement_data);
 
-            total_positive += positive;
-            total_negative += negative;
-            false_positive_neurons += false_positive_neurons_result;
-            false_negative_neurons += false_negative_neurons_result;
-        }
+                total_positive += positive;
+                total_negative += negative;
+                false_positive_neurons += false_positive_neurons_result;
+                false_negative_neurons += false_negative_neurons_result;
+            }
 
-        if total_positive > 32 {
-            println!("{:?}", redefine_params);
+            if total_positive > 40 {
+                println!("{:?}", redefine_params);
 
-            println!(
-                "positive: {}, negative: {}, total: {}, false positive: {}, false negative: {}",
-                total_positive,
-                total_negative,
-                total_positive + total_negative,
-                false_positive_neurons,
-                false_negative_neurons,
-            );
+                println!(
+                    "positive: {}, negative: {}, total: {}, false positive: {}, false negative: {}",
+                    total_positive,
+                    total_negative,
+                    total_positive + total_negative,
+                    false_positive_neurons,
+                    false_negative_neurons,
+                );
 
-            println!();
-            println!("=======================");
-            println!();
+                println!();
+                println!("=======================");
+                println!();
+            }
         }
     }
 
