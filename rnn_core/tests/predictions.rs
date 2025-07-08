@@ -106,13 +106,13 @@ fn identical_prediction_big_network(
     vec![true, true, true, true, true, true],
     vec![true, false, true, false, true, true],
     2.0,
-    1.3,
+    1.2,
 )]
 #[case(
     vec![true, true, true, true, true, false],
     vec![true, false, true, false, true, false],
-    1.5,
-    1.3,
+    1.4,
+    1.1,
 )]
 fn restore_missed_bits(
     #[case] full: Vec<bool>,
@@ -393,7 +393,7 @@ fn restore_multiple_overlapping_sequences(#[case] sequences: Vec<(Vec<bool>, Vec
             g_0: 1.0,
             min_g: -10.0,
             max_g: 10.0,
-            h: 2.0,
+            h: 1.5,
             refract_interval: 2,
             threshold_train: 0.8,
             threshold_predict_min: 0.8,

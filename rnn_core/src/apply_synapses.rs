@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use ndarray::{Array1, Array2};
+use ndarray::{Array2};
 use ocl::{Buffer, Kernel, ProQue};
 
 use crate::logger::{Logger, LoggerEvent};
@@ -70,11 +70,11 @@ pub fn apply_synapses(
     is_prediction: bool,
     layer_size: usize,
     accumulated_weights: &mut Array2<f32>,
-    strong_synapses: &Array1<u64>,
+    strong_synapses: &Vec<u64>,
     distance_weights: &Array2<f32>,
-    neurons_from: &Array1<u8>,
-    neurons_to: &mut Array1<u8>,
-    refract_intervals_to: &Array1<u8>,
+    neurons_from: &Vec<u8>,
+    neurons_to: &mut Vec<u8>,
+    refract_intervals_to: &Vec<u8>,
     initial_refract_interval: u8,
     threshold: f32,
     gamma_inc: f32,
@@ -100,7 +100,7 @@ pub fn apply_synapses(
     let buffer_strong_synapses = Buffer::<u64>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .len(strong_synapses.len())
-        .copy_host_slice(strong_synapses.as_slice().unwrap())
+        .copy_host_slice(strong_synapses.as_slice())
         .build()?;
 
     let buffer_distance_weights = Buffer::<f32>::builder()
@@ -112,13 +112,13 @@ pub fn apply_synapses(
     let buffer_neurons_from = Buffer::<u8>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .len(neurons_from.len())
-        .copy_host_slice(neurons_from.as_slice().unwrap())
+        .copy_host_slice(neurons_from.as_slice())
         .build()?;
 
     let buffer_refract_intervals_to = Buffer::<u8>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .len(refract_intervals_to.len())
-        .copy_host_slice(refract_intervals_to.as_slice().unwrap())
+        .copy_host_slice(refract_intervals_to.as_slice())
         .build()?;
 
     let buffer_next_neurons_to = Buffer::<u8>::builder()
@@ -168,7 +168,7 @@ pub fn apply_synapses(
         kernel.enq()?;
     }
 
-    let mut neurons_to_flat = neurons_to.as_slice().unwrap().to_vec();
+    let mut neurons_to_flat = neurons_to.as_slice().to_vec();
 
     buffer_next_neurons_to.read(&mut neurons_to_flat).enq()?;
 
@@ -176,10 +176,7 @@ pub fn apply_synapses(
         remove_extra_neurons(&mut neurons_to_flat, excited_neurons_limit);
     }
 
-    neurons_to
-        .as_slice_mut()
-        .unwrap()
-        .copy_from_slice(&neurons_to_flat);
+    neurons_to.copy_from_slice(&neurons_to_flat);
 
     buffer_accumulated_weights
         .read(&mut accumulated_weights_flat)

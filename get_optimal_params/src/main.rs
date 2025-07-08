@@ -31,11 +31,11 @@ async fn main() -> Result<(), ()> {
         // frange(1.1, 3.01, 0.1),
         frange(1.1, 2.01, 0.1),
         // gamma_dec
-        frange(0.3, 0.7, 0.1),
-        // vec![0.5],
+        // frange(0.3, 0.7, 0.1),
+        vec![0.5],
         // gamma_inc
-        frange(0.3, 0.7, 0.1),
-        // vec![0.5],
+        // frange(0.3, 0.7, 0.1),
+        vec![0.5],
         // g_dec
         // frange(1.0, 3.01, 1.0),
         vec![1.0],

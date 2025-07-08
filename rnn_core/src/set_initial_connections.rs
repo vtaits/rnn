@@ -1,4 +1,4 @@
-use ndarray::{Array1, Array2};
+use ndarray::{Array2};
 
 use crate::{
     get_neuron_coordinates::get_neuron_coordinates,
@@ -185,9 +185,9 @@ pub fn set_initial_connections(
     let mut distance_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);
 
     // synapses to identical map from the first layer to the second layer
-    let mut strong_synapses_1_to_2 = Array1::<u64>::zeros([layer_size]);
+    let mut strong_synapses_1_to_2 = vec![0u64; layer_size];
     // synapses to identical map from the second layer to the first layer
-    let mut strong_synapses_2_to_1 = Array1::<u64>::zeros([layer_size]);
+    let mut strong_synapses_2_to_1 = vec![0u64; layer_size];
 
     let mut accumulated_weights_1_to_2 = Array2::<f32>::zeros([layer_size, layer_size]);
     let mut accumulated_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);

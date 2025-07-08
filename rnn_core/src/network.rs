@@ -3,7 +3,7 @@ use std::io::Write;
 
 use flate2::Compression;
 use flate2::{read::GzDecoder, write::GzEncoder};
-use ndarray::{Array1, Array2};
+use ndarray::{Array2};
 
 use crate::get_neuron_coordinates::get_neuron_coordinates;
 use crate::get_neuron_full_coordinates::get_neuron_full_coordinates;
@@ -36,9 +36,9 @@ pub struct Network {
     // acumulated weights of synapses from the second layer to the first layer
     accumulated_weights_2_to_1: Array2<f32>,
     // synapses to identical map from the first layer to the second layer
-    strong_synapses_1_to_2: Array1<u64>,
+    strong_synapses_1_to_2: Vec<u64>,
     // synapses to identical map from the second layer to the first layer
-    strong_synapses_2_to_1: Array1<u64>,
+    strong_synapses_2_to_1: Vec<u64>,
     // distance weights of synapses from the first layer to the second layer
     distance_weights_1_to_2: Array2<f32>,
     // distance weights of synapses from the second layer to the first layer
@@ -55,13 +55,13 @@ pub struct Network {
     // number of neurons in one layer
     layer_size: usize,
     // neuron states at the first layer
-    neurons_1: Array1<u8>,
+    neurons_1: Vec<u8>,
     // neuron states at the second layer
-    neurons_2: Array1<u8>,
+    neurons_2: Vec<u8>,
     // timeouts of neuron refract states of the first layer
-    refract_intervals_1: Array1<u8>,
+    refract_intervals_1: Vec<u8>,
     // timeouts of neuron refract states of the second layer
-    refract_intervals_2: Array1<u8>,
+    refract_intervals_2: Vec<u8>,
     layer_params: LayerParams,
     synapse_params: SynapseParams,
     logger: Option<Box<dyn Logger>>,
@@ -230,10 +230,10 @@ impl Network {
             layer_height,
             field_size,
             layer_size,
-            neurons_1: Array1::<u8>::zeros(layer_size),
-            neurons_2: Array1::<u8>::zeros(layer_size),
-            refract_intervals_1: Array1::<u8>::zeros(layer_size),
-            refract_intervals_2: Array1::<u8>::zeros(layer_size),
+            neurons_1: vec![0u8; layer_size],
+            neurons_2: vec![0u8; layer_size],
+            refract_intervals_1: vec![0u8; layer_size],
+            refract_intervals_2: vec![0u8; layer_size],
             layer_params,
             synapse_params,
             logger,
@@ -370,13 +370,13 @@ impl Network {
                 InputPhase::Odd => pos * 2 + 1,
             };
 
-            if *value && self.refract_intervals_1[[neuron_index]] == 0 {
-                self.neurons_1[[neuron_index]] = 1;
+            if *value && self.refract_intervals_1[neuron_index] == 0 {
+                self.neurons_1[neuron_index] = 1;
             }
         }
     }
 
-    fn get_threshold(&self, neurons_from: &Array1<u8>) -> f32 {
+    fn get_threshold(&self, neurons_from: &Vec<u8>) -> f32 {
         if self.prediction.is_some() {
             let excided_neurons_count = neurons_from.iter().filter(|&&x| x != 0).count() as f32;
 
@@ -424,13 +424,11 @@ impl Network {
         )
         .unwrap();
 
-        let next_refract_intervals_1 = recount_refract_intervals(
+        recount_refract_intervals(
             &self.neurons_1,
-            &self.refract_intervals_1,
+            &mut self.refract_intervals_1,
             &self.synapse_params.refract_interval,
         );
-
-        self.refract_intervals_1 = next_refract_intervals_1;
 
         if self.logger.is_some() {
             let total_2 = self.get_accumulated_weights_sum(2);
@@ -469,13 +467,11 @@ impl Network {
         )
         .unwrap();
 
-        let next_refract_intervals_2 = recount_refract_intervals(
+        recount_refract_intervals(
             &self.neurons_2,
-            &self.refract_intervals_2,
+            &mut self.refract_intervals_2,
             &self.synapse_params.refract_interval,
         );
-
-        self.refract_intervals_2 = next_refract_intervals_2;
 
         if self.logger.is_some() {
             let total_1 = self.get_accumulated_weights_sum(1);
@@ -494,7 +490,7 @@ impl Network {
 
         for (pos, value) in bit_vec.iter().enumerate() {
             if *value {
-                if self.refract_intervals_1[[pos]] > 0 {
+                if self.refract_intervals_1[pos] > 0 {
                     has_intersection = true;
                     rest_vec[pos] = true;
                 } else {
@@ -580,17 +576,17 @@ impl Network {
     fn _clean_neurons(&mut self) {
         let layer_size = self.layer_size;
 
-        self.neurons_1 = Array1::<u8>::zeros(layer_size);
-        self.neurons_2 = Array1::<u8>::zeros(layer_size);
-        self.refract_intervals_1 = Array1::<u8>::zeros(layer_size);
-        self.refract_intervals_2 = Array1::<u8>::zeros(layer_size);
+        self.neurons_1 = vec![0u8; layer_size];
+        self.neurons_2 = vec![0u8; layer_size];
+        self.refract_intervals_1 = vec![0u8; layer_size];
+        self.refract_intervals_2 = vec![0u8; layer_size];
     }
 
     pub fn get_output_field_state(&self) -> Vec<u8> {
         let mut res: Vec<u8> = vec![];
 
         for field_index in self.output_field_neuron_indexes.iter() {
-            res.push(self.neurons_2[[*field_index]]);
+            res.push(self.neurons_2[*field_index]);
         }
 
         res
@@ -607,7 +603,7 @@ impl Network {
         println!();
     }
 
-    fn print_state(&self, layer: &Array1<u8>) {
+    fn print_state(&self, layer: &Vec<u8>) {
         for layer_y in 0..self.layer_height {
             for neuron_in_field_y in 0..self.layer_params.field_height {
                 for layer_x in 0..self.layer_width {
@@ -621,7 +617,7 @@ impl Network {
                             neuron_in_field_y,
                         );
 
-                        print!("{} ", if layer[[neuron_index]] > 0 { "+" } else { "." });
+                        print!("{} ", if layer[neuron_index] > 0 { "+" } else { "." });
                     }
 
                     print!(" ");
@@ -664,7 +660,7 @@ impl Network {
             neuron_in_field_y,
         );
 
-        refract_intervals[[neuron_index]]
+        refract_intervals[neuron_index]
     }
 
     pub fn get_neuron_state(
@@ -690,7 +686,7 @@ impl Network {
             neuron_in_field_y,
         );
 
-        neurons[[neuron_index]]
+        neurons[neuron_index]
     }
 
     pub fn get_neuron_full_coordinates(
