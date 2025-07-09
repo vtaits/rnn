@@ -19,7 +19,7 @@ __kernel void apply_synapses(
     __global float* distance_weights,
     __global unsigned char* neurons_from,
     __global unsigned char* refract_intervals_to,
-    __global unsigned char* next_neurons_to,
+    __global unsigned char* neurons_to,
     const unsigned int layer_size,
     const uchar initial_refract_interval,
     const float threshold,
@@ -38,16 +38,16 @@ __kernel void apply_synapses(
     int row = get_global_id(0);
 
     if (refract_intervals_to[row] > 0) {
-        next_neurons_to[row] = 0;
+        neurons_to[row] = 0;
     } else if (!is_prediction) {
         ulong index_from = strong_synapses[row];
 
         if (index_from < layer_size) {
-            next_neurons_to[row] = neurons_from[index_from];
+            neurons_to[row] = neurons_from[index_from];
         }
     } else {
         float sum = 0.0;
-        next_neurons_to[row] = 0;
+        neurons_to[row] = 0;
 
         for (int col = 0; col < layer_size; ++col) {
             unsigned int index_from = row * layer_size + col;
@@ -59,7 +59,7 @@ __kernel void apply_synapses(
                     sum += get_weight_coefficient(gamma_inc, gamma_dec, weight_to, g_0) * distance_weights[index_from];
 
                     if (sum > threshold) {
-                        next_neurons_to[row] = 1;
+                        neurons_to[row] = 1;
                         break;
                     }
                 }
@@ -87,7 +87,7 @@ __kernel void apply_synapses(
                         // atomic_inc(*dec_counter[0]);
                     // #endif
                 }
-            } else if (next_neurons_to[row] > 0) {
+            } else if (neurons_to[row] > 0) {
                 if (accumulated_weights[index_from] < max_g) {
                     accumulated_weights[index_from] = min(prev_value + g_inc, max_g);
 

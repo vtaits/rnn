@@ -1,4 +1,4 @@
-use ndarray::{Array2};
+use ndarray::Array2;
 
 use crate::{
     get_neuron_coordinates::get_neuron_coordinates,

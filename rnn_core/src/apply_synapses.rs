@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 
-use ndarray::{Array2};
 use ocl::{Buffer, Kernel, ProQue};
 
 use crate::logger::{Logger, LoggerEvent};
@@ -21,7 +20,7 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
         .arg_named("distance_weights", None::<&Buffer<f32>>)
         .arg_named("neurons_from", None::<&Buffer<u8>>)
         .arg_named("refract_intervals_to", None::<&Buffer<u8>>)
-        .arg_named("next_neurons_to", None::<&Buffer<u8>>)
+        .arg_named("neurons_to", None::<&Buffer<u8>>)
         .arg_named("layer_size", 0_u32)
         .arg_named("initial_refract_interval", 0_u8)
         .arg_named("threshold", 0.0_f32)
@@ -69,9 +68,9 @@ pub fn apply_synapses(
     compiled_kernel: &CompiledKernel,
     is_prediction: bool,
     layer_size: usize,
-    accumulated_weights: &mut Array2<f32>,
-    strong_synapses: &Vec<u64>,
-    distance_weights: &Array2<f32>,
+    buffer_accumulated_weights: &Buffer<f32>,
+    buffer_strong_synapses: &Buffer<u64>,
+    buffer_distance_weights: &Buffer<f32>,
     neurons_from: &Vec<u8>,
     neurons_to: &mut Vec<u8>,
     refract_intervals_to: &Vec<u8>,
@@ -88,27 +87,6 @@ pub fn apply_synapses(
     layer_index: usize,
     logger: &mut Option<Box<dyn Logger>>,
 ) -> ocl::Result<()> {
-    let mut accumulated_weights_flat = accumulated_weights.as_slice().unwrap().to_vec();
-
-    let buffer_accumulated_weights = Buffer::<f32>::builder()
-        .queue(compiled_kernel.pro_que.queue().clone())
-        .flags(ocl::flags::MEM_READ_WRITE)
-        .len(accumulated_weights.len())
-        .copy_host_slice(accumulated_weights.as_slice().unwrap())
-        .build()?;
-
-    let buffer_strong_synapses = Buffer::<u64>::builder()
-        .queue(compiled_kernel.pro_que.queue().clone())
-        .len(strong_synapses.len())
-        .copy_host_slice(strong_synapses.as_slice())
-        .build()?;
-
-    let buffer_distance_weights = Buffer::<f32>::builder()
-        .queue(compiled_kernel.pro_que.queue().clone())
-        .len(distance_weights.len())
-        .copy_host_slice(distance_weights.as_slice().unwrap())
-        .build()?;
-
     let buffer_neurons_from = Buffer::<u8>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .len(neurons_from.len())
@@ -121,7 +99,7 @@ pub fn apply_synapses(
         .copy_host_slice(refract_intervals_to.as_slice())
         .build()?;
 
-    let buffer_next_neurons_to = Buffer::<u8>::builder()
+    let buffer_neurons_to = Buffer::<u8>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .flags(ocl::flags::MEM_READ_WRITE)
         .len(layer_size)
@@ -146,12 +124,12 @@ pub fn apply_synapses(
     let kernel = compiled_kernel.kernel.lock().unwrap();
 
     unsafe {
-        kernel.set_arg("accumulated_weights", &buffer_accumulated_weights)?;
-        kernel.set_arg("strong_synapses", &buffer_strong_synapses)?;
-        kernel.set_arg("distance_weights", &buffer_distance_weights)?;
+        kernel.set_arg("accumulated_weights", buffer_accumulated_weights)?;
+        kernel.set_arg("strong_synapses", buffer_strong_synapses)?;
+        kernel.set_arg("distance_weights", buffer_distance_weights)?;
         kernel.set_arg("neurons_from", &buffer_neurons_from)?;
         kernel.set_arg("refract_intervals_to", &buffer_refract_intervals_to)?;
-        kernel.set_arg("next_neurons_to", &buffer_next_neurons_to)?;
+        kernel.set_arg("neurons_to", &buffer_neurons_to)?;
         kernel.set_arg("layer_size", layer_size as u32)?;
         kernel.set_arg("initial_refract_interval", initial_refract_interval)?;
         kernel.set_arg("threshold", threshold)?;
@@ -170,22 +148,13 @@ pub fn apply_synapses(
 
     let mut neurons_to_flat = neurons_to.as_slice().to_vec();
 
-    buffer_next_neurons_to.read(&mut neurons_to_flat).enq()?;
+    buffer_neurons_to.read(&mut neurons_to_flat).enq()?;
 
     if is_prediction {
         remove_extra_neurons(&mut neurons_to_flat, excited_neurons_limit);
     }
 
     neurons_to.copy_from_slice(&neurons_to_flat);
-
-    buffer_accumulated_weights
-        .read(&mut accumulated_weights_flat)
-        .enq()?;
-
-    accumulated_weights
-        .as_slice_mut()
-        .unwrap()
-        .copy_from_slice(&accumulated_weights_flat);
 
     let mut inc_counter_result = vec![0i32; 1];
     buffer_inc_counter

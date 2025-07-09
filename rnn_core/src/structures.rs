@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use ndarray::{Array2};
+use ndarray::Array2;
 use ocl::{Kernel, ProQue};
 use serde_derive::{Deserialize, Serialize};
 

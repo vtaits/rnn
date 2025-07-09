@@ -3,7 +3,8 @@ use std::io::Write;
 
 use flate2::Compression;
 use flate2::{read::GzDecoder, write::GzEncoder};
-use ndarray::{Array2};
+use ndarray::Array2;
+use ocl::Buffer;
 
 use crate::get_neuron_coordinates::get_neuron_coordinates;
 use crate::get_neuron_full_coordinates::get_neuron_full_coordinates;
@@ -33,16 +34,22 @@ pub struct Network {
     computed_params: ComputedParams,
     // acumulated weights of synapses from the first layer to the second layer
     accumulated_weights_1_to_2: Array2<f32>,
+    buffer_accumulated_weights_1_to_2: Buffer<f32>,
     // acumulated weights of synapses from the second layer to the first layer
     accumulated_weights_2_to_1: Array2<f32>,
+    buffer_accumulated_weights_2_to_1: Buffer<f32>,
     // synapses to identical map from the first layer to the second layer
     strong_synapses_1_to_2: Vec<u64>,
+    buffer_strong_synapses_1_to_2: Buffer<u64>,
     // synapses to identical map from the second layer to the first layer
     strong_synapses_2_to_1: Vec<u64>,
+    buffer_strong_synapses_2_to_1: Buffer<u64>,
     // distance weights of synapses from the first layer to the second layer
     distance_weights_1_to_2: Array2<f32>,
+    buffer_distance_weights_1_to_2: Buffer<f32>,
     // distance weights of synapses from the second layer to the first layer
     distance_weights_2_to_1: Array2<f32>,
+    buffer_distance_weights_2_to_1: Buffer<f32>,
     // compiled kernel for recount neurons and refract intervals with opencl
     kernel_synapses: CompiledKernel,
     output_field_index: usize,
@@ -210,6 +217,54 @@ impl Network {
 
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
+        let buffer_distance_weights_1_to_2 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(distance_weights_1_to_2.len())
+            .copy_host_slice(distance_weights_1_to_2.as_slice().unwrap())
+            .build()
+            .unwrap();
+
+        let buffer_distance_weights_2_to_1 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(distance_weights_2_to_1.len())
+            .copy_host_slice(distance_weights_2_to_1.as_slice().unwrap())
+            .build()
+            .unwrap();
+
+        let buffer_strong_synapses_1_to_2 = Buffer::<u64>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(strong_synapses_1_to_2.len())
+            .copy_host_slice(strong_synapses_1_to_2.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_strong_synapses_2_to_1 = Buffer::<u64>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(strong_synapses_2_to_1.len())
+            .copy_host_slice(strong_synapses_2_to_1.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_accumulated_weights_1_to_2 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_WRITE)
+            .len(accumulated_weights_1_to_2.len())
+            .copy_host_slice(accumulated_weights_1_to_2.as_slice().unwrap())
+            .build()
+            .unwrap();
+
+        let buffer_accumulated_weights_2_to_1 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_WRITE)
+            .len(accumulated_weights_2_to_1.len())
+            .copy_host_slice(accumulated_weights_2_to_1.as_slice().unwrap())
+            .build()
+            .unwrap();
+
         let output_field_index = get_output_field_index(&synapse_params);
 
         let output_field_neuron_indexes =
@@ -217,12 +272,18 @@ impl Network {
 
         Network {
             accumulated_weights_1_to_2,
+            buffer_accumulated_weights_1_to_2,
             accumulated_weights_2_to_1,
+            buffer_accumulated_weights_2_to_1,
             computed_params,
             distance_weights_1_to_2,
+            buffer_distance_weights_1_to_2,
             distance_weights_2_to_1,
+            buffer_distance_weights_2_to_1,
             strong_synapses_1_to_2,
+            buffer_strong_synapses_1_to_2,
             strong_synapses_2_to_1,
+            buffer_strong_synapses_2_to_1,
             kernel_synapses,
             output_field_index,
             output_field_neuron_indexes,
@@ -271,14 +332,66 @@ impl Network {
             output_field_index,
         );
 
+        let buffer_distance_weights_1_to_2 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .len(parsed_dump.distance_weights_1_to_2.len())
+            .copy_host_slice(parsed_dump.distance_weights_2_to_1.as_slice().unwrap())
+            .build()
+            .unwrap();
+
+        let buffer_distance_weights_2_to_1 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .len(parsed_dump.distance_weights_2_to_1.len())
+            .copy_host_slice(parsed_dump.distance_weights_2_to_1.as_slice().unwrap())
+            .build()
+            .unwrap();
+
+        let buffer_strong_synapses_1_to_2 = Buffer::<u64>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(parsed_dump.strong_synapses_1_to_2.len())
+            .copy_host_slice(parsed_dump.strong_synapses_1_to_2.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_strong_synapses_2_to_1 = Buffer::<u64>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(parsed_dump.strong_synapses_2_to_1.len())
+            .copy_host_slice(parsed_dump.strong_synapses_2_to_1.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_accumulated_weights_1_to_2 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_WRITE)
+            .len(parsed_dump.accumulated_weights_1_to_2.len())
+            .copy_host_slice(parsed_dump.accumulated_weights_1_to_2.as_slice().unwrap())
+            .build()
+            .unwrap();
+
+        let buffer_accumulated_weights_2_to_1 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_WRITE)
+            .len(parsed_dump.accumulated_weights_2_to_1.len())
+            .copy_host_slice(parsed_dump.accumulated_weights_2_to_1.as_slice().unwrap())
+            .build()
+            .unwrap();
+
         let network = Network {
             accumulated_weights_1_to_2: parsed_dump.accumulated_weights_1_to_2,
+            buffer_accumulated_weights_1_to_2,
             accumulated_weights_2_to_1: parsed_dump.accumulated_weights_2_to_1,
+            buffer_accumulated_weights_2_to_1,
             computed_params,
             distance_weights_1_to_2: parsed_dump.distance_weights_1_to_2,
+            buffer_distance_weights_1_to_2,
             distance_weights_2_to_1: parsed_dump.distance_weights_2_to_1,
+            buffer_distance_weights_2_to_1,
             strong_synapses_1_to_2: parsed_dump.strong_synapses_1_to_2,
+            buffer_strong_synapses_1_to_2,
             strong_synapses_2_to_1: parsed_dump.strong_synapses_2_to_1,
+            buffer_strong_synapses_2_to_1,
             kernel_synapses,
             output_field_index,
             output_field_neuron_indexes,
@@ -403,9 +516,9 @@ impl Network {
             &self.kernel_synapses,
             self.prediction.is_some(),
             self.layer_size,
-            &mut self.accumulated_weights_1_to_2,
-            &self.strong_synapses_1_to_2,
-            &self.distance_weights_1_to_2,
+            &self.buffer_accumulated_weights_1_to_2,
+            &self.buffer_strong_synapses_1_to_2,
+            &self.buffer_distance_weights_1_to_2,
             &self.neurons_1,
             &mut self.neurons_2,
             &self.refract_intervals_2,
@@ -446,9 +559,9 @@ impl Network {
             &self.kernel_synapses,
             self.prediction.is_some(),
             self.layer_size,
-            &mut self.accumulated_weights_2_to_1,
-            &self.strong_synapses_2_to_1,
-            &self.distance_weights_2_to_1,
+            &self.buffer_accumulated_weights_2_to_1,
+            &self.buffer_strong_synapses_2_to_1,
+            &self.buffer_distance_weights_2_to_1,
             &self.neurons_2,
             &mut self.neurons_1,
             &self.refract_intervals_1,
@@ -752,13 +865,24 @@ impl Network {
         neuron_x: usize,
         neuron_y: usize,
     ) -> Array2<f32> {
-        let weights_layer = if layer_index == 1 {
-            &self.accumulated_weights_1_to_2
+        let weights_buffer = if layer_index == 1 {
+            &self.buffer_accumulated_weights_1_to_2
         } else {
-            &self.accumulated_weights_2_to_1
+            &self.buffer_accumulated_weights_2_to_1
         };
 
-        self.get_neuron_weights(weights_layer, neuron_x, neuron_y)
+        let layer_size = self.neurons_1.len();
+
+        let mut data = vec![0.0_f32; layer_size * layer_size];
+
+        // Читаем буфер обратно в data
+        weights_buffer.read(&mut data).enq().unwrap();
+
+        let mut weights_layer = Array2::<f32>::zeros([layer_size, layer_size]);
+
+        weights_layer.as_slice_mut().unwrap().copy_from_slice(&data);
+
+        self.get_neuron_weights(&weights_layer, neuron_x, neuron_y)
     }
 
     pub fn get_neuron_distance_weights(
