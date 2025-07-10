@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use crate::Network;
+use crate::{CountAccuracyResult, Network};
 
 pub struct DataLayerParams<T> {
     pub binary_to_data: Box<dyn Fn(&[bool]) -> Result<T, ()> + Send + Sync>,
@@ -41,8 +41,11 @@ impl<T> DataLayer<T> {
             .push_data_and_apply(bit_vec, prediction_depth);
     }
 
-    fn check(&mut self, bit_vec: &[bool]) -> (bool, usize, usize) {
+    fn check(&mut self, bit_vec: &[bool]) -> (bool, usize, usize, usize, usize) {
         let mut check_vec: Vec<bool> = vec![false; self.target_mask.len()];
+
+        let mut true_positive_neurons = 0usize;
+        let mut true_negative_neurons = 0usize;
 
         let mut false_positive_neurons = 0usize;
         let mut false_negative_neurons = 0usize;
@@ -66,6 +69,14 @@ impl<T> DataLayer<T> {
 
                 // print!("{}{} ", if expected {"+"} else {"."}, if received {"+"} else {"."});
 
+                if expected && received {
+                    true_positive_neurons += 1;
+                }
+
+                if !expected && !received {
+                    true_negative_neurons += 1;
+                }
+
                 if !expected && received {
                     false_positive_neurons += 1;
                     has_error = true;
@@ -80,38 +91,52 @@ impl<T> DataLayer<T> {
 
         // println!();
 
-        (!has_error, false_positive_neurons, false_negative_neurons)
-    }
-
-    pub fn count_accuracy(
-        &mut self,
-        measurement_data: Vec<Vec<bool>>,
-    ) -> (usize, usize, usize, usize) {
-        let mut positive = 0usize;
-        let mut negative = 0usize;
-
-        let mut false_positive_neurons = 0usize;
-        let mut false_negative_neurons = 0usize;
-
-        for item in measurement_data.iter() {
-            let (is_positive, false_positive_neurons_result, false_negative_neurons_result) =
-                self.check(&item);
-
-            if is_positive {
-                positive += 1;
-            } else {
-                negative += 1;
-                false_positive_neurons += false_positive_neurons_result;
-                false_negative_neurons += false_negative_neurons_result;
-            }
-        }
-
         (
-            positive,
-            negative,
+            !has_error,
+            true_positive_neurons,
+            true_negative_neurons,
             false_positive_neurons,
             false_negative_neurons,
         )
+    }
+
+    pub fn count_accuracy(&mut self, measurement_data: Vec<Vec<bool>>) -> CountAccuracyResult {
+        let mut positive = 0usize;
+        let mut negative = 0usize;
+
+        let mut true_positive = 0usize;
+        let mut true_negative = 0usize;
+        let mut false_positive = 0usize;
+        let mut false_negative = 0usize;
+
+        for item in measurement_data.iter() {
+            let (
+                is_positive,
+                true_positive_neurons_result,
+                true_negative_neurons_result,
+                false_positive_neurons_result,
+                false_negative_neurons_result,
+            ) = self.check(&item);
+
+            if is_positive {
+                positive += 1;
+                true_positive += true_positive_neurons_result;
+                true_negative += true_negative_neurons_result;
+            } else {
+                negative += 1;
+                false_positive += false_positive_neurons_result;
+                false_negative += false_negative_neurons_result;
+            }
+        }
+
+        CountAccuracyResult {
+            positive,
+            negative,
+            true_positive,
+            true_negative,
+            false_positive,
+            false_negative,
+        }
     }
 
     pub fn process_for_measure(&mut self, data: T) -> Result<Vec<bool>, ()> {

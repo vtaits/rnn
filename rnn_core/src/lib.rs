@@ -17,4 +17,4 @@ mod structures;
 pub use data_layer::{DataLayer, DataLayerParams};
 pub use logger::{Logger, LoggerEvent, MultipleFileLogger, MultipleFileLoggerParams};
 pub use network::{Network, NetworkParseError};
-pub use structures::{LayerParams, SynapseParams};
+pub use structures::{CountAccuracyResult, LayerParams, SynapseParams};

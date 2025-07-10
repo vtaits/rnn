@@ -153,3 +153,12 @@ pub enum InputPhase {
     Odd,
     Even,
 }
+
+pub struct CountAccuracyResult {
+    pub positive: usize,
+    pub negative: usize,
+    pub true_positive: usize,
+    pub true_negative: usize,
+    pub false_positive: usize,
+    pub false_negative: usize,
+}

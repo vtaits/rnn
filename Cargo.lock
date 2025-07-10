@@ -530,6 +530,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 name = "count_accuracy"
 version = "1.0.0"
 dependencies = [
+ "rnn_core",
  "rnn_instance",
  "tokio",
 ]
@@ -933,6 +934,7 @@ name = "get_optimal_params"
 version = "1.0.0"
 dependencies = [
  "itertools 0.14.0",
+ "rnn_core",
  "rnn_instance",
  "tokio",
 ]

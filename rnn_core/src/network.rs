@@ -598,12 +598,19 @@ impl Network {
     fn split_signal(&self, bit_vec: &[bool]) -> (Vec<bool>, Option<Vec<bool>>) {
         let mut has_intersection = false;
 
-        let mut apply_vec = vec![false; self.field_size];
-        let mut rest_vec = vec![false; self.field_size];
+        let half_field_size = self.field_size / 2;
+
+        let mut apply_vec = vec![false; half_field_size];
+        let mut rest_vec = vec![false; half_field_size];
 
         for (pos, value) in bit_vec.iter().enumerate() {
+            let neuron_index = match self.input_phase {
+                InputPhase::Even => pos * 2,
+                InputPhase::Odd => pos * 2 + 1,
+            };
+
             if *value {
-                if self.refract_intervals_1[pos] > 0 {
+                if self.refract_intervals_1[neuron_index] > 0 {
                     has_intersection = true;
                     rest_vec[pos] = true;
                 } else {
@@ -635,12 +642,12 @@ impl Network {
      */
     pub fn push_data_binary(&mut self, bit_vec: &[bool], _prediction_depth: usize) {
         let data_len = bit_vec.len();
-        let field_size = self.field_size;
+        let half_field_size = self.field_size / 2;
         let tick_count = self.get_tick_count(bit_vec);
 
         for i in 0..tick_count {
-            let start = i * self.field_size;
-            let end = std::cmp::min(start + field_size, data_len);
+            let start = i * half_field_size;
+            let end = std::cmp::min(start + half_field_size, data_len);
 
             if let Some(prediction) = &mut self.prediction {
                 prediction.add_tick(i);

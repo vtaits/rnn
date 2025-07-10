@@ -1,5 +1,6 @@
 use std::env;
 
+use rnn_core::CountAccuracyResult;
 use tokio;
 
 use itertools::Itertools;
@@ -29,7 +30,7 @@ async fn main() -> Result<(), ()> {
     let ranges = vec![
         // alpha
         // frange(1.1, 3.01, 0.1),
-        frange(1.1, 2.01, 0.1),
+        frange(1.1, 3.01, 0.1),
         // gamma_dec
         // frange(0.3, 0.7, 0.1),
         vec![0.5],
@@ -47,7 +48,7 @@ async fn main() -> Result<(), ()> {
         vec![1.0],
         // h = 1.4
         // frange(0.5, 3.1, 0.1),
-        frange(0.75, 2.01, 0.25),
+        frange(0.5, 2.01, 0.25),
         // refract_interval = 2
         // frange(1.0, 3.01, 1.0),
         // threshold_train
@@ -55,8 +56,10 @@ async fn main() -> Result<(), ()> {
         //frange(0.84, 0.941, 0.02),
         // threshold_predict_min
         frange(0.65, 0.801, 0.05),
+        // vec![0.7],
         // threshold_predict_max
-        frange(0.84, 0.901, 0.02),
+        frange(0.85, 0.951, 0.05),
+        // vec![0.9],
         // signal_shift_interval = 1
         // frange(1.0, 3.01, 1.0),
     ];
@@ -92,6 +95,8 @@ async fn main() -> Result<(), ()> {
             let mut total_positive = 0;
             let mut total_negative = 0;
 
+            let mut true_positive_neurons = 0usize;
+            let mut true_negative_neurons = 0usize;
             let mut false_positive_neurons = 0usize;
             let mut false_negative_neurons = 0usize;
 
@@ -111,27 +116,33 @@ async fn main() -> Result<(), ()> {
                         redefine_params: Some(redefine_params),
                     });
 
-                let (
+                let CountAccuracyResult {
                     positive,
                     negative,
-                    false_positive_neurons_result,
-                    false_negative_neurons_result,
-                ) = data_layer.count_accuracy(measurement_data);
+                    true_positive,
+                    true_negative,
+                    false_positive,
+                    false_negative,
+                } = data_layer.count_accuracy(measurement_data);
 
                 total_positive += positive;
                 total_negative += negative;
-                false_positive_neurons += false_positive_neurons_result;
-                false_negative_neurons += false_negative_neurons_result;
+                true_positive_neurons += true_positive;
+                true_negative_neurons += true_negative;
+                false_positive_neurons += false_positive;
+                false_negative_neurons += false_negative;
             }
 
-            if total_positive > 40 {
+            if total_positive > 11 {
                 println!("{:?}", redefine_params);
 
                 println!(
-                    "positive: {}, negative: {}, total: {}, false positive: {}, false negative: {}",
+                    "positive: {}, negative: {}, total: {}, true positive: {}, true negative: {}, false positive: {}, false negative: {}",
                     total_positive,
                     total_negative,
                     total_positive + total_negative,
+                    true_positive_neurons,
+                    true_negative_neurons,
                     false_positive_neurons,
                     false_negative_neurons,
                 );
