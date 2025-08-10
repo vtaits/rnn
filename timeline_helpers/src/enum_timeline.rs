@@ -100,6 +100,10 @@ impl Timeline for EnumTimeline<String> {
     fn get_capacity(&self) -> &u8 {
         &self.params.capacity
     }
+
+    fn normalize_prediction(&self, bits: &[bool]) -> Vec<bool> {
+        bits.to_vec()
+    }
 }
 
 #[cfg(test)]

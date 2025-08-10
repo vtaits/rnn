@@ -112,6 +112,10 @@ impl Timeline for DatetimeTimeline {
     fn get_capacity(&self) -> &u8 {
         &(CAPACITY as u8)
     }
+
+    fn normalize_prediction(&self, bits: &[bool]) -> Vec<bool> {
+        bits.to_vec()
+    }
 }
 
 #[cfg(test)]

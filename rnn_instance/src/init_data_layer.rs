@@ -86,7 +86,16 @@ pub fn init_data_layer(
 
                 Box::new(move |binary| Ok(complex_timeline.reverse(&binary)))
             },
-            get_target_mask: Box::new(move || complex_timeline.get_target_mask()),
+            get_target_mask: {
+                let complex_timeline = Arc::clone(&complex_timeline);
+
+                Box::new(move || complex_timeline.get_target_mask())
+            },
+            normalize_prediction: {
+                let complex_timeline = Arc::clone(&complex_timeline);
+
+                Box::new(move |data| complex_timeline.normalize_prediction(data))
+            },
         },
         Arc::new(RwLock::new(network)),
     );

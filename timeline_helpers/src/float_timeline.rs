@@ -118,6 +118,7 @@ impl Timeline for FloatTimeline {
                     normalized_value,
                     self.params.capacity as usize,
                     self.max_normalize_value,
+                    false,
                 );
             }
 
@@ -159,6 +160,26 @@ impl Timeline for FloatTimeline {
         let result = self.params.min_value + self.range * reverse_multiplier;
 
         ComplexTimelineValue::Float(result)
+    }
+
+    fn normalize_prediction(&self, bits: &[bool]) -> Vec<bool> {
+        if !self.is_single_bit {
+            return bits.to_vec();
+        }
+
+        let mut result = vec![false; bits.len()];
+
+        let last_positive_bit_index = bits
+            .iter()
+            .rev()
+            .position(|x| *x)
+            .map(|pos| bits.len() - 1 - pos);
+
+        if let Some(last_positive_bit_index) = last_positive_bit_index {
+            result[last_positive_bit_index] = true
+        }
+
+        result
     }
 }
 

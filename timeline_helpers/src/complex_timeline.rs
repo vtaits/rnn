@@ -62,6 +62,27 @@ impl ComplexTimeline {
 
         res
     }
+
+    pub fn normalize_prediction(&self, bits: &[bool]) -> Vec<bool> {
+        let mut result = vec![];
+        let mut last_index = 0usize;
+
+        for timeline_item in self.items.iter() {
+            let capacity = *timeline_item.get_capacity() as usize;
+
+            let timeline_bits = &bits[last_index..last_index + capacity];
+
+            let normalized_bits = timeline_item.normalize_prediction(timeline_bits);
+
+            for bit in normalized_bits {
+                result.push(bit);
+            }
+
+            last_index += capacity;
+        }
+
+        result
+    }
 }
 
 #[cfg(test)]

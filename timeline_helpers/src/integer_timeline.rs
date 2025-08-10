@@ -127,6 +127,10 @@ impl Timeline for IntegerTimeline {
 
         panic!("Invalid value of integer timeline");
     }
+
+    fn normalize_prediction(&self, bits: &[bool]) -> Vec<bool> {
+        bits.to_vec()
+    }
 }
 
 #[cfg(test)]

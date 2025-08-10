@@ -6,6 +6,7 @@ pub struct DataLayerParams<T> {
     pub binary_to_data: Box<dyn Fn(&[bool]) -> Result<T, ()> + Send + Sync>,
     pub data_to_binary: Box<dyn Fn(T) -> Result<Vec<bool>, ()> + Send + Sync>,
     pub get_target_mask: Box<dyn Fn() -> Vec<bool> + Send + Sync>,
+    pub normalize_prediction: Box<dyn Fn(&[bool]) -> Vec<bool> + Send + Sync>,
 }
 
 pub struct DataLayer<T> {
@@ -41,6 +42,10 @@ impl<T> DataLayer<T> {
             .push_data_and_apply(bit_vec, prediction_depth);
     }
 
+    fn normalize_prediction(&self, result_vec: &[bool]) -> Vec<bool> {
+        return (self.params.normalize_prediction)(result_vec);
+    }
+
     fn check(&mut self, bit_vec: &[bool]) -> (bool, usize, usize, usize, usize) {
         let mut check_vec: Vec<bool> = vec![false; self.target_mask.len()];
 
@@ -58,14 +63,15 @@ impl<T> DataLayer<T> {
             }
         }
 
-        let prediction = self.predict_binary(&check_vec, 0);
+        let prediction: Vec<bool> = self.predict_binary(&check_vec, 0);
+        let normalized_prediction = self.normalize_prediction(&prediction);
 
         let mut has_error = false;
 
         for (index, is_target) in self.target_mask.iter().enumerate() {
             if *is_target {
                 let expected = bit_vec[index];
-                let received = prediction[index];
+                let received = normalized_prediction[index];
 
                 // print!("{}{} ", if expected {"+"} else {"."}, if received {"+"} else {"."});
 

@@ -477,6 +477,16 @@ impl Network {
             logger.log_event(LoggerEvent::Input(bit_vec.to_vec()));
         }
 
+        /* let mut positive = 0;
+        for value in bit_vec {
+            print!("{}", if *value {"+"} else {"."} );
+
+            if *value {
+                positive += 1;
+            }
+        }
+        println!("{}", positive); */
+
         for (pos, value) in bit_vec.iter().enumerate() {
             let neuron_index = match input_phase {
                 InputPhase::Even => pos * 2,

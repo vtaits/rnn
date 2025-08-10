@@ -73,6 +73,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
             }),
             binary_to_data: Box::new(|_data| Ok(0_i64)),
             get_target_mask: Box::new(|| vec![]),
+            normalize_prediction: Box::new(|data| data.to_vec()),
         },
         Arc::clone(&network),
     );
