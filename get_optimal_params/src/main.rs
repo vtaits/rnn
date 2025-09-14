@@ -29,14 +29,15 @@ async fn main() -> Result<(), ()> {
 
     let ranges = vec![
         // alpha
-        // frange(1.1, 3.01, 0.1),
-        frange(1.1, 3.01, 0.1),
+        frange(1.95, 2.051, 0.025),
+        // frange(1.935, 1.945, 0.001),
+        // vec![1.94],
         // gamma_dec
         // frange(0.3, 0.7, 0.1),
-        vec![0.5],
+        vec![0.6],
         // gamma_inc
         // frange(0.3, 0.7, 0.1),
-        vec![0.5],
+        vec![0.4],
         // g_dec
         // frange(1.0, 3.01, 1.0),
         vec![1.0],
@@ -47,19 +48,20 @@ async fn main() -> Result<(), ()> {
         // frange(0.0, 3.01, 1.0),
         vec![1.0],
         // h = 1.4
-        // frange(0.5, 3.1, 0.1),
-        frange(0.5, 2.01, 0.25),
+        frange(0.9, 1.11, 0.05),
+        // frange(1.015, 1.025, 0.001),
+        // vec![1.0],
         // refract_interval = 2
         // frange(1.0, 3.01, 1.0),
         // threshold_train
         vec![0.9],
         //frange(0.84, 0.941, 0.02),
         // threshold_predict_min
-        frange(0.65, 0.801, 0.05),
-        // vec![0.7],
+        // frange(0.67, 0.731, 0.01),
+        vec![0.7],
         // threshold_predict_max
-        frange(0.85, 0.951, 0.05),
-        // vec![0.9],
+        // frange(0.8, 0.881, 0.01),
+        vec![0.85],
         // signal_shift_interval = 1
         // frange(1.0, 3.01, 1.0),
     ];
@@ -133,7 +135,7 @@ async fn main() -> Result<(), ()> {
                 false_negative_neurons += false_negative;
             }
 
-            if total_positive > 11 {
+            if total_positive > 50 {
                 println!("{:?}", redefine_params);
 
                 println!(

@@ -120,6 +120,7 @@ fn get_computed_params(
         field_height,
         layer_width,
         layer_height,
+        ..
     } = layer_params;
 
     let field_size = field_width * field_height;
@@ -196,6 +197,7 @@ impl Network {
             field_height,
             layer_width,
             layer_height,
+            ..
         } = layer_params;
 
         let field_size = field_width * field_height;
@@ -313,6 +315,7 @@ impl Network {
             field_height,
             layer_width,
             layer_height,
+            ..
         } = parsed_dump.layer_params;
 
         let field_size = field_width * field_height;
@@ -532,16 +535,10 @@ impl Network {
             &self.neurons_1,
             &mut self.neurons_2,
             &self.refract_intervals_2,
-            self.synapse_params.refract_interval,
+            &self.layer_params,
+            &self.synapse_params,
+            &self.computed_params,
             threshold,
-            self.synapse_params.gamma_inc,
-            self.synapse_params.gamma_dec,
-            0.0,
-            self.computed_params.excited_neurons_limit,
-            self.synapse_params.g_dec,
-            self.synapse_params.g_inc,
-            self.synapse_params.min_g,
-            self.synapse_params.max_g,
             1,
             &mut self.logger,
         )
@@ -575,16 +572,10 @@ impl Network {
             &self.neurons_2,
             &mut self.neurons_1,
             &self.refract_intervals_1,
-            self.synapse_params.refract_interval,
+            &self.layer_params,
+            &self.synapse_params,
+            &self.computed_params,
             threshold,
-            self.synapse_params.gamma_inc,
-            self.synapse_params.gamma_dec,
-            self.synapse_params.g_0,
-            self.computed_params.excited_neurons_limit,
-            self.synapse_params.g_dec,
-            self.synapse_params.g_inc,
-            self.synapse_params.min_g,
-            self.synapse_params.max_g,
             2,
             &mut self.logger,
         )

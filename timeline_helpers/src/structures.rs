@@ -1,3 +1,4 @@
+use rnn_core::Partition;
 use serde_derive::{Deserialize, Serialize};
 
 use crate::{
@@ -35,4 +36,8 @@ pub trait Timeline: Send + Sync {
     fn reverse(&self, bits: &[bool]) -> ComplexTimelineValue;
 
     fn normalize_prediction(&self, bits: &[bool]) -> Vec<bool>;
+
+    fn get_partition(&self) -> Partition;
+
+    fn regress(&self, bits: &[bool]) -> f32;
 }

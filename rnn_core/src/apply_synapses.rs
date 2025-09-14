@@ -2,8 +2,11 @@ use std::sync::{Arc, Mutex};
 
 use ocl::{Buffer, Kernel, ProQue};
 
+use crate::excite_neurons_with_partitions::excite_neurons_with_partitions;
+use crate::excite_neurons_without_partitions::excite_neurons_without_partitions;
 use crate::logger::{Logger, LoggerEvent};
-use crate::structures::CompiledKernel;
+use crate::structures::{CompiledKernel, ComputedParams};
+use crate::{LayerParams, SynapseParams};
 
 pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKernel> {
     let kernel_source = include_str!("apply_synapses.cl");
@@ -21,6 +24,7 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
         .arg_named("neurons_from", None::<&Buffer<u8>>)
         .arg_named("refract_intervals_to", None::<&Buffer<u8>>)
         .arg_named("neurons_to", None::<&Buffer<u8>>)
+        .arg_named("signals_to", None::<&Buffer<f32>>)
         .arg_named("layer_size", 0_u32)
         .arg_named("initial_refract_interval", 0_u8)
         .arg_named("threshold", 0.0_f32)
@@ -74,19 +78,34 @@ pub fn apply_synapses(
     neurons_from: &Vec<u8>,
     neurons_to: &mut Vec<u8>,
     refract_intervals_to: &Vec<u8>,
-    initial_refract_interval: u8,
+    layer_params: &LayerParams,
+    synapse_params: &SynapseParams,
+    computed_params: &ComputedParams,
     threshold: f32,
-    gamma_inc: f32,
-    gamma_dec: f32,
-    g_0: f32,
-    excited_neurons_limit: usize,
-    g_dec: f32,
-    g_inc: f32,
-    min_g: f32,
-    max_g: f32,
     layer_index: usize,
     logger: &mut Option<Box<dyn Logger>>,
 ) -> ocl::Result<()> {
+    let LayerParams { partitions, .. } = layer_params;
+
+    let SynapseParams {
+        refract_interval,
+        gamma_inc,
+        gamma_dec,
+        g_0,
+        g_dec,
+        g_inc,
+        min_g,
+        max_g,
+        ..
+    } = synapse_params;
+
+    let ComputedParams {
+        field_size,
+        field_count,
+        excited_neurons_limit,
+        ..
+    } = computed_params;
+
     let buffer_neurons_from = Buffer::<u8>::builder()
         .queue(compiled_kernel.pro_que.queue().clone())
         .len(neurons_from.len())
@@ -103,6 +122,12 @@ pub fn apply_synapses(
         .queue(compiled_kernel.pro_que.queue().clone())
         .flags(ocl::flags::MEM_READ_WRITE)
         .len(layer_size)
+        .build()?;
+
+    let buffer_signals_to = Buffer::<f32>::builder()
+        .queue(compiled_kernel.pro_que.queue().clone())
+        .flags(ocl::flags::MEM_READ_WRITE)
+        .len(if is_prediction { layer_size } else { 1 })
         .build()?;
 
     let buffer_inc_counter = Buffer::<i32>::builder()
@@ -130,12 +155,13 @@ pub fn apply_synapses(
         kernel.set_arg("neurons_from", &buffer_neurons_from)?;
         kernel.set_arg("refract_intervals_to", &buffer_refract_intervals_to)?;
         kernel.set_arg("neurons_to", &buffer_neurons_to)?;
+        kernel.set_arg("signals_to", &buffer_signals_to)?;
         kernel.set_arg("layer_size", layer_size as u32)?;
-        kernel.set_arg("initial_refract_interval", initial_refract_interval)?;
+        kernel.set_arg("initial_refract_interval", refract_interval)?;
         kernel.set_arg("threshold", threshold)?;
         kernel.set_arg("gamma_inc", gamma_inc)?;
         kernel.set_arg("gamma_dec", gamma_dec)?;
-        kernel.set_arg("g_0", g_0)?;
+        kernel.set_arg("g_0", if layer_index == 2 { g_0 } else { &0.0 })?;
         kernel.set_arg("g_dec", g_dec)?;
         kernel.set_arg("g_inc", g_inc)?;
         kernel.set_arg("min_g", min_g)?;
@@ -145,16 +171,32 @@ pub fn apply_synapses(
         kernel.set_arg("dec_counter", &buffer_dec_counter)?;
         kernel.enq()?;
     }
-
-    let mut neurons_to_flat = neurons_to.as_slice().to_vec();
-
-    buffer_neurons_to.read(&mut neurons_to_flat).enq()?;
-
     if is_prediction {
-        remove_extra_neurons(&mut neurons_to_flat, excited_neurons_limit);
-    }
+        let mut signals_to = vec![0.0_f32; layer_size];
 
-    neurons_to.copy_from_slice(&neurons_to_flat);
+        buffer_signals_to.read(&mut signals_to).enq()?;
+
+        if let Some(partitions) = partitions {
+            excite_neurons_with_partitions(
+                neurons_to,
+                &signals_to,
+                *field_size,
+                *field_count,
+                threshold,
+                partitions,
+            );
+        } else {
+            excite_neurons_without_partitions(neurons_to, &signals_to, threshold);
+
+            remove_extra_neurons(neurons_to, *excited_neurons_limit);
+        }
+    } else {
+        let mut neurons_to_flat = neurons_to.as_slice().to_vec();
+
+        buffer_neurons_to.read(&mut neurons_to_flat).enq()?;
+
+        neurons_to.copy_from_slice(&neurons_to_flat);
+    }
 
     let mut inc_counter_result = vec![0i32; 1];
     buffer_inc_counter

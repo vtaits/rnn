@@ -1,3 +1,4 @@
+use rnn_core::Partition;
 use serde_derive::Deserialize;
 
 use crate::{
@@ -180,6 +181,19 @@ impl Timeline for FloatTimeline {
         }
 
         result
+    }
+
+    fn get_partition(&self) -> Partition {
+        Partition {
+            size: *self.get_capacity() as usize,
+            accept_all: !self.is_single_bit,
+        }
+    }
+
+    fn regress(&self, bits: &[bool]) -> f32 {
+        let reversed_value = self.reverse(bits);
+
+        panic!("Regression is not implemented for enum timeline");
     }
 }
 

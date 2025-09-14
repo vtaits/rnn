@@ -1,4 +1,5 @@
 use chrono::{NaiveDate, NaiveDateTime, Timelike};
+use rnn_core::Partition;
 use serde_derive::Deserialize;
 
 use crate::{bits_to_number, number_to_single_bit, ComplexTimelineValue, Timeline};
@@ -97,6 +98,13 @@ impl Timeline for TimeTimeline {
 
     fn normalize_prediction(&self, bits: &[bool]) -> Vec<bool> {
         bits.to_vec()
+    }
+
+    fn get_partition(&self) -> Partition {
+        Partition {
+            size: *self.get_capacity() as usize,
+            accept_all: false,
+        }
     }
 }
 

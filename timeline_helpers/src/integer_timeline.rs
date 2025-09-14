@@ -1,3 +1,4 @@
+use rnn_core::Partition;
 use serde_derive::Deserialize;
 
 use crate::{bits_to_number, number_to_bits, ComplexTimelineValue, Timeline};
@@ -24,6 +25,7 @@ pub struct IntegerTimeline {
     max_normalize_value: usize,
     params: IntegerTimelineParams,
     is_target: bool,
+    is_single_bit: bool,
 }
 
 impl IntegerTimeline {
@@ -37,6 +39,7 @@ impl IntegerTimeline {
             params,
             range,
             is_target,
+            is_single_bit: false,
         }
     }
 
@@ -130,6 +133,13 @@ impl Timeline for IntegerTimeline {
 
     fn normalize_prediction(&self, bits: &[bool]) -> Vec<bool> {
         bits.to_vec()
+    }
+
+    fn get_partition(&self) -> Partition {
+        Partition {
+            size: *self.get_capacity() as usize,
+            accept_all: !self.is_single_bit,
+        }
     }
 }
 

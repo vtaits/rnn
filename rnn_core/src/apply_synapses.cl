@@ -20,6 +20,7 @@ __kernel void apply_synapses(
     __global unsigned char* neurons_from,
     __global unsigned char* refract_intervals_to,
     __global unsigned char* neurons_to,
+    __global float* signals_to,
     const unsigned int layer_size,
     const uchar initial_refract_interval,
     const float threshold,
@@ -47,7 +48,6 @@ __kernel void apply_synapses(
         }
     } else {
         float sum = 0.0;
-        neurons_to[row] = 0;
 
         for (int col = 0; col < layer_size; ++col) {
             unsigned int index_from = row * layer_size + col;
@@ -57,14 +57,15 @@ __kernel void apply_synapses(
 
                 if (weight_to > 0.0001 || weight_to < -0.0001) {
                     sum += get_weight_coefficient(gamma_inc, gamma_dec, weight_to, g_0) * distance_weights[index_from];
-
-                    if (sum > threshold) {
-                        neurons_to[row] = 1;
-                        break;
-                    }
                 }
             }
         }
+
+        signals_to[row] = sum;
+    }
+
+    if (is_prediction) {
+        return;
     }
 
     // recount synapses

@@ -26,6 +26,8 @@ pub fn init_data_layer(
     let LayerParams {
         field_width,
         field_height,
+        layer_height,
+        layer_width,
         ..
     } = layer_params;
 
@@ -55,8 +57,16 @@ pub fn init_data_layer(
         synapse_params
     };
 
+    let layer_params_with_partitions = LayerParams {
+        field_width,
+        field_height,
+        layer_height,
+        layer_width,
+        partitions: Some(complex_timeline.get_partitions()),
+    };
+
     let network = Network::new(
-        layer_params,
+        layer_params_with_partitions,
         merged_synapse_params,
         if is_log_to_files {
             Some(Box::new(MultipleFileLogger::new(

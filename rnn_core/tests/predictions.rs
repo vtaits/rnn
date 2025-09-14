@@ -23,6 +23,7 @@ fn identical_prediction_small_network(
             field_height: 4,
             layer_width,
             layer_height,
+            partitions: None,
         },
         SynapseParams {
             alpha: 3.0,
@@ -73,6 +74,7 @@ fn identical_prediction_big_network(
             field_height: 4,
             layer_width,
             layer_height,
+            partitions: None,
         },
         SynapseParams {
             alpha: 3.0,
@@ -126,6 +128,7 @@ fn restore_missed_bits(
             field_height: 4,
             layer_width: 12,
             layer_height: 12,
+            partitions: None,
         },
         SynapseParams {
             alpha,
@@ -183,6 +186,7 @@ fn not_restore_missed_bits(
             field_height: 4,
             layer_width: 12,
             layer_height: 12,
+            partitions: None,
         },
         SynapseParams {
             alpha,
@@ -281,6 +285,7 @@ fn restore_multiple_separated_sequences(#[case] sequences: Vec<(Vec<bool>, Vec<b
             field_height: 8,
             layer_width: 4,
             layer_height: 4,
+            partitions: None,
         },
         SynapseParams {
             alpha: 1.5,
@@ -383,6 +388,7 @@ fn restore_multiple_overlapping_sequences(#[case] sequences: Vec<(Vec<bool>, Vec
             field_height: 8,
             layer_width: 12,
             layer_height: 12,
+            partitions: None,
         },
         SynapseParams {
             alpha: 2.0,

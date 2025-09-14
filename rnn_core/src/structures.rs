@@ -68,6 +68,14 @@ pub struct SynapseParams {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct Partition {
+    pub size: usize,
+    pub accept_all: bool,
+    // TO DO
+    // pub max_excited_neurons: usize,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct LayerParams {
     /// Width in neurons of one field
     pub field_width: usize,
@@ -77,6 +85,7 @@ pub struct LayerParams {
     pub layer_width: usize,
     // Height in fields of one layer
     pub layer_height: usize,
+    pub partitions: Option<Vec<Partition>>,
 }
 
 pub struct SynapseMask {

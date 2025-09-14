@@ -1,3 +1,5 @@
+use rnn_core::Partition;
+
 use crate::{ComplexTimelineValue, Timeline};
 
 pub struct ComplexTimeline {
@@ -82,6 +84,13 @@ impl ComplexTimeline {
         }
 
         result
+    }
+
+    pub fn get_partitions(&self) -> Vec<Partition> {
+        self.items
+            .iter()
+            .map(|timeline_item| timeline_item.get_partition())
+            .collect()
     }
 }
 

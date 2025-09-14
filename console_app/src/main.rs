@@ -18,6 +18,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         field_height: 4,
         layer_width: 5,
         layer_height: 5,
+        partitions: None,
     };
 
     let synapse_params = SynapseParams {

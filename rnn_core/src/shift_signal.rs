@@ -124,6 +124,7 @@ mod tests {
                 field_width,
                 layer_height: 1,
                 layer_width: 1,
+                partitions: None,
             },
             &shift,
         );
