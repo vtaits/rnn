@@ -19,7 +19,10 @@ pub fn init_by_toml(
     file_path: &str,
     config_dir: &Option<String>,
     params: &InitDataLayerParams,
-) -> (DataLayer<Vec<ComplexTimelineValue>>, Vec<Vec<bool>>) {
+) -> (
+    DataLayer<Vec<ComplexTimelineValue>>,
+    Vec<(Vec<ComplexTimelineValue>, Vec<bool>)>,
+) {
     let train = params.train;
 
     let full_path = get_file_path(file_path, config_dir);

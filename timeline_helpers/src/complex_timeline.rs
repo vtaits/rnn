@@ -1,4 +1,4 @@
-use rnn_core::Partition;
+use rnn_core::{Partition, RegressResult};
 
 use crate::{ComplexTimelineValue, Timeline};
 
@@ -91,6 +91,44 @@ impl ComplexTimeline {
             .iter()
             .map(|timeline_item| timeline_item.get_partition())
             .collect()
+    }
+
+    pub fn regress(&self, bits: &[bool]) -> f32 {
+        let mut result = None;
+
+        let mut last_index = 0usize;
+
+        for timeline_item in self.items.iter() {
+            let capacity = *timeline_item.get_capacity() as usize;
+
+            if timeline_item.is_target() {
+                let timeline_bits = &bits[last_index..last_index + capacity];
+
+                let regressed_value = timeline_item.regress(timeline_bits);
+
+                result = Some(regressed_value);
+            } else if result.is_some() {
+                panic!("There are many regression timelines");
+            }
+
+            last_index += capacity;
+        }
+
+        result.expect("There should be one target timeline")
+    }
+
+    pub fn get_regress_difference(
+        &self,
+        original: &[ComplexTimelineValue],
+        computed: &[ComplexTimelineValue],
+    ) -> RegressResult {
+        for (index, timeline_item) in self.items.iter().enumerate() {
+            if timeline_item.is_target() {
+                return timeline_item.get_regress_difference(&original[index], &computed[index]);
+            }
+        }
+
+        panic!("Target timeline is not defined")
     }
 }
 

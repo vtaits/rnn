@@ -18,7 +18,10 @@ pub fn init_data_layer(
     timelines: Vec<Box<dyn Timeline>>,
     training_streams: Vec<Box<dyn TrainingStream>>,
     params: &InitDataLayerParams,
-) -> (DataLayer<Vec<ComplexTimelineValue>>, Vec<Vec<bool>>) {
+) -> (
+    DataLayer<Vec<ComplexTimelineValue>>,
+    Vec<(Vec<ComplexTimelineValue>, Vec<bool>)>,
+) {
     let mut complex_stream = ComplexStream::new(training_streams);
 
     let complex_timeline = Arc::new(ComplexTimeline::new(timelines));
@@ -105,6 +108,16 @@ pub fn init_data_layer(
                 let complex_timeline = Arc::clone(&complex_timeline);
 
                 Box::new(move |data| complex_timeline.normalize_prediction(data))
+            },
+            regress: {
+                let complex_timeline = Arc::clone(&complex_timeline);
+
+                Box::new(
+                    move |original: &Vec<ComplexTimelineValue>,
+                          computed: &Vec<ComplexTimelineValue>| {
+                        complex_timeline.get_regress_difference(&original, &computed)
+                    },
+                )
             },
         },
         Arc::new(RwLock::new(network)),

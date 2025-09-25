@@ -1,4 +1,4 @@
-use rnn_core::Partition;
+use rnn_core::{Partition, RegressResult};
 use serde_derive::Deserialize;
 
 use crate::{
@@ -193,7 +193,28 @@ impl Timeline for FloatTimeline {
     fn regress(&self, bits: &[bool]) -> f32 {
         let reversed_value = self.reverse(bits);
 
-        panic!("Regression is not implemented for enum timeline");
+        match reversed_value {
+            ComplexTimelineValue::Float(value) => value,
+            _ => panic!("Wrong type of value"),
+        }
+    }
+
+    fn get_regress_difference(
+        &self,
+        original: &ComplexTimelineValue,
+        computed: &ComplexTimelineValue,
+    ) -> RegressResult {
+        match original {
+            ComplexTimelineValue::Float(actual) => match computed {
+                ComplexTimelineValue::Float(received) => RegressResult {
+                    actual: *actual,
+                    received: *received,
+                    diff: (actual - received).abs(),
+                },
+                _ => panic!("Wrong type of value"),
+            },
+            _ => panic!("Wrong type of value"),
+        }
     }
 }
 

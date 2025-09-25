@@ -1,10 +1,21 @@
 use chrono::{Datelike, NaiveDate, NaiveDateTime};
-use rnn_core::Partition;
+use rnn_core::{Partition, RegressResult};
 use serde_derive::Deserialize;
 
-use crate::{bits_to_number, ComplexTimelineValue, Timeline};
+use crate::{ComplexTimelineValue, Timeline};
 
 const DEFAULT_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
+
+fn _first_date_of_month(year: i32, month: u32, weekday: chrono::Weekday) -> NaiveDate {
+    let mut day = 1;
+    loop {
+        let date = NaiveDate::from_ymd_opt(year, month, day).unwrap();
+        if date.weekday() == weekday {
+            return date;
+        }
+        day += 1;
+    }
+}
 
 #[derive(Clone, Deserialize)]
 pub struct WeekendTimelineConfig {
@@ -68,30 +79,17 @@ impl Timeline for WeekendTimeline {
         panic!("Invalid value of weekend timeline");
     }
 
-    fn reverse(&self, bits: &[bool]) -> ComplexTimelineValue {
+    fn reverse(&self, _bits: &[bool]) -> ComplexTimelineValue {
+        return ComplexTimelineValue::Datetime(String::from(""));
+
+        /*
         let format = self.get_date_format();
 
-        let year = bits_to_number(&bits[0..8]) + 1900;
-        let month = std::cmp::max(std::cmp::min(bits_to_number(&bits[8..12]), 12), 1);
-        let day = std::cmp::max(std::cmp::min(bits_to_number(&bits[12..17]), 31), 1);
-        let hour = std::cmp::min(bits_to_number(&bits[17..22]), 23);
-        let minute = std::cmp::min(bits_to_number(&bits[22..24]) * 15, 59);
+        let target_day = if bits[0] { chrono::Weekday::Wed } else { chrono::Weekday::Sun };
 
-        let date_opt = NaiveDate::from_ymd_opt(year as i32, month as u32, day as u32);
+        let datetime = first_date_of_month(2025, 1, target_day);
 
-        if date_opt.is_none() {
-            return ComplexTimelineValue::Datetime(String::from(""));
-        }
-
-        let date_opt = date_opt.unwrap().and_hms_opt(hour as u32, minute as u32, 0);
-
-        if date_opt.is_none() {
-            return ComplexTimelineValue::Datetime(String::from(""));
-        }
-
-        let datetime = date_opt.unwrap();
-
-        ComplexTimelineValue::Datetime(format!("{}", datetime.format(format)))
+        ComplexTimelineValue::Datetime(format!("{}", datetime.format(format))) */
     }
 
     fn get_capacity(&self) -> &u8 {
@@ -107,6 +105,18 @@ impl Timeline for WeekendTimeline {
             size: *self.get_capacity() as usize,
             accept_all: false,
         }
+    }
+
+    fn regress(&self, _bits: &[bool]) -> f32 {
+        panic!("Regression is not implemented for weekend timeline");
+    }
+
+    fn get_regress_difference(
+        &self,
+        _original: &ComplexTimelineValue,
+        _computed: &ComplexTimelineValue,
+    ) -> RegressResult {
+        panic!("Regression is not implemented for weekend timeline");
     }
 }
 

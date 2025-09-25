@@ -1,4 +1,4 @@
-use rnn_core::Partition;
+use rnn_core::{Partition, RegressResult};
 use serde_derive::{Deserialize, Serialize};
 
 use crate::{
@@ -7,7 +7,7 @@ use crate::{
     DatetimeTimelineConfig, WeekendTimelineConfig,
 };
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub enum ComplexTimelineValue {
     Float(f32),
     Datetime(String),
@@ -40,4 +40,10 @@ pub trait Timeline: Send + Sync {
     fn get_partition(&self) -> Partition;
 
     fn regress(&self, bits: &[bool]) -> f32;
+
+    fn get_regress_difference(
+        &self,
+        original: &ComplexTimelineValue,
+        computed: &ComplexTimelineValue,
+    ) -> RegressResult;
 }

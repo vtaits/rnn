@@ -171,3 +171,9 @@ pub struct CountAccuracyResult {
     pub false_positive: usize,
     pub false_negative: usize,
 }
+
+pub struct RegressResult {
+    pub actual: f32,
+    pub received: f32,
+    pub diff: f32,
+}

@@ -1,12 +1,13 @@
 use std::sync::{Arc, RwLock};
 
-use crate::{CountAccuracyResult, Network};
+use crate::{CountAccuracyResult, Network, RegressResult};
 
 pub struct DataLayerParams<T> {
     pub binary_to_data: Box<dyn Fn(&[bool]) -> Result<T, ()> + Send + Sync>,
     pub data_to_binary: Box<dyn Fn(T) -> Result<Vec<bool>, ()> + Send + Sync>,
     pub get_target_mask: Box<dyn Fn() -> Vec<bool> + Send + Sync>,
     pub normalize_prediction: Box<dyn Fn(&[bool]) -> Vec<bool> + Send + Sync>,
+    pub regress: Box<dyn Fn(&T, &T) -> RegressResult + Send + Sync>,
 }
 
 pub struct DataLayer<T> {
@@ -106,7 +107,7 @@ impl<T> DataLayer<T> {
         )
     }
 
-    pub fn count_accuracy(&mut self, measurement_data: Vec<Vec<bool>>) -> CountAccuracyResult {
+    pub fn count_accuracy(&mut self, measurement_data: Vec<(T, Vec<bool>)>) -> CountAccuracyResult {
         let mut positive = 0usize;
         let mut negative = 0usize;
 
@@ -122,7 +123,7 @@ impl<T> DataLayer<T> {
                 true_negative_neurons_result,
                 false_positive_neurons_result,
                 false_negative_neurons_result,
-            ) = self.check(&item);
+            ) = self.check(&item.1);
 
             if is_positive {
                 positive += 1;
@@ -143,6 +144,21 @@ impl<T> DataLayer<T> {
             false_positive,
             false_negative,
         }
+    }
+
+    pub fn regress(&mut self, measurement_data: Vec<(T, Vec<bool>)>) -> Vec<RegressResult> {
+        let mut res: Vec<_> = vec![];
+
+        for item in measurement_data.iter() {
+            let binary_result = self.predict_binary(&item.1, 0);
+            let deserialized = self.deserialize(&binary_result).unwrap();
+
+            let diff = (self.params.regress)(&item.0, &deserialized);
+
+            res.push(diff);
+        }
+
+        res
     }
 
     pub fn process_for_measure(&mut self, data: T) -> Result<Vec<bool>, ()> {

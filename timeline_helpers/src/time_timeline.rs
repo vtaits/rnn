@@ -1,5 +1,5 @@
 use chrono::{NaiveDate, NaiveDateTime, Timelike};
-use rnn_core::Partition;
+use rnn_core::{Partition, RegressResult};
 use serde_derive::Deserialize;
 
 use crate::{bits_to_number, number_to_single_bit, ComplexTimelineValue, Timeline};
@@ -67,11 +67,17 @@ impl Timeline for TimeTimeline {
     }
 
     fn reverse(&self, bits: &[bool]) -> ComplexTimelineValue {
+        return ComplexTimelineValue::Datetime(String::from(""));
+
+        /*
         let format = self.get_date_format();
 
-        let year = bits_to_number(&bits[0..8]) + 1900;
-        let month = std::cmp::max(std::cmp::min(bits_to_number(&bits[8..12]), 12), 1);
-        let day = std::cmp::max(std::cmp::min(bits_to_number(&bits[12..17]), 31), 1);
+        let year = 2025;
+        let month = 9;
+        let day = 23;
+
+        let normalized_value = single_bit_to_number(bits);
+
         let hour = std::cmp::min(bits_to_number(&bits[17..22]), 23);
         let minute = std::cmp::min(bits_to_number(&bits[22..24]) * 15, 59);
 
@@ -89,7 +95,7 @@ impl Timeline for TimeTimeline {
 
         let datetime = date_opt.unwrap();
 
-        ComplexTimelineValue::Datetime(format!("{}", datetime.format(format)))
+        ComplexTimelineValue::Datetime(format!("{}", datetime.format(format))) */
     }
 
     fn get_capacity(&self) -> &u8 {
@@ -105,6 +111,18 @@ impl Timeline for TimeTimeline {
             size: *self.get_capacity() as usize,
             accept_all: false,
         }
+    }
+
+    fn regress(&self, _bits: &[bool]) -> f32 {
+        panic!("Regression is not implemented for time timeline");
+    }
+
+    fn get_regress_difference(
+        &self,
+        _original: &ComplexTimelineValue,
+        _computed: &ComplexTimelineValue,
+    ) -> RegressResult {
+        panic!("Regression is not implemented for time timeline");
     }
 }
 
