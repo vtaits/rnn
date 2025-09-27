@@ -1,4 +1,5 @@
 use std::env;
+use std::time::Instant;
 
 use rnn_core::RegressResult;
 use tokio;
@@ -49,6 +50,8 @@ async fn main() -> Result<(), ()> {
     for page in 0..measures_count {
         println!("Try #{}", page + 1);
 
+        let start = Instant::now();
+
         let start_index = page * measure_data_length;
         let end_index = start_index + measure_data_length;
 
@@ -63,6 +66,8 @@ async fn main() -> Result<(), ()> {
 
         let res = data_layer.regress(measurement_data);
 
+        let duration = start.elapsed();
+
         println!("MAPE = {}, WAPE = {}", mape(&res), wape(&res));
 
         for regress_result in res {
@@ -73,6 +78,8 @@ async fn main() -> Result<(), ()> {
 
             total_res.push(regress_result);
         }
+
+        println!("Execution time (ms): {}", duration.as_millis());
     }
 
     println!(
