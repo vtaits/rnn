@@ -71,6 +71,8 @@ pub struct SynapseParams {
 pub struct Partition {
     pub size: usize,
     pub accept_all: bool,
+    pub correlate_only: Option<Vec<usize>>,
+    pub no_correlate: Option<Vec<usize>>,
     // TO DO
     // pub max_excited_neurons: usize,
 }

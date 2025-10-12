@@ -4,7 +4,7 @@ use serde_derive::{Deserialize, Serialize};
 use crate::{
     enum_timeline::EnumTimelineConfig, float_timeline::FloatTimelineConfig,
     integer_timeline::IntegerTimelineConfig, time_timeline::TimeTimelineConfig,
-    DatetimeTimelineConfig, WeekendTimelineConfig,
+    DatetimeTimelineConfig, WeekdayTimelineConfig, WeekendTimelineConfig,
 };
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
@@ -23,6 +23,7 @@ pub enum TimelineConfig {
     Integer(IntegerTimelineConfig),
     Enum(EnumTimelineConfig),
     Time(TimeTimelineConfig),
+    Weekday(WeekdayTimelineConfig),
     Weekend(WeekendTimelineConfig),
 }
 

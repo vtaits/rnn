@@ -18,21 +18,22 @@ fn _first_date_of_month(year: i32, month: u32, weekday: chrono::Weekday) -> Naiv
 }
 
 #[derive(Clone, Deserialize)]
-pub struct WeekendTimelineConfig {
+pub struct WeekdayTimelineConfig {
     pub format: Option<String>,
+    pub correlate_only: Option<Vec<usize>>,
 }
 
-pub struct WeekendTimeline {
-    config: WeekendTimelineConfig,
+pub struct WeekdayTimeline {
+    config: WeekdayTimelineConfig,
 }
 
-impl WeekendTimeline {
-    pub fn new(config: WeekendTimelineConfig) -> Self {
-        WeekendTimeline { config }
+impl WeekdayTimeline {
+    pub fn new(config: WeekdayTimelineConfig) -> Self {
+        WeekdayTimeline { config }
     }
 }
 
-impl WeekendTimeline {
+impl WeekdayTimeline {
     fn get_date_format(&self) -> &str {
         match &self.config.format {
             Some(f) => f,
@@ -40,12 +41,12 @@ impl WeekendTimeline {
         }
     }
 
-    pub fn from_config(config: &WeekendTimelineConfig) -> Self {
-        WeekendTimeline::new(config.clone())
+    pub fn from_config(config: &WeekdayTimelineConfig) -> Self {
+        WeekdayTimeline::new(config.clone())
     }
 }
 
-impl Timeline for WeekendTimeline {
+impl Timeline for WeekdayTimeline {
     fn is_target(&self) -> bool {
         false
     }
@@ -60,12 +61,16 @@ impl Timeline for WeekendTimeline {
 
             return match date_result {
                 Ok(date) => {
-                    let mut res = vec![false; 2];
+                    let mut res = vec![false; 7];
 
                     let bit_index = match date.weekday() {
-                        chrono::Weekday::Sat => 1,
-                        chrono::Weekday::Sun => 1,
-                        _ => 0,
+                        chrono::Weekday::Mon => 0,
+                        chrono::Weekday::Tue => 1,
+                        chrono::Weekday::Wed => 2,
+                        chrono::Weekday::Thu => 3,
+                        chrono::Weekday::Fri => 4,
+                        chrono::Weekday::Sat => 5,
+                        chrono::Weekday::Sun => 6,
                     };
 
                     res[bit_index] = true;
@@ -76,7 +81,7 @@ impl Timeline for WeekendTimeline {
             };
         }
 
-        panic!("Invalid value of weekend timeline");
+        panic!("Invalid value of weekday timeline");
     }
 
     fn reverse(&self, _bits: &[bool]) -> ComplexTimelineValue {
@@ -93,7 +98,7 @@ impl Timeline for WeekendTimeline {
     }
 
     fn get_capacity(&self) -> &u8 {
-        &2u8
+        &7u8
     }
 
     fn normalize_prediction(&self, bits: &[bool]) -> Vec<bool> {
@@ -104,13 +109,13 @@ impl Timeline for WeekendTimeline {
         Partition {
             size: *self.get_capacity() as usize,
             accept_all: false,
-            correlate_only: None,
+            correlate_only: self.config.correlate_only.clone(),
             no_correlate: None,
         }
     }
 
     fn regress(&self, _bits: &[bool]) -> f32 {
-        panic!("Regression is not implemented for weekend timeline");
+        panic!("Regression is not implemented for weekday timeline");
     }
 
     fn get_regress_difference(
@@ -118,7 +123,7 @@ impl Timeline for WeekendTimeline {
         _original: &ComplexTimelineValue,
         _computed: &ComplexTimelineValue,
     ) -> RegressResult {
-        panic!("Regression is not implemented for weekend timeline");
+        panic!("Regression is not implemented for weekday timeline");
     }
 }
 
@@ -128,16 +133,40 @@ mod tests {
 
     #[test]
     fn datetime_encode_and_decode() {
-        let timeline = WeekendTimeline::new(WeekendTimelineConfig { format: None });
+        let timeline = WeekdayTimeline::new(WeekdayTimelineConfig {
+            format: None,
+            correlate_only: None,
+        });
 
         let cases: Vec<(&str, Vec<bool>)> = vec![
-            ("2025-08-07 00:01:00", vec![true, false]),
-            ("2025-08-08 00:01:00", vec![true, false]),
-            ("2025-08-09 00:01:00", vec![false, true]),
-            ("2025-08-10 00:01:00", vec![false, true]),
-            ("2025-08-11 02:04:00", vec![true, false]),
-            ("2025-08-12 12:30:00", vec![true, false]),
-            ("2025-08-13 12:30:00", vec![true, false]),
+            (
+                "2025-08-07 00:01:00",
+                vec![false, false, false, true, false, false, false],
+            ),
+            (
+                "2025-08-08 00:01:00",
+                vec![false, false, false, false, true, false, false],
+            ),
+            (
+                "2025-08-09 00:01:00",
+                vec![false, false, false, false, false, true, false],
+            ),
+            (
+                "2025-08-10 00:01:00",
+                vec![false, false, false, false, false, false, true],
+            ),
+            (
+                "2025-08-11 02:04:00",
+                vec![true, false, false, false, false, false, false],
+            ),
+            (
+                "2025-08-12 12:30:00",
+                vec![false, true, false, false, false, false, false],
+            ),
+            (
+                "2025-08-13 12:30:00",
+                vec![false, false, true, false, false, false, false],
+            ),
         ];
 
         for case in cases {

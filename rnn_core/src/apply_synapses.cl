@@ -39,7 +39,11 @@ __kernel void apply_synapses(
     int row = get_global_id(0);
 
     if (refract_intervals_to[row] > 0) {
-        neurons_to[row] = 0;
+        if (is_prediction) {
+          signals_to[row] = 0;
+        } else {
+          neurons_to[row] = 0;
+        }
     } else if (!is_prediction) {
         ulong index_from = strong_synapses[row];
 
@@ -76,9 +80,13 @@ __kernel void apply_synapses(
             continue;
         }
 
-        float prev_value = accumulated_weights[index_from];
-
         if (neurons_from[col] > 0) {
+            if (distance_weights[index_from] < 0.001) {
+                continue;
+            }
+
+            float prev_value = accumulated_weights[index_from];
+
             if (refract_intervals_to[row] > 0) {
                 if (accumulated_weights[index_from] > min_g) {
                     accumulated_weights[index_from] = max(prev_value - g_dec, 0.0f);

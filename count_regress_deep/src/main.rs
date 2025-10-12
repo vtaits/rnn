@@ -64,7 +64,7 @@ async fn main() -> Result<(), ()> {
             redefine_params: None,
         });
 
-        let res = data_layer.regress(measurement_data);
+        let res = data_layer.regress_deep(measurement_data);
 
         let duration = start.elapsed();
 

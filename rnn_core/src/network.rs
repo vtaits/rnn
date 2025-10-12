@@ -634,6 +634,11 @@ impl Network {
      * Split signal into frames and apply them immediately
      */
     pub fn push_data_and_apply(&mut self, bit_vec: &[bool], prediction_depth: usize) {
+        for value in bit_vec {
+            print!("{}", if *value { "+" } else { "." });
+        }
+
+        println!();
         self.push_data_binary(bit_vec, prediction_depth);
         self.apply_buffer();
     }
@@ -641,7 +646,7 @@ impl Network {
     /**
      * Split signal into frames and push them to buffer
      */
-    pub fn push_data_binary(&mut self, bit_vec: &[bool], _prediction_depth: usize) {
+    pub fn push_data_binary(&mut self, bit_vec: &[bool], prediction_depth: usize) {
         let data_len = bit_vec.len();
         let half_field_size = self.field_size / 2;
         let tick_count = self.get_tick_count(bit_vec);
@@ -655,6 +660,10 @@ impl Network {
             }
 
             self.push_to_buffer(bit_vec[start..end].to_vec());
+        }
+
+        for _ in 0..prediction_depth {
+            self.push_to_buffer(vec![]);
         }
     }
 
@@ -673,13 +682,16 @@ impl Network {
         (data_len / field_size) + 1
     }
 
-    pub fn predict(&mut self, bit_vec: &[bool], prediction_depth: usize) -> Vec<bool> {
+    pub fn predict(&mut self, bit_vec: &[bool], prediction_depth: usize) -> Vec<Vec<bool>> {
+        self.clean_neurons();
+
         let tick_count = self.get_tick_count(bit_vec);
 
         self.prediction = Some(PredictionProcessing::new(
             tick_count,
             self.computed_params.field_size,
-            self.output_field_index + 1,
+            self.output_field_index,
+            prediction_depth,
         ));
 
         self.push_data_and_apply(bit_vec, prediction_depth);
@@ -694,7 +706,7 @@ impl Network {
     /**
      * Set all the values of neurons and refract intervals to 0
      */
-    fn _clean_neurons(&mut self) {
+    fn clean_neurons(&mut self) {
         let layer_size = self.layer_size;
 
         self.neurons_1 = vec![0u8; layer_size];
@@ -717,14 +729,14 @@ impl Network {
         println!("STATES:");
         println!();
         println!("LAYER 1:");
-        self.print_state(&self.neurons_1);
+        self.print_state(&self.neurons_1, &self.refract_intervals_1);
         println!("LAYER 2:");
-        self.print_state(&self.neurons_2);
+        self.print_state(&self.neurons_2, &self.refract_intervals_2);
         println!();
         println!();
     }
 
-    fn print_state(&self, layer: &Vec<u8>) {
+    fn print_state(&self, layer: &Vec<u8>, refract_intervals: &Vec<u8>) {
         for layer_y in 0..self.layer_height {
             for neuron_in_field_y in 0..self.layer_params.field_height {
                 for layer_x in 0..self.layer_width {
@@ -738,7 +750,17 @@ impl Network {
                             neuron_in_field_y,
                         );
 
-                        print!("{} ", if layer[neuron_index] > 0 { "+" } else { "." });
+                        if layer[neuron_index] > 0 {
+                            print!("+");
+                        } else {
+                            let refract_interval = refract_intervals[neuron_index];
+
+                            if refract_interval > 0 {
+                                print!("{}", refract_interval);
+                            } else {
+                                print!(".");
+                            }
+                        }
                     }
 
                     print!(" ");

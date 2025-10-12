@@ -1,8 +1,8 @@
-use chrono::{NaiveDate, NaiveDateTime, Timelike};
+use chrono::{NaiveDateTime, Timelike};
 use rnn_core::{Partition, RegressResult};
 use serde_derive::Deserialize;
 
-use crate::{bits_to_number, number_to_single_bit, ComplexTimelineValue, Timeline};
+use crate::{number_to_single_bit, ComplexTimelineValue, Timeline};
 
 const DEFAULT_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 const MINUTES_IN_DAY: usize = 24 * 60;
@@ -11,6 +11,7 @@ const MINUTES_IN_DAY: usize = 24 * 60;
 pub struct TimeTimelineConfig {
     pub format: Option<String>,
     pub capacity: Option<u8>,
+    pub correlate_only: Option<Vec<usize>>,
 }
 
 pub struct TimeTimeline {
@@ -66,7 +67,7 @@ impl Timeline for TimeTimeline {
         panic!("Invalid value of time timeline");
     }
 
-    fn reverse(&self, bits: &[bool]) -> ComplexTimelineValue {
+    fn reverse(&self, _bits: &[bool]) -> ComplexTimelineValue {
         return ComplexTimelineValue::Datetime(String::from(""));
 
         /*
@@ -110,6 +111,8 @@ impl Timeline for TimeTimeline {
         Partition {
             size: *self.get_capacity() as usize,
             accept_all: false,
+            correlate_only: self.config.correlate_only.clone(),
+            no_correlate: None,
         }
     }
 
@@ -135,6 +138,7 @@ mod tests {
         let timeline = TimeTimeline::new(TimeTimelineConfig {
             format: None,
             capacity: None,
+            correlate_only: None,
         });
 
         let cases: Vec<(&str, Vec<bool>)> = vec![

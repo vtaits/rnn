@@ -10,7 +10,7 @@ fn apply_partition(
 ) {
     let mut partition_res: (usize, f32) = (start_partition_index, signals[start_partition_index]);
 
-    for neuron_index in start_partition_index + 1..start_partition_index + full_partition_size {
+    for neuron_index in start_partition_index..start_partition_index + full_partition_size {
         let signal_value = signals[neuron_index];
         let is_more_than_threshold = signal_value > threshold;
 
@@ -21,12 +21,12 @@ fn apply_partition(
 
         neurons[neuron_index] = 0;
 
-        if is_more_than_threshold && signal_value > partition_res.1 {
+        if signal_value > partition_res.1 {
             partition_res = (neuron_index, signal_value);
         }
     }
 
-    if partition_res.1 > threshold {
+    if partition_res.1 > 0.01 {
         neurons[partition_res.0] = 1;
     }
 }

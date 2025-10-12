@@ -187,6 +187,8 @@ impl Timeline for FloatTimeline {
         Partition {
             size: *self.get_capacity() as usize,
             accept_all: !self.is_single_bit,
+            correlate_only: None,
+            no_correlate: None,
         }
     }
 

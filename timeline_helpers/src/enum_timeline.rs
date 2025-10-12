@@ -110,6 +110,8 @@ impl Timeline for EnumTimeline<String> {
         Partition {
             size: *self.get_capacity() as usize,
             accept_all: false,
+            correlate_only: None,
+            no_correlate: None,
         }
     }
 

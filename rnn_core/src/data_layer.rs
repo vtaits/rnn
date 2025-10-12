@@ -64,7 +64,7 @@ impl<T> DataLayer<T> {
             }
         }
 
-        let prediction: Vec<bool> = self.predict_binary(&check_vec, 0);
+        let prediction = &self.predict_binary(&check_vec, 0)[0];
         let normalized_prediction = self.normalize_prediction(&prediction);
 
         let mut has_error = false;
@@ -150,10 +150,27 @@ impl<T> DataLayer<T> {
         let mut res: Vec<_> = vec![];
 
         for item in measurement_data.iter() {
-            let binary_result = self.predict_binary(&item.1, 0);
+            let binary_result = &self.predict_binary(&item.1, 0)[0];
             let deserialized = self.deserialize(&binary_result).unwrap();
 
             let diff = (self.params.regress)(&item.0, &deserialized);
+
+            res.push(diff);
+        }
+
+        res
+    }
+
+    pub fn regress_deep(&mut self, measurement_data: Vec<(T, Vec<bool>)>) -> Vec<RegressResult> {
+        let mut res: Vec<_> = vec![];
+
+        let binary_results =
+            &self.predict_binary(&measurement_data[0].1, measurement_data.len() - 1);
+
+        for (index, binary_result) in binary_results.iter().enumerate() {
+            let deserialized = self.deserialize(&binary_result).unwrap();
+
+            let diff = (self.params.regress)(&measurement_data[index].0, &deserialized);
 
             res.push(diff);
         }
@@ -184,7 +201,7 @@ impl<T> DataLayer<T> {
         }
     }
 
-    pub fn predict_binary(&mut self, bit_vec: &[bool], prediction_depth: usize) -> Vec<bool> {
+    pub fn predict_binary(&mut self, bit_vec: &[bool], prediction_depth: usize) -> Vec<Vec<bool>> {
         let binary_result = self
             .network
             .write()
@@ -200,15 +217,24 @@ impl<T> DataLayer<T> {
         data_result
     }
 
-    pub fn predict(&mut self, data: T, prediction_depth: usize) -> Vec<bool> {
+    pub fn predict(&mut self, data: T, prediction_depth: usize) -> Vec<Vec<bool>> {
         let bit_vec = (self.params.data_to_binary)(data).unwrap();
 
         self.predict_binary(&bit_vec, prediction_depth)
     }
 
-    pub fn predict_and_deserialize(&mut self, data: T, prediction_depth: usize) -> Result<T, ()> {
+    pub fn predict_and_deserialize(
+        &mut self,
+        data: T,
+        prediction_depth: usize,
+    ) -> Result<Vec<T>, ()> {
         let binary_result = self.predict(data, prediction_depth);
 
-        self.deserialize(&binary_result)
+        let result = binary_result
+            .iter()
+            .map(|binary_result_item| self.deserialize(&binary_result_item).unwrap())
+            .collect();
+
+        Ok(result)
     }
 }

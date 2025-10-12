@@ -92,6 +92,7 @@ fn fill_conntected_fields(
 fn fill_has_conntections(
     layer_params: &LayerParams,
     computed_params: &ComputedParams,
+    synapse_params: &SynapseParams,
     has_connections_1_to_2: &mut Array2<bool>,
     has_connections_2_to_1: &mut Array2<bool>,
 ) {
@@ -102,27 +103,33 @@ fn fill_has_conntections(
     let mut cur_layer_x = 0usize;
     let mut cur_layer_y = 0usize;
 
-    loop {
-        for (prev_layer_x, prev_layer_y) in prev_fields.iter() {
-            fill_conntected_fields(
-                layer_params,
-                computed_params,
-                has_connections_1_to_2,
-                cur_layer_x,
-                cur_layer_y,
-                *prev_layer_x,
-                *prev_layer_y,
-            );
+    let restoring_state_field_interval = synapse_params.signal_shift_interval as usize + 1;
 
-            fill_conntected_fields(
-                layer_params,
-                computed_params,
-                has_connections_2_to_1,
-                cur_layer_x,
-                cur_layer_y,
-                *prev_layer_x,
-                *prev_layer_y,
-            );
+    let mut index = 0usize;
+
+    loop {
+        if index > 0 && index % restoring_state_field_interval == 0 {
+            for (prev_layer_x, prev_layer_y) in prev_fields.iter() {
+                fill_conntected_fields(
+                    layer_params,
+                    computed_params,
+                    has_connections_1_to_2,
+                    cur_layer_x,
+                    cur_layer_y,
+                    *prev_layer_x,
+                    *prev_layer_y,
+                );
+
+                /* fill_conntected_fields(
+                    layer_params,
+                    computed_params,
+                    has_connections_2_to_1,
+                    cur_layer_x,
+                    cur_layer_y,
+                    *prev_layer_x,
+                    *prev_layer_y,
+                ); */
+            }
         }
 
         fill_conntected_fields(
@@ -162,11 +169,13 @@ fn fill_has_conntections(
         );
 
         if cur_layer_x == 0 && cur_layer_y == 0 {
-            //    prev_fields.push((cur_layer_x, cur_layer_y));
+            prev_fields.push((cur_layer_x, cur_layer_y));
         }
 
         cur_layer_x = next_field_x;
         cur_layer_y = next_field_y;
+
+        index += 1;
     }
 }
 
@@ -198,6 +207,7 @@ pub fn set_initial_connections(
     fill_has_conntections(
         layer_params,
         computed_params,
+        synapse_params,
         &mut has_conntections_1_to_2,
         &mut has_conntections_2_to_1,
     );

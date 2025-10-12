@@ -43,14 +43,14 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
 
     let capacity = params.field_width * params.field_height;
 
-    let timeline = IntegerTimeline::new(IntegerTimelineParams {
+    let timeline = Arc::new(IntegerTimeline::new(IntegerTimelineParams {
         min_value: 0,
         max_value: 1048575,
         capacity: capacity as u8,
         get_multiplier: None,
         get_reverse_multiplier: None,
         is_target: None,
-    });
+    }));
 
     let network = Arc::new(RwLock::new(Network::new(
         params,
@@ -69,13 +69,26 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
 
     let mut data_layer = DataLayer::new(
         DataLayerParams {
-            data_to_binary: Box::new(move |number| {
-                Ok(timeline.get_bits(&ComplexTimelineValue::Integer(number)))
-            }),
+            data_to_binary: {
+                let timeline = Arc::clone(&timeline);
+
+                Box::new(
+                    move |number| Ok(timeline.get_bits(&ComplexTimelineValue::Integer(number))),
+                )
+            },
             binary_to_data: Box::new(|_data| Ok(0_i64)),
             get_target_mask: Box::new(|| vec![]),
             normalize_prediction: Box::new(|data| data.to_vec()),
-            regress: Box::new(move |data| timeline.regress(data)),
+            regress: {
+                let timeline = Arc::clone(&timeline);
+
+                Box::new(move |original, computed| {
+                    timeline.get_regress_difference(
+                        &ComplexTimelineValue::Integer(*original),
+                        &ComplexTimelineValue::Integer(*computed),
+                    )
+                })
+            },
         },
         Arc::clone(&network),
     );

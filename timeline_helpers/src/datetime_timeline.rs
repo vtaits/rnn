@@ -122,6 +122,8 @@ impl Timeline for DatetimeTimeline {
         Partition {
             size: *self.get_capacity() as usize,
             accept_all: true,
+            correlate_only: None,
+            no_correlate: None,
         }
     }
 

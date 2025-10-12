@@ -17,8 +17,8 @@ struct ErrorResponse {
 
 #[derive(Serialize)]
 struct PredictionResponse {
-    raw: Vec<bool>,
-    data: Vec<ComplexTimelineValue>,
+    raw: Vec<Vec<bool>>,
+    data: Vec<Vec<ComplexTimelineValue>>,
 }
 
 struct AppState {
@@ -35,7 +35,10 @@ async fn predict_binary(
     let mut data_layer = data.data_layer.lock().unwrap();
 
     let raw = data_layer.predict_binary(&bit_vec, 0);
-    let data = data_layer.deserialize(&raw).unwrap();
+    let data = raw
+        .iter()
+        .map(|raw_item| data_layer.deserialize(&raw_item).unwrap())
+        .collect();
 
     HttpResponse::Ok()
         .content_type("application/json")
@@ -52,7 +55,10 @@ async fn predict(
     let mut data_layer = data.data_layer.lock().unwrap();
 
     let raw = data_layer.predict(timeline_data, 0);
-    let data = data_layer.deserialize(&raw).unwrap();
+    let data = raw
+        .iter()
+        .map(|raw_item| data_layer.deserialize(&raw_item).unwrap())
+        .collect();
 
     HttpResponse::Ok()
         .content_type("application/json")

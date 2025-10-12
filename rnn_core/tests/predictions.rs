@@ -49,7 +49,7 @@ fn identical_prediction_small_network(
 
     let result = network.predict(&bits, 0);
 
-    assert_eq!(result, bits);
+    assert_eq!(result[0], bits);
 }
 
 #[rstest]
@@ -100,7 +100,7 @@ fn identical_prediction_big_network(
 
     let result = network.predict(&bits, 0);
 
-    assert_eq!(result, bits);
+    assert_eq!(result[0], bits);
 }
 
 #[rstest]
@@ -158,7 +158,7 @@ fn restore_missed_bits(
 
     let result = network.predict(&cut, 0);
 
-    assert_eq!(result, full);
+    assert_eq!(result[0], full);
 }
 
 #[rstest]
@@ -214,7 +214,7 @@ fn not_restore_missed_bits(
 
     let result = network.predict(&cut, 0);
 
-    assert_eq!(result, cut);
+    assert_eq!(result[0], cut);
 }
 
 #[rstest]
@@ -316,7 +316,7 @@ fn restore_multiple_separated_sequences(#[case] sequences: Vec<(Vec<bool>, Vec<b
     for sequence in sequences.iter() {
         let result = network.predict(&sequence.1, 0);
 
-        assert_eq!(result, sequence.0);
+        assert_eq!(result[0], sequence.0);
     }
 }
 
@@ -423,6 +423,56 @@ fn restore_multiple_overlapping_sequences(#[case] sequences: Vec<(Vec<bool>, Vec
     for sequence in sequences.iter() {
         let result = network.predict(&sequence.1, 0);
 
-        assert_eq!(result, sequence.0);
+        assert_eq!(result[0], sequence.0);
     }
+}
+
+#[rstest]
+fn restore_sequence() {
+    let mut network = Network::new(
+        LayerParams {
+            field_width: 3,
+            field_height: 4,
+            layer_width: 5,
+            layer_height: 1,
+            partitions: None,
+        },
+        SynapseParams {
+            alpha: 1.5,
+            gamma_dec: 0.5,
+            gamma_inc: 0.5,
+            g_dec: 5.0,
+            g_inc: 10.0,
+            g_0: 1.0,
+            min_g: -10.0,
+            max_g: 10.0,
+            h: 0.5,
+            refract_interval: 1,
+            threshold_train: 0.8,
+            threshold_predict_min: 0.2,
+            threshold_predict_max: 0.4,
+            signal_shift_interval: 0,
+            signal_rest_shift_limit: Some(1),
+            signal_copy_shifts: None,
+            excite_neuron_limit: 0.8,
+            // signal_copy_shifts: Some(vec![(1, 0), (0, 1), (-1, 0), (0, -1)]),
+        },
+        None,
+    );
+
+    network.push_data_and_apply(&[true, false, false, false, false, false], 0);
+    network.push_data_and_apply(&[false, true, false, false, false, false], 0);
+    network.push_data_and_apply(&[false, false, true, false, false, false], 0);
+    network.push_data_and_apply(&[false, false, false, true, false, false], 0);
+    network.push_data_and_apply(&[false, false, false, false, true, false], 0);
+    network.push_data_and_apply(&[false, false, false, false, false, true], 0);
+
+    let result = network.predict(&[true, false, false, false, false, false], 5);
+
+    assert_eq!(result[0], &[true, false, false, false, false, false]);
+    assert_eq!(result[1], &[false, true, false, false, false, false]);
+    assert_eq!(result[2], &[false, false, true, false, false, false]);
+    assert_eq!(result[3], &[false, false, false, true, false, false]);
+    assert_eq!(result[4], &[false, false, false, false, true, false]);
+    assert_eq!(result[5], &[false, false, false, false, false, true]);
 }
