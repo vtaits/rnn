@@ -111,6 +111,7 @@ impl Timeline for EnumTimeline<String> {
             size: *self.get_capacity() as usize,
             accept_all: false,
             correlate_only: None,
+            correlate_only_self: false,
             no_correlate: None,
         }
     }

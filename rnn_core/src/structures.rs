@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{Arc, Mutex},
+};
 
 use ndarray::Array2;
 use ocl::{Kernel, ProQue};
@@ -22,6 +25,7 @@ pub struct ComputedParams {
     pub excited_neurons_limit: usize,
     // maximal number of excided neurons in layer according to shift interval
     pub max_excited_neurons_number: f32,
+    pub map_index_to_partition_data: Option<HashMap<usize, PartitionPayloadByIndex>>,
 }
 
 pub struct CompiledKernel {
@@ -72,9 +76,18 @@ pub struct Partition {
     pub size: usize,
     pub accept_all: bool,
     pub correlate_only: Option<Vec<usize>>,
+    pub correlate_only_self: bool,
     pub no_correlate: Option<Vec<usize>>,
     // TO DO
     // pub max_excited_neurons: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PartitionPayloadByIndex {
+    pub correlate_only: Option<HashSet<usize>>,
+    pub correlate_only_self: bool,
+    pub no_correlate: Option<HashSet<usize>>,
+    pub partition_index: usize,
 }
 
 #[derive(Serialize, Deserialize)]

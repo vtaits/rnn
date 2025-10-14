@@ -123,6 +123,7 @@ impl Timeline for DatetimeTimeline {
             size: *self.get_capacity() as usize,
             accept_all: true,
             correlate_only: None,
+            correlate_only_self: true,
             no_correlate: None,
         }
     }

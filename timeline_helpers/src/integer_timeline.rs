@@ -140,6 +140,7 @@ impl Timeline for IntegerTimeline {
             size: *self.get_capacity() as usize,
             accept_all: !self.is_single_bit,
             correlate_only: None,
+            correlate_only_self: false,
             no_correlate: None,
         }
     }

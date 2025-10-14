@@ -11,7 +11,6 @@ const MINUTES_IN_DAY: usize = 24 * 60;
 pub struct TimeTimelineConfig {
     pub format: Option<String>,
     pub capacity: Option<u8>,
-    pub correlate_only: Option<Vec<usize>>,
 }
 
 pub struct TimeTimeline {
@@ -111,7 +110,8 @@ impl Timeline for TimeTimeline {
         Partition {
             size: *self.get_capacity() as usize,
             accept_all: false,
-            correlate_only: self.config.correlate_only.clone(),
+            correlate_only: None,
+            correlate_only_self: true,
             no_correlate: None,
         }
     }
@@ -138,7 +138,6 @@ mod tests {
         let timeline = TimeTimeline::new(TimeTimelineConfig {
             format: None,
             capacity: None,
-            correlate_only: None,
         });
 
         let cases: Vec<(&str, Vec<bool>)> = vec![

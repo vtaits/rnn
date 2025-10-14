@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::io::prelude::*;
 use std::io::Write;
 
@@ -20,6 +22,7 @@ use crate::structures::Action;
 use crate::structures::ComputedParams;
 use crate::structures::InitialConnections;
 use crate::structures::InputPhase;
+use crate::structures::PartitionPayloadByIndex;
 use crate::LoggerEvent;
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
@@ -157,6 +160,49 @@ fn get_computed_params(
     let excited_neurons_limit =
         (max_excited_neurons_number as f32 * synapse_params.excite_neuron_limit) as usize;
 
+    let map_index_to_partition_data = match &layer_params.partitions {
+        Some(partitions) => {
+            let mut index = 0;
+            let mut result = HashMap::new();
+
+            for (partition_index, partition) in partitions.iter().enumerate() {
+                let correlate_only = match &partition.correlate_only {
+                    Some(correlate_only) => {
+                        let hash_set: HashSet<usize> = correlate_only.clone().into_iter().collect();
+
+                        Some(hash_set)
+                    }
+                    _ => None,
+                };
+
+                let no_correlate = match &partition.no_correlate {
+                    Some(no_correlate) => {
+                        let hash_set: HashSet<usize> = no_correlate.clone().into_iter().collect();
+
+                        Some(hash_set)
+                    }
+                    _ => None,
+                };
+
+                for _ in 0..partition.size * 2 {
+                    result.insert(
+                        index,
+                        PartitionPayloadByIndex {
+                            partition_index,
+                            correlate_only: correlate_only.clone(),
+                            correlate_only_self: partition.correlate_only_self,
+                            no_correlate: no_correlate.clone(),
+                        },
+                    );
+                    index += 1;
+                }
+            }
+
+            Some(result)
+        }
+        _ => None,
+    };
+
     ComputedParams {
         field_size,
         field_count,
@@ -166,6 +212,7 @@ fn get_computed_params(
         prediction_rest_shifts,
         excited_neurons_limit,
         max_excited_neurons_number: excited_neurons_limit as f32,
+        map_index_to_partition_data,
     }
 }
 

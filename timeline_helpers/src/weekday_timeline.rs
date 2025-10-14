@@ -110,6 +110,7 @@ impl Timeline for WeekdayTimeline {
             size: *self.get_capacity() as usize,
             accept_all: false,
             correlate_only: self.config.correlate_only.clone(),
+            correlate_only_self: false,
             no_correlate: None,
         }
     }

@@ -5,7 +5,7 @@ use crate::{
     get_neuron_index::get_neuron_index,
     get_neuron_index_by_coordinates::get_neuron_index_by_coordinates,
     spiral::{get_last_field, get_next_field},
-    structures::{ComputedParams, InitialConnections, SynapseMask},
+    structures::{ComputedParams, InitialConnections, PartitionPayloadByIndex, SynapseMask},
     LayerParams, SynapseParams,
 };
 
@@ -51,6 +51,48 @@ fn apply_mask(
     }
 }
 
+fn check_has_connections_by_partitions(
+    partition_from: Option<&PartitionPayloadByIndex>,
+    partition_to: Option<&PartitionPayloadByIndex>,
+) -> bool {
+    match partition_to {
+        Some(partition_to_data) => {
+            if partition_to_data.correlate_only_self {
+                let result = match partition_from {
+                    Some(partition_from_data) => {
+                        partition_from_data.partition_index == partition_to_data.partition_index
+                    }
+                    _ => false,
+                };
+
+                return result;
+            }
+
+            if let Some(no_correlate) = &partition_to_data.no_correlate {
+                if let Some(partition_from_data) = partition_from {
+                    if no_correlate.contains(&partition_from_data.partition_index) {
+                        return false;
+                    }
+                }
+            }
+
+            if let Some(correlate_only) = &partition_to_data.correlate_only {
+                let result = match partition_from {
+                    Some(partition_from_data) => {
+                        correlate_only.contains(&partition_from_data.partition_index)
+                    }
+                    _ => false,
+                };
+
+                return result;
+            }
+
+            true
+        }
+        _ => true,
+    }
+}
+
 fn fill_conntected_fields(
     layer_params: &LayerParams,
     computed_params: &ComputedParams,
@@ -62,6 +104,15 @@ fn fill_conntected_fields(
 ) {
     for neuron_in_field_from_y in 0..layer_params.field_height {
         for neuron_in_field_from_x in 0..layer_params.field_width {
+            let index_in_field_from =
+                layer_params.field_width * neuron_in_field_from_y + neuron_in_field_from_x;
+            let partition_from = match &computed_params.map_index_to_partition_data {
+                Some(map_index_to_partition_data) => {
+                    map_index_to_partition_data.get(&index_in_field_from)
+                }
+                _ => None,
+            };
+
             let neuron_from_index = get_neuron_index(
                 layer_params,
                 computed_params,
@@ -73,6 +124,16 @@ fn fill_conntected_fields(
 
             for neuron_in_field_to_y in 0..layer_params.field_height {
                 for neuron_in_field_to_x in 0..layer_params.field_width {
+                    let index_in_field_to =
+                        layer_params.field_width * neuron_in_field_to_y + neuron_in_field_to_x;
+
+                    let partition_to = match &computed_params.map_index_to_partition_data {
+                        Some(map_index_to_partition_data) => {
+                            map_index_to_partition_data.get(&index_in_field_to)
+                        }
+                        _ => None,
+                    };
+
                     let neuron_to_index = get_neuron_index(
                         layer_params,
                         computed_params,
@@ -82,7 +143,12 @@ fn fill_conntected_fields(
                         neuron_in_field_to_y,
                     );
 
-                    has_connections[[neuron_to_index, neuron_from_index]] = true;
+                    let has_connections_by_partitions =
+                        check_has_connections_by_partitions(partition_from, partition_to);
+
+                    if has_connections_by_partitions {
+                        has_connections[[neuron_to_index, neuron_from_index]] = true;
+                    }
                 }
             }
         }
