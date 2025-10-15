@@ -116,7 +116,7 @@ impl PredictionProcessing {
 
                     let value = last_field_state[neuron_index];
 
-                    print!("{}", if value > 0 { "+" } else { "." });
+                    // print!("{}", if value > 0 { "+" } else { "." });
 
                     if value > 0 {
                         self.ticks[collect_tick_index].results[self.collect_prediction_index]
@@ -124,7 +124,7 @@ impl PredictionProcessing {
                     }
                 }
 
-                println!();
+                // println!();
 
                 self.ticks[collect_tick_index].tick_splits.remove(0);
 

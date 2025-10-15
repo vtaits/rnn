@@ -47,13 +47,11 @@ pub fn init_data_layer(
             min_g: synapse_params.min_g,
             max_g: synapse_params.max_g,
             h: redefine_params.h,
-            threshold_train: redefine_params.threshold_train,
             threshold_predict_min: redefine_params.threshold_predict_min,
             threshold_predict_max: redefine_params.threshold_predict_max,
             refract_interval: synapse_params.refract_interval,
             signal_shift_interval: synapse_params.signal_shift_interval,
             signal_rest_shift_limit: synapse_params.signal_rest_shift_limit,
-            signal_copy_shifts: synapse_params.signal_copy_shifts,
             excite_neuron_limit: synapse_params.excite_neuron_limit,
         }
     } else {

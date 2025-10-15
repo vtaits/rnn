@@ -53,9 +53,6 @@ async fn main() -> Result<(), ()> {
         // vec![1.0],
         // refract_interval = 2
         // frange(1.0, 3.01, 1.0),
-        // threshold_train
-        vec![0.9],
-        //frange(0.84, 0.941, 0.02),
         // threshold_predict_min
         // frange(0.67, 0.731, 0.01),
         vec![0.7],
@@ -76,9 +73,8 @@ async fn main() -> Result<(), ()> {
         let g_inc = combo[4];
         let g_0 = combo[5];
         let h = combo[6];
-        let threshold_train = combo[7];
-        let threshold_predict_min = combo[8];
-        let threshold_predict_max = combo[9];
+        let threshold_predict_min = combo[7];
+        let threshold_predict_max = combo[8];
 
         if threshold_predict_max > threshold_predict_min {
             let redefine_params = RedefineParams {
@@ -89,7 +85,6 @@ async fn main() -> Result<(), ()> {
                 g_inc,
                 g_0,
                 h,
-                threshold_train,
                 threshold_predict_min,
                 threshold_predict_max,
             };

@@ -15,7 +15,6 @@ min_g = -10.0
 max_g = 10.0
 h = 2
 refract_interval = 1
-threshold_train = 0.9
 threshold_predict_min = 0.8
 threshold_predict_max = 0.9
 signal_shift_interval = 2

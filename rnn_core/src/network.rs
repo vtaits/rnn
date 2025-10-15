@@ -16,7 +16,6 @@ use crate::logger::Logger;
 use crate::prediction::PredictionProcessing;
 use crate::recount_refract_intervals::recount_refract_intervals;
 use crate::set_initial_connections::set_initial_connections;
-use crate::shift_signal::shift_signal;
 use crate::spiral::get_output_field;
 use crate::structures::Action;
 use crate::structures::ComputedParams;
@@ -83,10 +82,6 @@ pub struct Network {
 
 fn get_output_field_index(synapse_params: &SynapseParams) -> usize {
     synapse_params.signal_shift_interval as usize
-        + synapse_params
-            .signal_copy_shifts
-            .as_ref()
-            .map_or(0, |signal_copy_shifts| signal_copy_shifts.len())
 }
 
 fn get_output_field_neuron_indexes(
@@ -134,12 +129,7 @@ fn get_computed_params(
 
     // uncomment to read from the last field
 
-    /* let single_signal_shifts = 1
-        + synapse_params
-            .signal_copy_shifts
-            .as_ref()
-            .map_or(0, |signal_copy_shifts| signal_copy_shifts.len())
-        + synapse_params.signal_shift_interval as usize;
+    /* let single_signal_shifts = 1 + synapse_params.signal_shift_interval as usize;
 
     let prediction_rest_shifts = if field_count > single_signal_shifts {
         field_count - single_signal_shifts
@@ -149,13 +139,8 @@ fn get_computed_params(
 
     let prediction_rest_shifts = 0;
 
-    let signal_copy_shifts_count = synapse_params
-        .signal_copy_shifts
-        .as_ref()
-        .map_or(0, |signal_copy_shifts| signal_copy_shifts.len());
-
-    let max_excited_neurons_number = field_size * field_count * (1 + signal_copy_shifts_count)
-        / (1 + signal_copy_shifts_count + synapse_params.signal_shift_interval as usize);
+    let max_excited_neurons_number =
+        field_size * field_count / (1 + synapse_params.signal_shift_interval as usize);
 
     let excited_neurons_limit =
         (max_excited_neurons_number as f32 * synapse_params.excite_neuron_limit) as usize;
@@ -565,7 +550,7 @@ impl Network {
 
             threshold
         } else {
-            self.synapse_params.threshold_train
+            1.0
         }
     }
 
@@ -681,11 +666,11 @@ impl Network {
      * Split signal into frames and apply them immediately
      */
     pub fn push_data_and_apply(&mut self, bit_vec: &[bool], prediction_depth: usize) {
-        for value in bit_vec {
+        /* for value in bit_vec {
             print!("{}", if *value { "+" } else { "." });
         }
 
-        println!();
+        println!(); */
         self.push_data_binary(bit_vec, prediction_depth);
         self.apply_buffer();
     }
@@ -999,27 +984,10 @@ impl Network {
         self.action_queue.push(Action::EmptyShift2to1);
     }
 
-    fn push_shifted_signals(&mut self, bit_vec: &[bool]) {
-        if let Some(shifts) = &self.synapse_params.signal_copy_shifts {
-            let shifted_signals: Vec<Vec<bool>> = shifts
-                .into_iter()
-                .map(|shift| {
-                    return shift_signal(&bit_vec, self.field_size, &self.layer_params, shift);
-                })
-                .collect();
-
-            for shifted_signal in shifted_signals.into_iter() {
-                self.push_shift(shifted_signal, false);
-            }
-        }
-    }
-
     fn apply_signal(&mut self, bit_vec: &[bool], counter: &u8) {
         let (apply_vec, rest) = self.split_signal(bit_vec);
 
         self.push_shift(apply_vec, true);
-
-        self.push_shifted_signals(bit_vec);
 
         for _ in 0..self.synapse_params.signal_shift_interval {
             self.push_empty_shift();

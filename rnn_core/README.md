@@ -18,7 +18,6 @@ beta(r[i][j]) = 1 / (1 + alpha * (r[i][j]) ^ ( 1 / h ) )
 * max_g = 10.0,
 * h = 2
 * refract_interval = 3
-* threshold_train = 0.9
 * threshold_predict_min = 0.8
 * threshold_predict_max = 0.9
 

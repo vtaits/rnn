@@ -15,12 +15,10 @@ min_g = -10.0
 max_g = 10.0
 h = 2
 refract_interval = 4
-threshold_train = 0.9
 threshold_predict_min = 0.8
 threshold_predict_max = 0.9
 signal_shift_interval = 5
 signal_rest_shift_limit = 1
-signal_copy_shifts = [[1, 0]]
 excite_neuron_limit = 0.8
 
 [[timelines]]

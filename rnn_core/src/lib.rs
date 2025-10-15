@@ -12,7 +12,6 @@ mod network;
 mod prediction;
 mod recount_refract_intervals;
 mod set_initial_connections;
-mod shift_signal;
 mod spiral;
 mod structures;
 

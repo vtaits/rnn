@@ -34,10 +34,8 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         refract_interval: 3,
         threshold_predict_max: 0.9,
         threshold_predict_min: 0.9,
-        threshold_train: 0.9,
         signal_shift_interval: 2,
         signal_rest_shift_limit: Some(0),
-        signal_copy_shifts: Some(vec![(1, 0), (0, 1), (0, -1), (-1, 0)]),
         excite_neuron_limit: 0.8,
     };
 
