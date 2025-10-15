@@ -18,7 +18,10 @@ pub fn init_data_layer(
     timelines: Vec<Box<dyn Timeline>>,
     training_streams: Vec<Box<dyn TrainingStream>>,
     params: &InitDataLayerParams,
-) -> (DataLayer<Vec<ComplexTimelineValue>>, Vec<Vec<bool>>) {
+) -> (
+    DataLayer<Vec<ComplexTimelineValue>>,
+    Vec<(Vec<ComplexTimelineValue>, Vec<bool>)>,
+) {
     let mut complex_stream = ComplexStream::new(training_streams);
 
     let complex_timeline = Arc::new(ComplexTimeline::new(timelines));
@@ -26,6 +29,8 @@ pub fn init_data_layer(
     let LayerParams {
         field_width,
         field_height,
+        layer_height,
+        layer_width,
         ..
     } = layer_params;
 
@@ -41,21 +46,28 @@ pub fn init_data_layer(
             g_0: redefine_params.g_0,
             min_g: synapse_params.min_g,
             max_g: synapse_params.max_g,
-            initial_strong_g: synapse_params.initial_strong_g,
             h: redefine_params.h,
-            threshold: redefine_params.threshold,
+            threshold_predict_min: redefine_params.threshold_predict_min,
+            threshold_predict_max: redefine_params.threshold_predict_max,
             refract_interval: synapse_params.refract_interval,
             signal_shift_interval: synapse_params.signal_shift_interval,
             signal_rest_shift_limit: synapse_params.signal_rest_shift_limit,
-            signal_copy_shifts: synapse_params.signal_copy_shifts,
             excite_neuron_limit: synapse_params.excite_neuron_limit,
         }
     } else {
         synapse_params
     };
 
+    let layer_params_with_partitions = LayerParams {
+        field_width,
+        field_height,
+        layer_height,
+        layer_width,
+        partitions: Some(complex_timeline.get_partitions()),
+    };
+
     let network = Network::new(
-        layer_params,
+        layer_params_with_partitions,
         merged_synapse_params,
         if is_log_to_files {
             Some(Box::new(MultipleFileLogger::new(
@@ -85,7 +97,26 @@ pub fn init_data_layer(
 
                 Box::new(move |binary| Ok(complex_timeline.reverse(&binary)))
             },
-            get_target_mask: Box::new(move || complex_timeline.get_target_mask()),
+            get_target_mask: {
+                let complex_timeline = Arc::clone(&complex_timeline);
+
+                Box::new(move || complex_timeline.get_target_mask())
+            },
+            normalize_prediction: {
+                let complex_timeline = Arc::clone(&complex_timeline);
+
+                Box::new(move |data| complex_timeline.normalize_prediction(data))
+            },
+            regress: {
+                let complex_timeline = Arc::clone(&complex_timeline);
+
+                Box::new(
+                    move |original: &Vec<ComplexTimelineValue>,
+                          computed: &Vec<ComplexTimelineValue>| {
+                        complex_timeline.get_regress_difference(&original, &computed)
+                    },
+                )
+            },
         },
         Arc::new(RwLock::new(network)),
     );

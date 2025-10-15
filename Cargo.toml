@@ -5,6 +5,8 @@ members = [
     "console_app",
     "console_ui",
     "count_accuracy",
+    "count_regress",
+    "count_regress_deep",
     "data_streams",
     "get_optimal_params",
     "prediction_server",

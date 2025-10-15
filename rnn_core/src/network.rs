@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::io::prelude::*;
 use std::io::Write;
 
 use flate2::Compression;
 use flate2::{read::GzDecoder, write::GzEncoder};
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
+use ocl::Buffer;
 
 use crate::get_neuron_coordinates::get_neuron_coordinates;
 use crate::get_neuron_full_coordinates::get_neuron_full_coordinates;
@@ -13,11 +16,12 @@ use crate::logger::Logger;
 use crate::prediction::PredictionProcessing;
 use crate::recount_refract_intervals::recount_refract_intervals;
 use crate::set_initial_connections::set_initial_connections;
-use crate::shift_signal::shift_signal;
 use crate::spiral::get_output_field;
 use crate::structures::Action;
 use crate::structures::ComputedParams;
 use crate::structures::InitialConnections;
+use crate::structures::InputPhase;
+use crate::structures::PartitionPayloadByIndex;
 use crate::LoggerEvent;
 use crate::{
     apply_synapses::{apply_synapses, build_apply_synapses_kernel},
@@ -32,16 +36,22 @@ pub struct Network {
     computed_params: ComputedParams,
     // acumulated weights of synapses from the first layer to the second layer
     accumulated_weights_1_to_2: Array2<f32>,
+    buffer_accumulated_weights_1_to_2: Buffer<f32>,
     // acumulated weights of synapses from the second layer to the first layer
     accumulated_weights_2_to_1: Array2<f32>,
+    buffer_accumulated_weights_2_to_1: Buffer<f32>,
     // synapses to identical map from the first layer to the second layer
-    strong_synapses_1_to_2: Array1<u64>,
+    strong_synapses_1_to_2: Vec<u64>,
+    buffer_strong_synapses_1_to_2: Buffer<u64>,
     // synapses to identical map from the second layer to the first layer
-    strong_synapses_2_to_1: Array1<u64>,
+    strong_synapses_2_to_1: Vec<u64>,
+    buffer_strong_synapses_2_to_1: Buffer<u64>,
     // distance weights of synapses from the first layer to the second layer
     distance_weights_1_to_2: Array2<f32>,
+    buffer_distance_weights_1_to_2: Buffer<f32>,
     // distance weights of synapses from the second layer to the first layer
     distance_weights_2_to_1: Array2<f32>,
+    buffer_distance_weights_2_to_1: Buffer<f32>,
     // compiled kernel for recount neurons and refract intervals with opencl
     kernel_synapses: CompiledKernel,
     output_field_index: usize,
@@ -54,27 +64,24 @@ pub struct Network {
     // number of neurons in one layer
     layer_size: usize,
     // neuron states at the first layer
-    neurons_1: Array1<u8>,
+    neurons_1: Vec<u8>,
     // neuron states at the second layer
-    neurons_2: Array1<u8>,
+    neurons_2: Vec<u8>,
     // timeouts of neuron refract states of the first layer
-    refract_intervals_1: Array1<u8>,
+    refract_intervals_1: Vec<u8>,
     // timeouts of neuron refract states of the second layer
-    refract_intervals_2: Array1<u8>,
+    refract_intervals_2: Vec<u8>,
     layer_params: LayerParams,
     synapse_params: SynapseParams,
     logger: Option<Box<dyn Logger>>,
     action_queue: Vec<Action>,
     signal_buffer: Vec<Vec<bool>>,
     prediction: Option<PredictionProcessing>,
+    input_phase: InputPhase,
 }
 
 fn get_output_field_index(synapse_params: &SynapseParams) -> usize {
     synapse_params.signal_shift_interval as usize
-        + synapse_params
-            .signal_copy_shifts
-            .as_ref()
-            .map_or(0, |signal_copy_shifts| signal_copy_shifts.len())
 }
 
 fn get_output_field_neuron_indexes(
@@ -111,6 +118,7 @@ fn get_computed_params(
         field_height,
         layer_width,
         layer_height,
+        ..
     } = layer_params;
 
     let field_size = field_width * field_height;
@@ -121,12 +129,7 @@ fn get_computed_params(
 
     // uncomment to read from the last field
 
-    /* let single_signal_shifts = 1
-        + synapse_params
-            .signal_copy_shifts
-            .as_ref()
-            .map_or(0, |signal_copy_shifts| signal_copy_shifts.len())
-        + synapse_params.signal_shift_interval as usize;
+    /* let single_signal_shifts = 1 + synapse_params.signal_shift_interval as usize;
 
     let prediction_rest_shifts = if field_count > single_signal_shifts {
         field_count - single_signal_shifts
@@ -136,8 +139,54 @@ fn get_computed_params(
 
     let prediction_rest_shifts = 0;
 
+    let max_excited_neurons_number =
+        field_size * field_count / (1 + synapse_params.signal_shift_interval as usize);
+
     let excited_neurons_limit =
-        ((field_size * field_count) as f32 * synapse_params.excite_neuron_limit) as usize;
+        (max_excited_neurons_number as f32 * synapse_params.excite_neuron_limit) as usize;
+
+    let map_index_to_partition_data = match &layer_params.partitions {
+        Some(partitions) => {
+            let mut index = 0;
+            let mut result = HashMap::new();
+
+            for (partition_index, partition) in partitions.iter().enumerate() {
+                let correlate_only = match &partition.correlate_only {
+                    Some(correlate_only) => {
+                        let hash_set: HashSet<usize> = correlate_only.clone().into_iter().collect();
+
+                        Some(hash_set)
+                    }
+                    _ => None,
+                };
+
+                let no_correlate = match &partition.no_correlate {
+                    Some(no_correlate) => {
+                        let hash_set: HashSet<usize> = no_correlate.clone().into_iter().collect();
+
+                        Some(hash_set)
+                    }
+                    _ => None,
+                };
+
+                for _ in 0..partition.size * 2 {
+                    result.insert(
+                        index,
+                        PartitionPayloadByIndex {
+                            partition_index,
+                            correlate_only: correlate_only.clone(),
+                            correlate_only_self: partition.correlate_only_self,
+                            no_correlate: no_correlate.clone(),
+                        },
+                    );
+                    index += 1;
+                }
+            }
+
+            Some(result)
+        }
+        _ => None,
+    };
 
     ComputedParams {
         field_size,
@@ -147,6 +196,8 @@ fn get_computed_params(
         column_height,
         prediction_rest_shifts,
         excited_neurons_limit,
+        max_excited_neurons_number: excited_neurons_limit as f32,
+        map_index_to_partition_data,
     }
 }
 
@@ -178,6 +229,7 @@ impl Network {
             field_height,
             layer_width,
             layer_height,
+            ..
         } = layer_params;
 
         let field_size = field_width * field_height;
@@ -199,6 +251,54 @@ impl Network {
 
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
+        let buffer_distance_weights_1_to_2 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(distance_weights_1_to_2.len())
+            .copy_host_slice(distance_weights_1_to_2.as_slice().unwrap())
+            .build()
+            .unwrap();
+
+        let buffer_distance_weights_2_to_1 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(distance_weights_2_to_1.len())
+            .copy_host_slice(distance_weights_2_to_1.as_slice().unwrap())
+            .build()
+            .unwrap();
+
+        let buffer_strong_synapses_1_to_2 = Buffer::<u64>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(strong_synapses_1_to_2.len())
+            .copy_host_slice(strong_synapses_1_to_2.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_strong_synapses_2_to_1 = Buffer::<u64>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(strong_synapses_2_to_1.len())
+            .copy_host_slice(strong_synapses_2_to_1.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_accumulated_weights_1_to_2 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_WRITE)
+            .len(accumulated_weights_1_to_2.len())
+            .copy_host_slice(accumulated_weights_1_to_2.as_slice().unwrap())
+            .build()
+            .unwrap();
+
+        let buffer_accumulated_weights_2_to_1 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_WRITE)
+            .len(accumulated_weights_2_to_1.len())
+            .copy_host_slice(accumulated_weights_2_to_1.as_slice().unwrap())
+            .build()
+            .unwrap();
+
         let output_field_index = get_output_field_index(&synapse_params);
 
         let output_field_neuron_indexes =
@@ -206,12 +306,18 @@ impl Network {
 
         Network {
             accumulated_weights_1_to_2,
+            buffer_accumulated_weights_1_to_2,
             accumulated_weights_2_to_1,
+            buffer_accumulated_weights_2_to_1,
             computed_params,
             distance_weights_1_to_2,
+            buffer_distance_weights_1_to_2,
             distance_weights_2_to_1,
+            buffer_distance_weights_2_to_1,
             strong_synapses_1_to_2,
+            buffer_strong_synapses_1_to_2,
             strong_synapses_2_to_1,
+            buffer_strong_synapses_2_to_1,
             kernel_synapses,
             output_field_index,
             output_field_neuron_indexes,
@@ -219,16 +325,17 @@ impl Network {
             layer_height,
             field_size,
             layer_size,
-            neurons_1: Array1::<u8>::zeros(layer_size),
-            neurons_2: Array1::<u8>::zeros(layer_size),
-            refract_intervals_1: Array1::<u8>::zeros(layer_size),
-            refract_intervals_2: Array1::<u8>::zeros(layer_size),
+            neurons_1: vec![0u8; layer_size],
+            neurons_2: vec![0u8; layer_size],
+            refract_intervals_1: vec![0u8; layer_size],
+            refract_intervals_2: vec![0u8; layer_size],
             layer_params,
             synapse_params,
             logger,
             action_queue: vec![],
             signal_buffer: vec![],
             prediction: None,
+            input_phase: InputPhase::Even,
         }
     }
 
@@ -240,6 +347,7 @@ impl Network {
             field_height,
             layer_width,
             layer_height,
+            ..
         } = parsed_dump.layer_params;
 
         let field_size = field_width * field_height;
@@ -259,14 +367,66 @@ impl Network {
             output_field_index,
         );
 
+        let buffer_distance_weights_1_to_2 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .len(parsed_dump.distance_weights_1_to_2.len())
+            .copy_host_slice(parsed_dump.distance_weights_2_to_1.as_slice().unwrap())
+            .build()
+            .unwrap();
+
+        let buffer_distance_weights_2_to_1 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .len(parsed_dump.distance_weights_2_to_1.len())
+            .copy_host_slice(parsed_dump.distance_weights_2_to_1.as_slice().unwrap())
+            .build()
+            .unwrap();
+
+        let buffer_strong_synapses_1_to_2 = Buffer::<u64>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(parsed_dump.strong_synapses_1_to_2.len())
+            .copy_host_slice(parsed_dump.strong_synapses_1_to_2.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_strong_synapses_2_to_1 = Buffer::<u64>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(parsed_dump.strong_synapses_2_to_1.len())
+            .copy_host_slice(parsed_dump.strong_synapses_2_to_1.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_accumulated_weights_1_to_2 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_WRITE)
+            .len(parsed_dump.accumulated_weights_1_to_2.len())
+            .copy_host_slice(parsed_dump.accumulated_weights_1_to_2.as_slice().unwrap())
+            .build()
+            .unwrap();
+
+        let buffer_accumulated_weights_2_to_1 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_WRITE)
+            .len(parsed_dump.accumulated_weights_2_to_1.len())
+            .copy_host_slice(parsed_dump.accumulated_weights_2_to_1.as_slice().unwrap())
+            .build()
+            .unwrap();
+
         let network = Network {
             accumulated_weights_1_to_2: parsed_dump.accumulated_weights_1_to_2,
+            buffer_accumulated_weights_1_to_2,
             accumulated_weights_2_to_1: parsed_dump.accumulated_weights_2_to_1,
+            buffer_accumulated_weights_2_to_1,
             computed_params,
             distance_weights_1_to_2: parsed_dump.distance_weights_1_to_2,
+            buffer_distance_weights_1_to_2,
             distance_weights_2_to_1: parsed_dump.distance_weights_2_to_1,
+            buffer_distance_weights_2_to_1,
             strong_synapses_1_to_2: parsed_dump.strong_synapses_1_to_2,
+            buffer_strong_synapses_1_to_2,
             strong_synapses_2_to_1: parsed_dump.strong_synapses_2_to_1,
+            buffer_strong_synapses_2_to_1,
             kernel_synapses,
             output_field_index,
             output_field_neuron_indexes,
@@ -284,6 +444,7 @@ impl Network {
             action_queue: vec![],
             signal_buffer: vec![],
             prediction: None,
+            input_phase: parsed_dump.input_phase,
         };
 
         Ok(network)
@@ -320,6 +481,7 @@ impl Network {
             refract_intervals_2: &self.refract_intervals_2,
             layer_params: &self.layer_params,
             synapse_params: &self.synapse_params,
+            input_phase: &self.input_phase,
         };
 
         serde_json::to_string(&dump).unwrap()
@@ -339,7 +501,7 @@ impl Network {
         &self.layer_params
     }
 
-    fn input_signal(&mut self, bit_vec: &[bool]) {
+    fn input_signal(&mut self, bit_vec: &[bool], input_phase: InputPhase) {
         let data_len = bit_vec.len();
 
         if data_len > self.field_size {
@@ -350,46 +512,75 @@ impl Network {
             logger.log_event(LoggerEvent::Input(bit_vec.to_vec()));
         }
 
+        /* let mut positive = 0;
+        for value in bit_vec {
+            print!("{}", if *value {"+"} else {"."} );
+
+            if *value {
+                positive += 1;
+            }
+        }
+        println!("{}", positive); */
+
         for (pos, value) in bit_vec.iter().enumerate() {
-            if *value && self.refract_intervals_1[[pos]] == 0 {
-                self.neurons_1[[pos]] = 1;
+            let neuron_index = match input_phase {
+                InputPhase::Even => pos * 2,
+                InputPhase::Odd => pos * 2 + 1,
+            };
+
+            if *value && self.refract_intervals_1[neuron_index] == 0 {
+                self.neurons_1[neuron_index] = 1;
             }
         }
     }
 
+    fn get_threshold(&self, neurons_from: &Vec<u8>) -> f32 {
+        if self.prediction.is_some() {
+            let excided_neurons_count = neurons_from.iter().filter(|&&x| x != 0).count() as f32;
+
+            let excited_percentage =
+                excided_neurons_count / self.computed_params.max_excited_neurons_number;
+
+            let threshold = self.synapse_params.threshold_predict_min
+                + (self.synapse_params.threshold_predict_max
+                    - self.synapse_params.threshold_predict_min)
+                    * excited_percentage;
+
+            // println!("{} {} {}", excided_neurons_count, self.computed_params.max_excited_neurons_number, threshold);
+
+            threshold
+        } else {
+            1.0
+        }
+    }
+
     fn shift_1_to_2(&mut self) {
+        let threshold = self.get_threshold(&self.neurons_1);
+
         apply_synapses(
             &self.kernel_synapses,
             self.prediction.is_some(),
             self.layer_size,
-            &mut self.accumulated_weights_1_to_2,
-            &self.strong_synapses_1_to_2,
-            &self.distance_weights_1_to_2,
+            &self.buffer_accumulated_weights_1_to_2,
+            &self.buffer_strong_synapses_1_to_2,
+            &self.buffer_distance_weights_1_to_2,
             &self.neurons_1,
             &mut self.neurons_2,
             &self.refract_intervals_2,
-            self.synapse_params.refract_interval,
-            self.synapse_params.threshold,
-            self.synapse_params.gamma_inc,
-            self.synapse_params.gamma_dec,
-            0.0,
-            self.computed_params.excited_neurons_limit,
-            self.synapse_params.g_dec,
-            self.synapse_params.g_inc,
-            self.synapse_params.min_g,
-            self.synapse_params.max_g,
+            &self.layer_params,
+            &self.synapse_params,
+            &self.computed_params,
+            threshold,
             1,
             &mut self.logger,
         )
         .unwrap();
 
-        let next_refract_intervals_1 = recount_refract_intervals(
+        recount_refract_intervals(
             &self.neurons_1,
-            &self.refract_intervals_1,
+            &mut self.refract_intervals_1,
             &self.synapse_params.refract_interval,
         );
-
-        self.refract_intervals_1 = next_refract_intervals_1;
 
         if self.logger.is_some() {
             let total_2 = self.get_accumulated_weights_sum(2);
@@ -401,38 +592,32 @@ impl Network {
     }
 
     fn shift_2_to_1(&mut self) {
+        let threshold = self.get_threshold(&self.neurons_2);
+
         apply_synapses(
             &self.kernel_synapses,
             self.prediction.is_some(),
             self.layer_size,
-            &mut self.accumulated_weights_2_to_1,
-            &self.strong_synapses_2_to_1,
-            &self.distance_weights_2_to_1,
+            &self.buffer_accumulated_weights_2_to_1,
+            &self.buffer_strong_synapses_2_to_1,
+            &self.buffer_distance_weights_2_to_1,
             &self.neurons_2,
             &mut self.neurons_1,
             &self.refract_intervals_1,
-            self.synapse_params.refract_interval,
-            self.synapse_params.threshold,
-            self.synapse_params.gamma_inc,
-            self.synapse_params.gamma_dec,
-            self.synapse_params.g_0,
-            self.computed_params.excited_neurons_limit,
-            self.synapse_params.g_dec,
-            self.synapse_params.g_inc,
-            self.synapse_params.min_g,
-            self.synapse_params.max_g,
+            &self.layer_params,
+            &self.synapse_params,
+            &self.computed_params,
+            threshold,
             2,
             &mut self.logger,
         )
         .unwrap();
 
-        let next_refract_intervals_2 = recount_refract_intervals(
+        recount_refract_intervals(
             &self.neurons_2,
-            &self.refract_intervals_2,
+            &mut self.refract_intervals_2,
             &self.synapse_params.refract_interval,
         );
-
-        self.refract_intervals_2 = next_refract_intervals_2;
 
         if self.logger.is_some() {
             let total_1 = self.get_accumulated_weights_sum(1);
@@ -443,21 +628,22 @@ impl Network {
         }
     }
 
-    fn shift(&mut self, bit_vec: &[bool]) {
-        self.input_signal(bit_vec);
-        self.shift_1_to_2();
-        self.shift_2_to_1();
-    }
-
     fn split_signal(&self, bit_vec: &[bool]) -> (Vec<bool>, Option<Vec<bool>>) {
         let mut has_intersection = false;
 
-        let mut apply_vec = vec![false; self.field_size];
-        let mut rest_vec = vec![false; self.field_size];
+        let half_field_size = self.field_size / 2;
+
+        let mut apply_vec = vec![false; half_field_size];
+        let mut rest_vec = vec![false; half_field_size];
 
         for (pos, value) in bit_vec.iter().enumerate() {
+            let neuron_index = match self.input_phase {
+                InputPhase::Even => pos * 2,
+                InputPhase::Odd => pos * 2 + 1,
+            };
+
             if *value {
-                if self.refract_intervals_1[[pos]] > 0 {
+                if self.refract_intervals_1[neuron_index] > 0 {
                     has_intersection = true;
                     rest_vec[pos] = true;
                 } else {
@@ -477,72 +663,14 @@ impl Network {
     }
 
     /**
-     * Set the values of neurons to the input field and make shifts before setting the second part
-     *
-     * The values are guaranteed not to overlap with the refractive neurons
-     */
-    fn tick_not_intersected(
-        &mut self,
-        bit_vec: &[bool],
-        _prediction: &mut Option<PredictionProcessing>,
-    ) {
-        self.shift(bit_vec);
-
-        /* if let Some(prediction) = prediction {
-            prediction.add_tick_split();
-
-            if prediction.should_read() {
-                prediction.read(&self.get_output_field_state());
-            }
-        } */
-
-        for _ in 0..self.synapse_params.signal_shift_interval {
-            self.shift(&vec![]);
-
-            /* if let Some(prediction) = prediction {
-                prediction.shift();
-
-                if prediction.should_read() {
-                    prediction.read(&self.get_output_field_state());
-                }
-            } */
-        }
-    }
-
-    /**
-     * Set the values of neurons to the input field and make shifts before setting the second part
-     *
-     * If there are values that overlap with the refractive neurons, make a tick without them and recursively call this method with that values
-     */
-    pub fn tick(
-        &mut self,
-        bit_vec: &[bool],
-        prediction: &mut Option<PredictionProcessing>,
-        apply_rest: bool,
-    ) {
-        let (mut apply_vec, mut rest_vec) = self.split_signal(bit_vec);
-
-        self.tick_not_intersected(&apply_vec, prediction);
-
-        if !apply_rest {
-            return;
-        }
-
-        let mut counter = 0u8;
-
-        let limit = self.synapse_params.signal_rest_shift_limit.unwrap_or(255);
-
-        while rest_vec.is_some() && counter < limit {
-            (apply_vec, rest_vec) = self.split_signal(&rest_vec.unwrap());
-            self.tick_not_intersected(&apply_vec, prediction);
-            counter += 1;
-        }
-    }
-
-    /**
      * Split signal into frames and apply them immediately
      */
     pub fn push_data_and_apply(&mut self, bit_vec: &[bool], prediction_depth: usize) {
+        /* for value in bit_vec {
+            print!("{}", if *value { "+" } else { "." });
+        }
+
+        println!(); */
         self.push_data_binary(bit_vec, prediction_depth);
         self.apply_buffer();
     }
@@ -550,20 +678,24 @@ impl Network {
     /**
      * Split signal into frames and push them to buffer
      */
-    pub fn push_data_binary(&mut self, bit_vec: &[bool], _prediction_depth: usize) {
+    pub fn push_data_binary(&mut self, bit_vec: &[bool], prediction_depth: usize) {
         let data_len = bit_vec.len();
-        let field_size = self.field_size;
+        let half_field_size = self.field_size / 2;
         let tick_count = self.get_tick_count(bit_vec);
 
         for i in 0..tick_count {
-            let start = i * self.field_size;
-            let end = std::cmp::min(start + field_size, data_len);
+            let start = i * half_field_size;
+            let end = std::cmp::min(start + half_field_size, data_len);
 
             if let Some(prediction) = &mut self.prediction {
                 prediction.add_tick(i);
             }
 
             self.push_to_buffer(bit_vec[start..end].to_vec());
+        }
+
+        for _ in 0..prediction_depth {
+            self.push_to_buffer(vec![]);
         }
     }
 
@@ -582,13 +714,16 @@ impl Network {
         (data_len / field_size) + 1
     }
 
-    pub fn predict(&mut self, bit_vec: &[bool], prediction_depth: usize) -> Vec<bool> {
+    pub fn predict(&mut self, bit_vec: &[bool], prediction_depth: usize) -> Vec<Vec<bool>> {
+        self.clean_neurons();
+
         let tick_count = self.get_tick_count(bit_vec);
 
         self.prediction = Some(PredictionProcessing::new(
             tick_count,
             self.computed_params.field_size,
-            self.output_field_index + 1,
+            self.output_field_index,
+            prediction_depth,
         ));
 
         self.push_data_and_apply(bit_vec, prediction_depth);
@@ -603,61 +738,20 @@ impl Network {
     /**
      * Set all the values of neurons and refract intervals to 0
      */
-    fn _clean_neurons(&mut self) {
+    fn clean_neurons(&mut self) {
         let layer_size = self.layer_size;
 
-        self.neurons_1 = Array1::<u8>::zeros(layer_size);
-        self.neurons_2 = Array1::<u8>::zeros(layer_size);
-        self.refract_intervals_1 = Array1::<u8>::zeros(layer_size);
-        self.refract_intervals_2 = Array1::<u8>::zeros(layer_size);
-    }
-
-    pub fn _predict(&mut self, bit_vec: &[bool]) -> Vec<bool> {
-        let data_len = bit_vec.len();
-
-        let tick_count = if data_len % self.field_size == 0 {
-            data_len / self.field_size
-        } else {
-            (data_len / self.field_size) + 1
-        };
-
-        let mut prediction = Some(PredictionProcessing::new(
-            tick_count,
-            self.computed_params.field_size,
-            self.computed_params.field_count,
-        ));
-
-        for i in 0..tick_count {
-            let start = i * self.field_size;
-            let end = std::cmp::min(start + self.field_size, data_len);
-
-            prediction.as_mut().unwrap().add_tick(i);
-
-            self.tick(&bit_vec[start..end], &mut prediction, true);
-        }
-
-        let prediction = prediction.as_mut().unwrap();
-
-        while !prediction.is_finished() {
-            for _ in 0..=self.synapse_params.signal_shift_interval {
-                self.shift(&vec![]);
-
-                prediction.shift();
-
-                if prediction.should_read() {
-                    prediction.read(&self.get_output_field_state());
-                }
-            }
-        }
-
-        prediction.get_prediction()
+        self.neurons_1 = vec![0u8; layer_size];
+        self.neurons_2 = vec![0u8; layer_size];
+        self.refract_intervals_1 = vec![0u8; layer_size];
+        self.refract_intervals_2 = vec![0u8; layer_size];
     }
 
     pub fn get_output_field_state(&self) -> Vec<u8> {
         let mut res: Vec<u8> = vec![];
 
         for field_index in self.output_field_neuron_indexes.iter() {
-            res.push(self.neurons_2[[*field_index]]);
+            res.push(self.neurons_2[*field_index]);
         }
 
         res
@@ -667,14 +761,14 @@ impl Network {
         println!("STATES:");
         println!();
         println!("LAYER 1:");
-        self.print_state(&self.neurons_1);
+        self.print_state(&self.neurons_1, &self.refract_intervals_1);
         println!("LAYER 2:");
-        self.print_state(&self.neurons_2);
+        self.print_state(&self.neurons_2, &self.refract_intervals_2);
         println!();
         println!();
     }
 
-    fn print_state(&self, layer: &Array1<u8>) {
+    fn print_state(&self, layer: &Vec<u8>, refract_intervals: &Vec<u8>) {
         for layer_y in 0..self.layer_height {
             for neuron_in_field_y in 0..self.layer_params.field_height {
                 for layer_x in 0..self.layer_width {
@@ -688,7 +782,17 @@ impl Network {
                             neuron_in_field_y,
                         );
 
-                        print!("{} ", if layer[[neuron_index]] > 0 { "+" } else { "." });
+                        if layer[neuron_index] > 0 {
+                            print!("+");
+                        } else {
+                            let refract_interval = refract_intervals[neuron_index];
+
+                            if refract_interval > 0 {
+                                print!("{}", refract_interval);
+                            } else {
+                                print!(".");
+                            }
+                        }
                     }
 
                     print!(" ");
@@ -731,7 +835,7 @@ impl Network {
             neuron_in_field_y,
         );
 
-        refract_intervals[[neuron_index]]
+        refract_intervals[neuron_index]
     }
 
     pub fn get_neuron_state(
@@ -757,7 +861,7 @@ impl Network {
             neuron_in_field_y,
         );
 
-        neurons[[neuron_index]]
+        neurons[neuron_index]
     }
 
     pub fn get_neuron_full_coordinates(
@@ -823,13 +927,24 @@ impl Network {
         neuron_x: usize,
         neuron_y: usize,
     ) -> Array2<f32> {
-        let weights_layer = if layer_index == 1 {
-            &self.accumulated_weights_1_to_2
+        let weights_buffer = if layer_index == 1 {
+            &self.buffer_accumulated_weights_1_to_2
         } else {
-            &self.accumulated_weights_2_to_1
+            &self.buffer_accumulated_weights_2_to_1
         };
 
-        self.get_neuron_weights(weights_layer, neuron_x, neuron_y)
+        let layer_size = self.neurons_1.len();
+
+        let mut data = vec![0.0_f32; layer_size * layer_size];
+
+        // Читаем буфер обратно в data
+        weights_buffer.read(&mut data).enq().unwrap();
+
+        let mut weights_layer = Array2::<f32>::zeros([layer_size, layer_size]);
+
+        weights_layer.as_slice_mut().unwrap().copy_from_slice(&data);
+
+        self.get_neuron_weights(&weights_layer, neuron_x, neuron_y)
     }
 
     pub fn get_neuron_distance_weights(
@@ -869,27 +984,10 @@ impl Network {
         self.action_queue.push(Action::EmptyShift2to1);
     }
 
-    fn push_shifted_signals(&mut self, bit_vec: &[bool]) {
-        if let Some(shifts) = &self.synapse_params.signal_copy_shifts {
-            let shifted_signals: Vec<Vec<bool>> = shifts
-                .into_iter()
-                .map(|shift| {
-                    return shift_signal(&bit_vec, self.field_size, &self.layer_params, shift);
-                })
-                .collect();
-
-            for shifted_signal in shifted_signals.into_iter() {
-                self.push_shift(shifted_signal, false);
-            }
-        }
-    }
-
     fn apply_signal(&mut self, bit_vec: &[bool], counter: &u8) {
         let (apply_vec, rest) = self.split_signal(bit_vec);
 
         self.push_shift(apply_vec, true);
-
-        self.push_shifted_signals(bit_vec);
 
         for _ in 0..self.synapse_params.signal_shift_interval {
             self.push_empty_shift();
@@ -922,13 +1020,20 @@ impl Network {
                 self.apply_signal(bit_vec, counter);
             }
             Action::InputSignal(bit_vec, is_source) => {
-                self.input_signal(bit_vec);
+                let input_phase = self.input_phase;
+
+                self.input_signal(bit_vec, input_phase);
 
                 if *is_source {
                     if let Some(prediction) = &mut self.prediction {
-                        prediction.add_tick_split();
+                        prediction.add_tick_split(input_phase);
                     }
                 }
+
+                self.input_phase = match self.input_phase {
+                    InputPhase::Even => InputPhase::Odd,
+                    InputPhase::Odd => InputPhase::Even,
+                };
             }
             Action::EmptyShift1to2 => {
                 self.shift_1_to_2();

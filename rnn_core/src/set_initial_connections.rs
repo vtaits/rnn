@@ -1,11 +1,11 @@
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 
 use crate::{
     get_neuron_coordinates::get_neuron_coordinates,
     get_neuron_index::get_neuron_index,
     get_neuron_index_by_coordinates::get_neuron_index_by_coordinates,
     spiral::{get_last_field, get_next_field},
-    structures::{ComputedParams, InitialConnections, SynapseMask},
+    structures::{ComputedParams, InitialConnections, PartitionPayloadByIndex, SynapseMask},
     LayerParams, SynapseParams,
 };
 
@@ -51,6 +51,48 @@ fn apply_mask(
     }
 }
 
+fn check_has_connections_by_partitions(
+    partition_from: Option<&PartitionPayloadByIndex>,
+    partition_to: Option<&PartitionPayloadByIndex>,
+) -> bool {
+    match partition_to {
+        Some(partition_to_data) => {
+            if partition_to_data.correlate_only_self {
+                let result = match partition_from {
+                    Some(partition_from_data) => {
+                        partition_from_data.partition_index == partition_to_data.partition_index
+                    }
+                    _ => false,
+                };
+
+                return result;
+            }
+
+            if let Some(no_correlate) = &partition_to_data.no_correlate {
+                if let Some(partition_from_data) = partition_from {
+                    if no_correlate.contains(&partition_from_data.partition_index) {
+                        return false;
+                    }
+                }
+            }
+
+            if let Some(correlate_only) = &partition_to_data.correlate_only {
+                let result = match partition_from {
+                    Some(partition_from_data) => {
+                        correlate_only.contains(&partition_from_data.partition_index)
+                    }
+                    _ => false,
+                };
+
+                return result;
+            }
+
+            true
+        }
+        _ => true,
+    }
+}
+
 fn fill_conntected_fields(
     layer_params: &LayerParams,
     computed_params: &ComputedParams,
@@ -62,6 +104,15 @@ fn fill_conntected_fields(
 ) {
     for neuron_in_field_from_y in 0..layer_params.field_height {
         for neuron_in_field_from_x in 0..layer_params.field_width {
+            let index_in_field_from =
+                layer_params.field_width * neuron_in_field_from_y + neuron_in_field_from_x;
+            let partition_from = match &computed_params.map_index_to_partition_data {
+                Some(map_index_to_partition_data) => {
+                    map_index_to_partition_data.get(&index_in_field_from)
+                }
+                _ => None,
+            };
+
             let neuron_from_index = get_neuron_index(
                 layer_params,
                 computed_params,
@@ -73,6 +124,16 @@ fn fill_conntected_fields(
 
             for neuron_in_field_to_y in 0..layer_params.field_height {
                 for neuron_in_field_to_x in 0..layer_params.field_width {
+                    let index_in_field_to =
+                        layer_params.field_width * neuron_in_field_to_y + neuron_in_field_to_x;
+
+                    let partition_to = match &computed_params.map_index_to_partition_data {
+                        Some(map_index_to_partition_data) => {
+                            map_index_to_partition_data.get(&index_in_field_to)
+                        }
+                        _ => None,
+                    };
+
                     let neuron_to_index = get_neuron_index(
                         layer_params,
                         computed_params,
@@ -82,7 +143,12 @@ fn fill_conntected_fields(
                         neuron_in_field_to_y,
                     );
 
-                    has_connections[[neuron_to_index, neuron_from_index]] = true;
+                    let has_connections_by_partitions =
+                        check_has_connections_by_partitions(partition_from, partition_to);
+
+                    if has_connections_by_partitions {
+                        has_connections[[neuron_to_index, neuron_from_index]] = true;
+                    }
                 }
             }
         }
@@ -92,6 +158,7 @@ fn fill_conntected_fields(
 fn fill_has_conntections(
     layer_params: &LayerParams,
     computed_params: &ComputedParams,
+    synapse_params: &SynapseParams,
     has_connections_1_to_2: &mut Array2<bool>,
     has_connections_2_to_1: &mut Array2<bool>,
 ) {
@@ -102,27 +169,33 @@ fn fill_has_conntections(
     let mut cur_layer_x = 0usize;
     let mut cur_layer_y = 0usize;
 
-    loop {
-        for (prev_layer_x, prev_layer_y) in prev_fields.iter() {
-            fill_conntected_fields(
-                layer_params,
-                computed_params,
-                has_connections_1_to_2,
-                cur_layer_x,
-                cur_layer_y,
-                *prev_layer_x,
-                *prev_layer_y,
-            );
+    let restoring_state_field_interval = synapse_params.signal_shift_interval as usize + 1;
 
-            fill_conntected_fields(
-                layer_params,
-                computed_params,
-                has_connections_2_to_1,
-                cur_layer_x,
-                cur_layer_y,
-                *prev_layer_x,
-                *prev_layer_y,
-            );
+    let mut index = 0usize;
+
+    loop {
+        if index > 0 && index % restoring_state_field_interval == 0 {
+            for (prev_layer_x, prev_layer_y) in prev_fields.iter() {
+                fill_conntected_fields(
+                    layer_params,
+                    computed_params,
+                    has_connections_1_to_2,
+                    cur_layer_x,
+                    cur_layer_y,
+                    *prev_layer_x,
+                    *prev_layer_y,
+                );
+
+                /* fill_conntected_fields(
+                    layer_params,
+                    computed_params,
+                    has_connections_2_to_1,
+                    cur_layer_x,
+                    cur_layer_y,
+                    *prev_layer_x,
+                    *prev_layer_y,
+                ); */
+            }
         }
 
         fill_conntected_fields(
@@ -135,15 +208,15 @@ fn fill_has_conntections(
             cur_layer_y,
         );
 
-        fill_conntected_fields(
-            layer_params,
-            computed_params,
-            has_connections_2_to_1,
-            cur_layer_x,
-            cur_layer_y,
-            cur_layer_x,
-            cur_layer_y,
-        );
+        // fill_conntected_fields(
+        //     layer_params,
+        //     computed_params,
+        //     has_connections_2_to_1,
+        //     cur_layer_x,
+        //     cur_layer_y,
+        //     cur_layer_x,
+        //     cur_layer_y,
+        // );
 
         if cur_layer_x == last_layer_x && cur_layer_y == last_layer_y {
             return;
@@ -161,10 +234,14 @@ fn fill_has_conntections(
             next_field_y,
         );
 
-        prev_fields.push((cur_layer_x, cur_layer_y));
+        if cur_layer_x == 0 && cur_layer_y == 0 {
+            prev_fields.push((cur_layer_x, cur_layer_y));
+        }
 
         cur_layer_x = next_field_x;
         cur_layer_y = next_field_y;
+
+        index += 1;
     }
 }
 
@@ -183,9 +260,9 @@ pub fn set_initial_connections(
     let mut distance_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);
 
     // synapses to identical map from the first layer to the second layer
-    let mut strong_synapses_1_to_2 = Array1::<u64>::zeros([layer_size]);
+    let mut strong_synapses_1_to_2 = vec![0u64; layer_size];
     // synapses to identical map from the second layer to the first layer
-    let mut strong_synapses_2_to_1 = Array1::<u64>::zeros([layer_size]);
+    let mut strong_synapses_2_to_1 = vec![0u64; layer_size];
 
     let mut accumulated_weights_1_to_2 = Array2::<f32>::zeros([layer_size, layer_size]);
     let mut accumulated_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);
@@ -196,6 +273,7 @@ pub fn set_initial_connections(
     fill_has_conntections(
         layer_params,
         computed_params,
+        synapse_params,
         &mut has_conntections_1_to_2,
         &mut has_conntections_2_to_1,
     );
@@ -218,8 +296,7 @@ pub fn set_initial_connections(
                         neuron_in_field_y,
                     );
 
-                    accumulated_weights_1_to_2[[neuron_index, neuron_index]] =
-                        synapse_params.initial_strong_g;
+                    accumulated_weights_1_to_2[[neuron_index, neuron_index]] = synapse_params.max_g;
 
                     strong_synapses_1_to_2[neuron_index] = neuron_index as u64;
 
@@ -259,7 +336,7 @@ pub fn set_initial_connections(
                         );
 
                         accumulated_weights_2_to_1[[neuron_2_to_1_index, neuron_index]] =
-                            synapse_params.initial_strong_g;
+                            synapse_params.max_g;
 
                         strong_synapses_2_to_1[neuron_2_to_1_index] = neuron_index as u64;
 

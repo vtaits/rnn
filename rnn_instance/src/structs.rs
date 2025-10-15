@@ -7,7 +7,8 @@ pub struct RedefineParams {
     pub g_inc: f32,
     pub g_0: f32,
     pub h: f32,
-    pub threshold: f32,
+    pub threshold_predict_min: f32,
+    pub threshold_predict_max: f32,
 }
 
 pub struct InitDataLayerParams {

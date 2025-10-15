@@ -1,3 +1,4 @@
+use rnn_core::{Partition, RegressResult};
 use serde_derive::Deserialize;
 
 use crate::{
@@ -118,6 +119,7 @@ impl Timeline for FloatTimeline {
                     normalized_value,
                     self.params.capacity as usize,
                     self.max_normalize_value,
+                    false,
                 );
             }
 
@@ -159,6 +161,63 @@ impl Timeline for FloatTimeline {
         let result = self.params.min_value + self.range * reverse_multiplier;
 
         ComplexTimelineValue::Float(result)
+    }
+
+    fn normalize_prediction(&self, bits: &[bool]) -> Vec<bool> {
+        if !self.is_single_bit {
+            return bits.to_vec();
+        }
+
+        let mut result = vec![false; bits.len()];
+
+        let last_positive_bit_index = bits
+            .iter()
+            .rev()
+            .position(|x| *x)
+            .map(|pos| bits.len() - 1 - pos);
+
+        if let Some(last_positive_bit_index) = last_positive_bit_index {
+            result[last_positive_bit_index] = true
+        }
+
+        result
+    }
+
+    fn get_partition(&self) -> Partition {
+        Partition {
+            size: *self.get_capacity() as usize,
+            accept_all: !self.is_single_bit,
+            correlate_only: None,
+            correlate_only_self: false,
+            no_correlate: None,
+        }
+    }
+
+    fn regress(&self, bits: &[bool]) -> f32 {
+        let reversed_value = self.reverse(bits);
+
+        match reversed_value {
+            ComplexTimelineValue::Float(value) => value,
+            _ => panic!("Wrong type of value"),
+        }
+    }
+
+    fn get_regress_difference(
+        &self,
+        original: &ComplexTimelineValue,
+        computed: &ComplexTimelineValue,
+    ) -> RegressResult {
+        match original {
+            ComplexTimelineValue::Float(actual) => match computed {
+                ComplexTimelineValue::Float(received) => RegressResult {
+                    actual: *actual,
+                    received: *received,
+                    diff: (actual - received).abs(),
+                },
+                _ => panic!("Wrong type of value"),
+            },
+            _ => panic!("Wrong type of value"),
+        }
     }
 }
 

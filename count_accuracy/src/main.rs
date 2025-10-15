@@ -1,5 +1,6 @@
 use std::env;
 
+use rnn_core::CountAccuracyResult;
 use tokio;
 
 use rnn_instance::{init_data_layer_by_env, InitDataLayerParams};
@@ -18,6 +19,8 @@ async fn main() -> Result<(), ()> {
     let mut total_positive = 0;
     let mut total_negative = 0;
 
+    let mut true_positive_neurons = 0usize;
+    let mut true_negative_neurons = 0usize;
     let mut false_positive_neurons = 0usize;
     let mut false_negative_neurons = 0usize;
 
@@ -36,31 +39,43 @@ async fn main() -> Result<(), ()> {
             redefine_params: None,
         });
 
-        let (positive, negative, false_positive_neurons_result, false_negative_neurons_result) =
-            data_layer.count_accuracy(measurement_data);
+        let CountAccuracyResult {
+            positive,
+            negative,
+            true_positive,
+            true_negative,
+            false_positive,
+            false_negative,
+        } = data_layer.count_accuracy(measurement_data);
 
         total_positive += positive;
         total_negative += negative;
-        false_positive_neurons += false_positive_neurons_result;
-        false_negative_neurons += false_negative_neurons_result;
+        true_positive_neurons += true_positive;
+        true_negative_neurons += true_negative;
+        false_positive_neurons += false_positive;
+        false_negative_neurons += false_negative;
 
         println!(
-            "positive: {}, negative: {}, total: {}, false positive: {}, false negative: {}",
+            "positive: {}, negative: {}, total: {}, true positive: {}, true negative: {}, false positive: {}, false negative: {}",
             positive,
             negative,
             positive + negative,
-            false_positive_neurons_result,
-            false_negative_neurons_result,
+            true_positive,
+            true_negative,
+            false_positive,
+            false_negative,
         );
     }
 
     println!("Total");
 
     println!(
-        "positive: {}, negative: {}, total: {}, false positive: {}, false negative: {}",
+        "positive: {}, negative: {}, total: {}, true positive: {}, true negative: {}, false positive: {}, false negative: {}",
         total_positive,
         total_negative,
         total_positive + total_negative,
+        true_positive_neurons,
+        true_negative_neurons,
         false_positive_neurons,
         false_negative_neurons,
     );

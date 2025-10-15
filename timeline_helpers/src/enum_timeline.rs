@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use rnn_core::{Partition, RegressResult};
 use serde_derive::Deserialize;
 
 use crate::{bits_to_number, number_to_bits, ComplexTimelineValue, Timeline};
@@ -99,6 +100,32 @@ impl Timeline for EnumTimeline<String> {
 
     fn get_capacity(&self) -> &u8 {
         &self.params.capacity
+    }
+
+    fn normalize_prediction(&self, bits: &[bool]) -> Vec<bool> {
+        bits.to_vec()
+    }
+
+    fn get_partition(&self) -> Partition {
+        Partition {
+            size: *self.get_capacity() as usize,
+            accept_all: false,
+            correlate_only: None,
+            correlate_only_self: false,
+            no_correlate: None,
+        }
+    }
+
+    fn regress(&self, _bits: &[bool]) -> f32 {
+        panic!("Regression is not implemented for enum timeline");
+    }
+
+    fn get_regress_difference(
+        &self,
+        _original: &ComplexTimelineValue,
+        _computed: &ComplexTimelineValue,
+    ) -> RegressResult {
+        panic!("Regression is not implemented for enum timeline");
     }
 }
 

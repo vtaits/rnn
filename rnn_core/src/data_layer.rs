@@ -1,11 +1,13 @@
 use std::sync::{Arc, RwLock};
 
-use crate::Network;
+use crate::{CountAccuracyResult, Network, RegressResult};
 
 pub struct DataLayerParams<T> {
     pub binary_to_data: Box<dyn Fn(&[bool]) -> Result<T, ()> + Send + Sync>,
     pub data_to_binary: Box<dyn Fn(T) -> Result<Vec<bool>, ()> + Send + Sync>,
     pub get_target_mask: Box<dyn Fn() -> Vec<bool> + Send + Sync>,
+    pub normalize_prediction: Box<dyn Fn(&[bool]) -> Vec<bool> + Send + Sync>,
+    pub regress: Box<dyn Fn(&T, &T) -> RegressResult + Send + Sync>,
 }
 
 pub struct DataLayer<T> {
@@ -41,8 +43,15 @@ impl<T> DataLayer<T> {
             .push_data_and_apply(bit_vec, prediction_depth);
     }
 
-    fn check(&mut self, bit_vec: &[bool]) -> (bool, usize, usize) {
+    fn normalize_prediction(&self, result_vec: &[bool]) -> Vec<bool> {
+        return (self.params.normalize_prediction)(result_vec);
+    }
+
+    fn check(&mut self, bit_vec: &[bool]) -> (bool, usize, usize, usize, usize) {
         let mut check_vec: Vec<bool> = vec![false; self.target_mask.len()];
+
+        let mut true_positive_neurons = 0usize;
+        let mut true_negative_neurons = 0usize;
 
         let mut false_positive_neurons = 0usize;
         let mut false_negative_neurons = 0usize;
@@ -55,16 +64,25 @@ impl<T> DataLayer<T> {
             }
         }
 
-        let prediction = self.predict_binary(&check_vec, 0);
+        let prediction = &self.predict_binary(&check_vec, 0)[0];
+        let normalized_prediction = self.normalize_prediction(&prediction);
 
         let mut has_error = false;
 
         for (index, is_target) in self.target_mask.iter().enumerate() {
             if *is_target {
                 let expected = bit_vec[index];
-                let received = prediction[index];
+                let received = normalized_prediction[index];
 
                 // print!("{}{} ", if expected {"+"} else {"."}, if received {"+"} else {"."});
+
+                if expected && received {
+                    true_positive_neurons += 1;
+                }
+
+                if !expected && !received {
+                    true_negative_neurons += 1;
+                }
 
                 if !expected && received {
                     false_positive_neurons += 1;
@@ -80,38 +98,84 @@ impl<T> DataLayer<T> {
 
         // println!();
 
-        (!has_error, false_positive_neurons, false_negative_neurons)
-    }
-
-    pub fn count_accuracy(
-        &mut self,
-        measurement_data: Vec<Vec<bool>>,
-    ) -> (usize, usize, usize, usize) {
-        let mut positive = 0usize;
-        let mut negative = 0usize;
-
-        let mut false_positive_neurons = 0usize;
-        let mut false_negative_neurons = 0usize;
-
-        for item in measurement_data.iter() {
-            let (is_positive, false_positive_neurons_result, false_negative_neurons_result) =
-                self.check(&item);
-
-            if is_positive {
-                positive += 1;
-            } else {
-                negative += 1;
-                false_positive_neurons += false_positive_neurons_result;
-                false_negative_neurons += false_negative_neurons_result;
-            }
-        }
-
         (
-            positive,
-            negative,
+            !has_error,
+            true_positive_neurons,
+            true_negative_neurons,
             false_positive_neurons,
             false_negative_neurons,
         )
+    }
+
+    pub fn count_accuracy(&mut self, measurement_data: Vec<(T, Vec<bool>)>) -> CountAccuracyResult {
+        let mut positive = 0usize;
+        let mut negative = 0usize;
+
+        let mut true_positive = 0usize;
+        let mut true_negative = 0usize;
+        let mut false_positive = 0usize;
+        let mut false_negative = 0usize;
+
+        for item in measurement_data.iter() {
+            let (
+                is_positive,
+                true_positive_neurons_result,
+                true_negative_neurons_result,
+                false_positive_neurons_result,
+                false_negative_neurons_result,
+            ) = self.check(&item.1);
+
+            if is_positive {
+                positive += 1;
+                true_positive += true_positive_neurons_result;
+                true_negative += true_negative_neurons_result;
+            } else {
+                negative += 1;
+                false_positive += false_positive_neurons_result;
+                false_negative += false_negative_neurons_result;
+            }
+        }
+
+        CountAccuracyResult {
+            positive,
+            negative,
+            true_positive,
+            true_negative,
+            false_positive,
+            false_negative,
+        }
+    }
+
+    pub fn regress(&mut self, measurement_data: Vec<(T, Vec<bool>)>) -> Vec<RegressResult> {
+        let mut res: Vec<_> = vec![];
+
+        for item in measurement_data.iter() {
+            let binary_result = &self.predict_binary(&item.1, 0)[0];
+            let deserialized = self.deserialize(&binary_result).unwrap();
+
+            let diff = (self.params.regress)(&item.0, &deserialized);
+
+            res.push(diff);
+        }
+
+        res
+    }
+
+    pub fn regress_deep(&mut self, measurement_data: Vec<(T, Vec<bool>)>) -> Vec<RegressResult> {
+        let mut res: Vec<_> = vec![];
+
+        let binary_results =
+            &self.predict_binary(&measurement_data[0].1, measurement_data.len() - 1);
+
+        for (index, binary_result) in binary_results.iter().enumerate() {
+            let deserialized = self.deserialize(&binary_result).unwrap();
+
+            let diff = (self.params.regress)(&measurement_data[index].0, &deserialized);
+
+            res.push(diff);
+        }
+
+        res
     }
 
     pub fn process_for_measure(&mut self, data: T) -> Result<Vec<bool>, ()> {
@@ -137,7 +201,7 @@ impl<T> DataLayer<T> {
         }
     }
 
-    pub fn predict_binary(&mut self, bit_vec: &[bool], prediction_depth: usize) -> Vec<bool> {
+    pub fn predict_binary(&mut self, bit_vec: &[bool], prediction_depth: usize) -> Vec<Vec<bool>> {
         let binary_result = self
             .network
             .write()
@@ -153,15 +217,24 @@ impl<T> DataLayer<T> {
         data_result
     }
 
-    pub fn predict(&mut self, data: T, prediction_depth: usize) -> Vec<bool> {
+    pub fn predict(&mut self, data: T, prediction_depth: usize) -> Vec<Vec<bool>> {
         let bit_vec = (self.params.data_to_binary)(data).unwrap();
 
         self.predict_binary(&bit_vec, prediction_depth)
     }
 
-    pub fn predict_and_deserialize(&mut self, data: T, prediction_depth: usize) -> Result<T, ()> {
+    pub fn predict_and_deserialize(
+        &mut self,
+        data: T,
+        prediction_depth: usize,
+    ) -> Result<Vec<T>, ()> {
         let binary_result = self.predict(data, prediction_depth);
 
-        self.deserialize(&binary_result)
+        let result = binary_result
+            .iter()
+            .map(|binary_result_item| self.deserialize(&binary_result_item).unwrap())
+            .collect();
+
+        Ok(result)
     }
 }

@@ -1,23 +1,16 @@
-use ndarray::Array1;
-
 pub fn recount_refract_intervals(
-    neurons: &Array1<u8>,
-    refract_intervals: &Array1<u8>,
+    neurons: &Vec<u8>,
+    refract_intervals: &mut Vec<u8>,
     intial_refract_interval: &u8,
-) -> Array1<u8> {
-    neurons
-        .iter()
-        .zip(refract_intervals.iter())
-        .map(|(neuron, refract_interval)| {
-            if *neuron > 0 {
-                return *intial_refract_interval;
-            }
+) {
+    for (index, neuron) in neurons.iter().enumerate() {
+        if *neuron > 0 {
+            refract_intervals[index] = *intial_refract_interval;
+            continue;
+        }
 
-            if *refract_interval > 0 {
-                return *refract_interval - 1;
-            }
-
-            0
-        })
-        .collect()
+        if refract_intervals[index] > 0 {
+            refract_intervals[index] -= 1;
+        }
+    }
 }

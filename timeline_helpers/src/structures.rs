@@ -1,11 +1,13 @@
+use rnn_core::{Partition, RegressResult};
 use serde_derive::{Deserialize, Serialize};
 
 use crate::{
     enum_timeline::EnumTimelineConfig, float_timeline::FloatTimelineConfig,
-    integer_timeline::IntegerTimelineConfig, DatetimeTimelineConfig,
+    integer_timeline::IntegerTimelineConfig, time_timeline::TimeTimelineConfig,
+    DatetimeTimelineConfig, WeekdayTimelineConfig, WeekendTimelineConfig,
 };
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub enum ComplexTimelineValue {
     Float(f32),
     Datetime(String),
@@ -20,6 +22,9 @@ pub enum TimelineConfig {
     Float(FloatTimelineConfig),
     Integer(IntegerTimelineConfig),
     Enum(EnumTimelineConfig),
+    Time(TimeTimelineConfig),
+    Weekday(WeekdayTimelineConfig),
+    Weekend(WeekendTimelineConfig),
 }
 
 pub trait Timeline: Send + Sync {
@@ -30,4 +35,16 @@ pub trait Timeline: Send + Sync {
     fn get_capacity(&self) -> &u8;
 
     fn reverse(&self, bits: &[bool]) -> ComplexTimelineValue;
+
+    fn normalize_prediction(&self, bits: &[bool]) -> Vec<bool>;
+
+    fn get_partition(&self) -> Partition;
+
+    fn regress(&self, bits: &[bool]) -> f32;
+
+    fn get_regress_difference(
+        &self,
+        original: &ComplexTimelineValue,
+        computed: &ComplexTimelineValue,
+    ) -> RegressResult;
 }

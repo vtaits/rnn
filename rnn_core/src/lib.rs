@@ -1,5 +1,7 @@
 mod apply_synapses;
 mod data_layer;
+mod excite_neurons_with_partitions;
+mod excite_neurons_without_partitions;
 mod get_neuron_coordinates;
 mod get_neuron_full_coordinates;
 mod get_neuron_index;
@@ -10,11 +12,10 @@ mod network;
 mod prediction;
 mod recount_refract_intervals;
 mod set_initial_connections;
-mod shift_signal;
 mod spiral;
 mod structures;
 
 pub use data_layer::{DataLayer, DataLayerParams};
 pub use logger::{Logger, LoggerEvent, MultipleFileLogger, MultipleFileLoggerParams};
 pub use network::{Network, NetworkParseError};
-pub use structures::{LayerParams, SynapseParams};
+pub use structures::{CountAccuracyResult, LayerParams, Partition, RegressResult, SynapseParams};

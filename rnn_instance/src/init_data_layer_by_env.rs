@@ -7,7 +7,10 @@ use crate::{get_file_path::get_file_path, init_by_toml, structs::InitDataLayerPa
 
 pub fn init_data_layer_by_env(
     params: &InitDataLayerParams,
-) -> (DataLayer<Vec<ComplexTimelineValue>>, Vec<Vec<bool>>) {
+) -> (
+    DataLayer<Vec<ComplexTimelineValue>>,
+    Vec<(Vec<ComplexTimelineValue>, Vec<bool>)>,
+) {
     let InitDataLayerParams {
         train,
         end_measurement_index,

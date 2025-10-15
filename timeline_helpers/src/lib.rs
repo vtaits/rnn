@@ -9,6 +9,9 @@ mod number_to_bits;
 mod number_to_single_bit;
 mod single_bit_to_number;
 mod structures;
+mod time_timeline;
+mod weekday_timeline;
+mod weekend_timeline;
 
 pub use bits_to_number::bits_to_number;
 pub use complex_timeline::ComplexTimeline;
@@ -21,3 +24,6 @@ pub use number_to_bits::number_to_bits;
 pub use number_to_single_bit::number_to_single_bit;
 pub use single_bit_to_number::single_bit_to_number;
 pub use structures::{ComplexTimelineValue, Timeline, TimelineConfig};
+pub use time_timeline::{TimeTimeline, TimeTimelineConfig};
+pub use weekday_timeline::{WeekdayTimeline, WeekdayTimelineConfig};
+pub use weekend_timeline::{WeekendTimeline, WeekendTimelineConfig};

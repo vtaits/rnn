@@ -18,6 +18,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         field_height: 4,
         layer_width: 5,
         layer_height: 5,
+        partitions: None,
     };
 
     let synapse_params = SynapseParams {
@@ -29,26 +30,25 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         g_0: 1.0,
         min_g: -10.0,
         max_g: 10.0,
-        initial_strong_g: 7.0,
         h: 3.0,
         refract_interval: 3,
-        threshold: 0.9,
+        threshold_predict_max: 0.9,
+        threshold_predict_min: 0.9,
         signal_shift_interval: 2,
         signal_rest_shift_limit: Some(0),
-        signal_copy_shifts: Some(vec![(1, 0), (0, 1), (0, -1), (-1, 0)]),
         excite_neuron_limit: 0.8,
     };
 
     let capacity = params.field_width * params.field_height;
 
-    let timeline = IntegerTimeline::new(IntegerTimelineParams {
+    let timeline = Arc::new(IntegerTimeline::new(IntegerTimelineParams {
         min_value: 0,
         max_value: 1048575,
         capacity: capacity as u8,
         get_multiplier: None,
         get_reverse_multiplier: None,
         is_target: None,
-    });
+    }));
 
     let network = Arc::new(RwLock::new(Network::new(
         params,
@@ -67,11 +67,26 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
 
     let mut data_layer = DataLayer::new(
         DataLayerParams {
-            data_to_binary: Box::new(move |number| {
-                Ok(timeline.get_bits(&ComplexTimelineValue::Integer(number)))
-            }),
+            data_to_binary: {
+                let timeline = Arc::clone(&timeline);
+
+                Box::new(
+                    move |number| Ok(timeline.get_bits(&ComplexTimelineValue::Integer(number))),
+                )
+            },
             binary_to_data: Box::new(|_data| Ok(0_i64)),
             get_target_mask: Box::new(|| vec![]),
+            normalize_prediction: Box::new(|data| data.to_vec()),
+            regress: {
+                let timeline = Arc::clone(&timeline);
+
+                Box::new(move |original, computed| {
+                    timeline.get_regress_difference(
+                        &ComplexTimelineValue::Integer(*original),
+                        &ComplexTimelineValue::Integer(*computed),
+                    )
+                })
+            },
         },
         Arc::clone(&network),
     );
@@ -144,7 +159,7 @@ fn init_from_scratch() -> Arc<RwLock<Network>> {
         7873, 7877, 7879, 7883, 7901, 7907, 7919,
     ];
 
-    // let numbers = vec![];
+    let numbers = vec![];
 
     for number in numbers {
         data_layer.push_data(number, 0);
