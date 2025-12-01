@@ -22,7 +22,6 @@ __kernel void apply_synapses(
     __global unsigned char* neurons_to,
     __global float* signals_to,
     const unsigned int layer_size,
-    const uchar initial_refract_interval,
     const float threshold,
     const float gamma_inc,
     const float gamma_dec,

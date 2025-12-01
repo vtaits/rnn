@@ -11,6 +11,8 @@ pub fn render_distance_weights(frame: &mut Frame, area: Rect, app: &App) {
     let network_rc = app.get_network();
     let network_ref = network_rc.read().unwrap();
     let layer_params = network_ref.get_layer_params();
+    let layer_width = layer_params.field_width * layer_params.layer_width;
+    let layer_height = layer_params.field_height * layer_params.layer_height;
 
     let layer_index = match app.layer {
         Layer::Layer1 => 1,
@@ -33,11 +35,11 @@ pub fn render_distance_weights(frame: &mut Frame, area: Rect, app: &App) {
 
     let highlight_style = Style::default().bg(Color::Blue);
 
-    for y in 0..weights.dim().1 {
+    for y in 0..layer_height {
         let mut cells: Vec<Cell> = Vec::new();
 
-        for x in 0..weights.dim().0 {
-            let value = weights[[x, y]];
+        for x in 0..layer_width {
+            let value = weights[x + y * layer_width];
 
             let cell_content = if value > 0.0 {
                 format!("{}", value)

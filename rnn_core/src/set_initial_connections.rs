@@ -1,5 +1,3 @@
-use ndarray::Array2;
-
 use crate::{
     get_neuron_coordinates::get_neuron_coordinates,
     get_neuron_index::get_neuron_index,
@@ -13,11 +11,11 @@ fn apply_mask(
     layer_params: &LayerParams,
     computed_params: &ComputedParams,
     base_neuron_index: usize,
-    distance_weights: &mut Array2<f32>,
+    distance_weights: &mut Vec<f32>,
     mask: &SynapseMask,
     x: usize,
     y: usize,
-    has_connections: &Array2<bool>,
+    has_connections: &Vec<bool>,
 ) {
     for iter_x in 0..mask.size {
         let offset_x = iter_x as i32 - mask.offset as i32;
@@ -42,10 +40,12 @@ fn apply_mask(
                 neuron_y as usize,
             );
 
-            let value = mask.mask[[iter_x, iter_y]];
+            let value = mask.mask[iter_x + iter_y * mask.size];
 
-            if has_connections[[target_neuron_index, base_neuron_index]] {
-                distance_weights[[target_neuron_index, base_neuron_index]] = value;
+            if has_connections[target_neuron_index * computed_params.layer_size + base_neuron_index]
+            {
+                distance_weights
+                    [target_neuron_index * computed_params.layer_size + base_neuron_index] = value;
             }
         }
     }
@@ -96,7 +96,7 @@ fn check_has_connections_by_partitions(
 fn fill_conntected_fields(
     layer_params: &LayerParams,
     computed_params: &ComputedParams,
-    has_connections: &mut Array2<bool>,
+    has_connections: &mut Vec<bool>,
     layer_from_x: usize,
     layer_from_y: usize,
     layer_to_x: usize,
@@ -147,7 +147,9 @@ fn fill_conntected_fields(
                         check_has_connections_by_partitions(partition_from, partition_to);
 
                     if has_connections_by_partitions {
-                        has_connections[[neuron_to_index, neuron_from_index]] = true;
+                        has_connections
+                            [neuron_to_index * computed_params.layer_size + neuron_from_index] =
+                            true;
                     }
                 }
             }
@@ -159,8 +161,8 @@ fn fill_has_conntections(
     layer_params: &LayerParams,
     computed_params: &ComputedParams,
     synapse_params: &SynapseParams,
-    has_connections_1_to_2: &mut Array2<bool>,
-    has_connections_2_to_1: &mut Array2<bool>,
+    has_connections_1_to_2: &mut Vec<bool>,
+    has_connections_2_to_1: &mut Vec<bool>,
 ) {
     let (last_layer_x, last_layer_y) = get_last_field(layer_params);
 
@@ -256,19 +258,19 @@ pub fn set_initial_connections(
         * layer_params.layer_width
         * layer_params.layer_height;
 
-    let mut distance_weights_1_to_2 = Array2::<f32>::zeros([layer_size, layer_size]);
-    let mut distance_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);
+    let mut distance_weights_1_to_2 = vec![0f32; layer_size * layer_size];
+    let mut distance_weights_2_to_1 = vec![0f32; layer_size * layer_size];
 
     // synapses to identical map from the first layer to the second layer
     let mut strong_synapses_1_to_2 = vec![0u64; layer_size];
     // synapses to identical map from the second layer to the first layer
     let mut strong_synapses_2_to_1 = vec![0u64; layer_size];
 
-    let mut accumulated_weights_1_to_2 = Array2::<f32>::zeros([layer_size, layer_size]);
-    let mut accumulated_weights_2_to_1 = Array2::<f32>::zeros([layer_size, layer_size]);
+    let mut accumulated_weights_1_to_2 = vec![0f32; layer_size * layer_size];
+    let mut accumulated_weights_2_to_1 = vec![0f32; layer_size * layer_size];
 
-    let mut has_conntections_1_to_2 = Array2::<bool>::default([layer_size, layer_size]);
-    let mut has_conntections_2_to_1 = Array2::<bool>::default([layer_size, layer_size]);
+    let mut has_conntections_1_to_2 = vec![false; layer_size * layer_size];
+    let mut has_conntections_2_to_1 = vec![false; layer_size * layer_size];
 
     fill_has_conntections(
         layer_params,
@@ -296,7 +298,8 @@ pub fn set_initial_connections(
                         neuron_in_field_y,
                     );
 
-                    accumulated_weights_1_to_2[[neuron_index, neuron_index]] = synapse_params.max_g;
+                    accumulated_weights_1_to_2[neuron_index * layer_size + neuron_index] =
+                        synapse_params.max_g;
 
                     strong_synapses_1_to_2[neuron_index] = neuron_index as u64;
 
@@ -335,7 +338,8 @@ pub fn set_initial_connections(
                             neuron_in_field_y,
                         );
 
-                        accumulated_weights_2_to_1[[neuron_2_to_1_index, neuron_index]] =
+                        accumulated_weights_2_to_1
+                            [neuron_2_to_1_index * layer_size + neuron_index] =
                             synapse_params.max_g;
 
                         strong_synapses_2_to_1[neuron_2_to_1_index] = neuron_index as u64;

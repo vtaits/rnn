@@ -1,5 +1,3 @@
-use ndarray::Array2;
-
 use crate::structures::{SynapseMask, SynapseParams};
 
 const MIN_BETA: f32 = 0.001;
@@ -26,7 +24,7 @@ pub fn get_synapse_mask(synapse_params: &SynapseParams) -> SynapseMask {
 
     let size = 1 + 2 * offset;
 
-    let mut mask = Array2::<f32>::zeros([size, size]);
+    let mut mask = vec![0f32; size * size];
 
     for i in 0..size {
         for j in 0..size {
@@ -36,7 +34,7 @@ pub fn get_synapse_mask(synapse_params: &SynapseParams) -> SynapseMask {
 
             let beta = get_beta(synapse_params, distance);
 
-            mask[[i, j]] = beta;
+            mask[i + j * size] = beta;
         }
     }
 

@@ -5,9 +5,9 @@ use std::io::Write;
 
 use flate2::Compression;
 use flate2::{read::GzDecoder, write::GzEncoder};
-use ndarray::Array2;
 use ocl::Buffer;
 
+use crate::apply_synapses_cpu_fallback::apply_synapses_cpu_fallback;
 use crate::get_neuron_coordinates::get_neuron_coordinates;
 use crate::get_neuron_full_coordinates::get_neuron_full_coordinates;
 use crate::get_neuron_index::get_neuron_index;
@@ -35,10 +35,10 @@ use crate::{
 pub struct Network {
     computed_params: ComputedParams,
     // acumulated weights of synapses from the first layer to the second layer
-    accumulated_weights_1_to_2: Array2<f32>,
+    accumulated_weights_1_to_2: Vec<f32>,
     buffer_accumulated_weights_1_to_2: Buffer<f32>,
     // acumulated weights of synapses from the second layer to the first layer
-    accumulated_weights_2_to_1: Array2<f32>,
+    accumulated_weights_2_to_1: Vec<f32>,
     buffer_accumulated_weights_2_to_1: Buffer<f32>,
     // synapses to identical map from the first layer to the second layer
     strong_synapses_1_to_2: Vec<u64>,
@@ -47,10 +47,10 @@ pub struct Network {
     strong_synapses_2_to_1: Vec<u64>,
     buffer_strong_synapses_2_to_1: Buffer<u64>,
     // distance weights of synapses from the first layer to the second layer
-    distance_weights_1_to_2: Array2<f32>,
+    distance_weights_1_to_2: Vec<f32>,
     buffer_distance_weights_1_to_2: Buffer<f32>,
     // distance weights of synapses from the second layer to the first layer
-    distance_weights_2_to_1: Array2<f32>,
+    distance_weights_2_to_1: Vec<f32>,
     buffer_distance_weights_2_to_1: Buffer<f32>,
     // compiled kernel for recount neurons and refract intervals with opencl
     kernel_synapses: CompiledKernel,
@@ -78,6 +78,8 @@ pub struct Network {
     signal_buffer: Vec<Vec<bool>>,
     prediction: Option<PredictionProcessing>,
     input_phase: InputPhase,
+    cpu_fallback_signals_buffer: Vec<f32>,
+    enable_cpu_fallback: bool,
 }
 
 fn get_output_field_index(synapse_params: &SynapseParams) -> usize {
@@ -123,6 +125,7 @@ fn get_computed_params(
 
     let field_size = field_width * field_height;
     let row_size = field_size * layer_width;
+    let layer_size = row_size * layer_height;
     let row_width = field_width * layer_width;
     let column_height = field_height * layer_height;
     let field_count = layer_width * layer_height;
@@ -191,6 +194,7 @@ fn get_computed_params(
     ComputedParams {
         field_size,
         field_count,
+        layer_size,
         row_size,
         row_width,
         column_height,
@@ -255,7 +259,7 @@ impl Network {
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_ONLY)
             .len(distance_weights_1_to_2.len())
-            .copy_host_slice(distance_weights_1_to_2.as_slice().unwrap())
+            .copy_host_slice(distance_weights_1_to_2.as_slice())
             .build()
             .unwrap();
 
@@ -263,7 +267,7 @@ impl Network {
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_ONLY)
             .len(distance_weights_2_to_1.len())
-            .copy_host_slice(distance_weights_2_to_1.as_slice().unwrap())
+            .copy_host_slice(distance_weights_2_to_1.as_slice())
             .build()
             .unwrap();
 
@@ -287,7 +291,7 @@ impl Network {
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_WRITE)
             .len(accumulated_weights_1_to_2.len())
-            .copy_host_slice(accumulated_weights_1_to_2.as_slice().unwrap())
+            .copy_host_slice(accumulated_weights_1_to_2.as_slice())
             .build()
             .unwrap();
 
@@ -295,7 +299,7 @@ impl Network {
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_WRITE)
             .len(accumulated_weights_2_to_1.len())
-            .copy_host_slice(accumulated_weights_2_to_1.as_slice().unwrap())
+            .copy_host_slice(accumulated_weights_2_to_1.as_slice())
             .build()
             .unwrap();
 
@@ -336,6 +340,8 @@ impl Network {
             signal_buffer: vec![],
             prediction: None,
             input_phase: InputPhase::Even,
+            cpu_fallback_signals_buffer: vec![0f32; layer_size],
+            enable_cpu_fallback: option_env!("CPU_FALLBACK").is_some(),
         }
     }
 
@@ -370,14 +376,14 @@ impl Network {
         let buffer_distance_weights_1_to_2 = Buffer::<f32>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .len(parsed_dump.distance_weights_1_to_2.len())
-            .copy_host_slice(parsed_dump.distance_weights_2_to_1.as_slice().unwrap())
+            .copy_host_slice(parsed_dump.distance_weights_2_to_1.as_slice())
             .build()
             .unwrap();
 
         let buffer_distance_weights_2_to_1 = Buffer::<f32>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .len(parsed_dump.distance_weights_2_to_1.len())
-            .copy_host_slice(parsed_dump.distance_weights_2_to_1.as_slice().unwrap())
+            .copy_host_slice(parsed_dump.distance_weights_2_to_1.as_slice())
             .build()
             .unwrap();
 
@@ -401,7 +407,7 @@ impl Network {
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_WRITE)
             .len(parsed_dump.accumulated_weights_1_to_2.len())
-            .copy_host_slice(parsed_dump.accumulated_weights_1_to_2.as_slice().unwrap())
+            .copy_host_slice(parsed_dump.accumulated_weights_1_to_2.as_slice())
             .build()
             .unwrap();
 
@@ -409,7 +415,7 @@ impl Network {
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_WRITE)
             .len(parsed_dump.accumulated_weights_2_to_1.len())
-            .copy_host_slice(parsed_dump.accumulated_weights_2_to_1.as_slice().unwrap())
+            .copy_host_slice(parsed_dump.accumulated_weights_2_to_1.as_slice())
             .build()
             .unwrap();
 
@@ -445,6 +451,8 @@ impl Network {
             signal_buffer: vec![],
             prediction: None,
             input_phase: parsed_dump.input_phase,
+            cpu_fallback_signals_buffer: vec![0f32; layer_size],
+            enable_cpu_fallback: option_env!("CPU_FALLBACK").is_some(),
         };
 
         Ok(network)
@@ -557,24 +565,44 @@ impl Network {
     fn shift_1_to_2(&mut self) {
         let threshold = self.get_threshold(&self.neurons_1);
 
-        apply_synapses(
-            &self.kernel_synapses,
-            self.prediction.is_some(),
-            self.layer_size,
-            &self.buffer_accumulated_weights_1_to_2,
-            &self.buffer_strong_synapses_1_to_2,
-            &self.buffer_distance_weights_1_to_2,
-            &self.neurons_1,
-            &mut self.neurons_2,
-            &self.refract_intervals_2,
-            &self.layer_params,
-            &self.synapse_params,
-            &self.computed_params,
-            threshold,
-            1,
-            &mut self.logger,
-        )
-        .unwrap();
+        if self.enable_cpu_fallback {
+            apply_synapses_cpu_fallback(
+                self.prediction.is_some(),
+                self.layer_size,
+                &mut self.accumulated_weights_1_to_2,
+                &self.strong_synapses_1_to_2,
+                &self.distance_weights_1_to_2,
+                &self.neurons_1,
+                &mut self.neurons_2,
+                &self.refract_intervals_2,
+                &self.layer_params,
+                &self.synapse_params,
+                &self.computed_params,
+                threshold,
+                1,
+                &mut self.cpu_fallback_signals_buffer,
+            )
+            .unwrap();
+        } else {
+            apply_synapses(
+                &self.kernel_synapses,
+                self.prediction.is_some(),
+                self.layer_size,
+                &self.buffer_accumulated_weights_1_to_2,
+                &self.buffer_strong_synapses_1_to_2,
+                &self.buffer_distance_weights_1_to_2,
+                &self.neurons_1,
+                &mut self.neurons_2,
+                &self.refract_intervals_2,
+                &self.layer_params,
+                &self.synapse_params,
+                &self.computed_params,
+                threshold,
+                1,
+                &mut self.logger,
+            )
+            .unwrap();
+        }
 
         recount_refract_intervals(
             &self.neurons_1,
@@ -594,24 +622,44 @@ impl Network {
     fn shift_2_to_1(&mut self) {
         let threshold = self.get_threshold(&self.neurons_2);
 
-        apply_synapses(
-            &self.kernel_synapses,
-            self.prediction.is_some(),
-            self.layer_size,
-            &self.buffer_accumulated_weights_2_to_1,
-            &self.buffer_strong_synapses_2_to_1,
-            &self.buffer_distance_weights_2_to_1,
-            &self.neurons_2,
-            &mut self.neurons_1,
-            &self.refract_intervals_1,
-            &self.layer_params,
-            &self.synapse_params,
-            &self.computed_params,
-            threshold,
-            2,
-            &mut self.logger,
-        )
-        .unwrap();
+        if self.enable_cpu_fallback {
+            apply_synapses_cpu_fallback(
+                self.prediction.is_some(),
+                self.layer_size,
+                &mut self.accumulated_weights_2_to_1,
+                &self.strong_synapses_2_to_1,
+                &self.distance_weights_2_to_1,
+                &self.neurons_2,
+                &mut self.neurons_1,
+                &self.refract_intervals_1,
+                &self.layer_params,
+                &self.synapse_params,
+                &self.computed_params,
+                threshold,
+                2,
+                &mut self.cpu_fallback_signals_buffer,
+            )
+            .unwrap();
+        } else {
+            apply_synapses(
+                &self.kernel_synapses,
+                self.prediction.is_some(),
+                self.layer_size,
+                &self.buffer_accumulated_weights_2_to_1,
+                &self.buffer_strong_synapses_2_to_1,
+                &self.buffer_distance_weights_2_to_1,
+                &self.neurons_2,
+                &mut self.neurons_1,
+                &self.refract_intervals_1,
+                &self.layer_params,
+                &self.synapse_params,
+                &self.computed_params,
+                threshold,
+                2,
+                &mut self.logger,
+            )
+            .unwrap();
+        }
 
         recount_refract_intervals(
             &self.neurons_2,
@@ -666,11 +714,12 @@ impl Network {
      * Split signal into frames and apply them immediately
      */
     pub fn push_data_and_apply(&mut self, bit_vec: &[bool], prediction_depth: usize) {
-        /* for value in bit_vec {
-            print!("{}", if *value { "+" } else { "." });
+        // uncomment to enable logging
+        for value in bit_vec {
+            print!("{}", if *value { "+" } else { " " });
         }
 
-        println!(); */
+        println!();
         self.push_data_binary(bit_vec, prediction_depth);
         self.apply_buffer();
     }
@@ -715,6 +764,7 @@ impl Network {
     }
 
     pub fn predict(&mut self, bit_vec: &[bool], prediction_depth: usize) -> Vec<Vec<bool>> {
+        println!("===== PREDICTION =====");
         self.clean_neurons();
 
         let tick_count = self.get_tick_count(bit_vec);
@@ -874,14 +924,11 @@ impl Network {
 
     fn get_neuron_weights(
         &self,
-        weights_layer: &Array2<f32>,
+        weights_layer: &Vec<f32>,
         neuron_x: usize,
         neuron_y: usize,
-    ) -> Array2<f32> {
-        let mut res = Array2::<f32>::zeros([
-            self.computed_params.row_width,
-            self.computed_params.column_height,
-        ]);
+    ) -> Vec<f32> {
+        let mut res = vec![0f32; self.computed_params.layer_size];
 
         let neuron_index = get_neuron_index_by_coordinates(
             &self.layer_params,
@@ -911,8 +958,8 @@ impl Network {
                             neuron_in_field_y,
                         );
 
-                        res[[target_x, target_y]] =
-                            weights_layer[[target_neuron_index, neuron_index]];
+                        res[target_x + target_y * self.computed_params.row_width] = weights_layer
+                            [target_neuron_index * self.computed_params.layer_size + neuron_index];
                     }
                 }
             }
@@ -926,7 +973,7 @@ impl Network {
         layer_index: u8,
         neuron_x: usize,
         neuron_y: usize,
-    ) -> Array2<f32> {
+    ) -> Vec<f32> {
         let weights_buffer = if layer_index == 1 {
             &self.buffer_accumulated_weights_1_to_2
         } else {
@@ -935,14 +982,10 @@ impl Network {
 
         let layer_size = self.neurons_1.len();
 
-        let mut data = vec![0.0_f32; layer_size * layer_size];
+        let mut weights_layer = vec![0.0_f32; layer_size * layer_size];
 
         // Читаем буфер обратно в data
-        weights_buffer.read(&mut data).enq().unwrap();
-
-        let mut weights_layer = Array2::<f32>::zeros([layer_size, layer_size]);
-
-        weights_layer.as_slice_mut().unwrap().copy_from_slice(&data);
+        weights_buffer.read(&mut weights_layer).enq().unwrap();
 
         self.get_neuron_weights(&weights_layer, neuron_x, neuron_y)
     }
@@ -952,7 +995,7 @@ impl Network {
         layer_index: u8,
         neuron_x: usize,
         neuron_y: usize,
-    ) -> Array2<f32> {
+    ) -> Vec<f32> {
         let weights_layer = if layer_index == 1 {
             &self.distance_weights_1_to_2
         } else {
@@ -969,7 +1012,7 @@ impl Network {
             &self.accumulated_weights_2_to_1
         };
 
-        weights_layer.sum()
+        weights_layer.into_iter().sum()
     }
 
     fn push_shift(&mut self, bit_vec: Vec<bool>, is_source: bool) {

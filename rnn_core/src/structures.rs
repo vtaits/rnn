@@ -3,7 +3,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use ndarray::Array2;
 use ocl::{Kernel, ProQue};
 use serde_derive::{Deserialize, Serialize};
 
@@ -12,6 +11,8 @@ pub struct ComputedParams {
     pub field_count: usize,
     // number of neurons in one field
     pub field_size: usize,
+    // number of neurons in one layer
+    pub layer_size: usize,
     // number of neurons in one row of fields
     pub row_size: usize,
     // number of neurons in one row of neurons
@@ -35,17 +36,17 @@ pub struct CompiledKernel {
 
 pub struct InitialConnections {
     // distance_weights of synapses from the first layer to the second layer
-    pub distance_weights_1_to_2: Array2<f32>,
+    pub distance_weights_1_to_2: Vec<f32>,
     // distance_weights of synapses from the second layer to the first layer
-    pub distance_weights_2_to_1: Array2<f32>,
+    pub distance_weights_2_to_1: Vec<f32>,
     // synapses to identical map from the first layer to the second layer
     pub strong_synapses_1_to_2: Vec<u64>,
     // synapses to identical map from the second layer to the first layer
     pub strong_synapses_2_to_1: Vec<u64>,
     // accumulated of synapses from the first layer to the second layer
-    pub accumulated_weights_1_to_2: Array2<f32>,
+    pub accumulated_weights_1_to_2: Vec<f32>,
     // accumulated of synapses from the second layer to the first layer
-    pub accumulated_weights_2_to_1: Array2<f32>,
+    pub accumulated_weights_2_to_1: Vec<f32>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -103,22 +104,22 @@ pub struct LayerParams {
 pub struct SynapseMask {
     pub size: usize,
     pub offset: usize,
-    pub mask: Array2<f32>,
+    pub mask: Vec<f32>,
 }
 
 #[derive(Serialize)]
 pub struct NetworkDumpSerialize<'a> {
-    pub accumulated_weights_1_to_2: &'a Array2<f32>,
+    pub accumulated_weights_1_to_2: &'a Vec<f32>,
     // acumulated weights of synapses from the second layer to the first layer
-    pub accumulated_weights_2_to_1: &'a Array2<f32>,
+    pub accumulated_weights_2_to_1: &'a Vec<f32>,
     // synapses to identical map from the first layer to the second layer
     pub strong_synapses_1_to_2: &'a Vec<u64>,
     // synapses to identical map from the second layer to the first layer
     pub strong_synapses_2_to_1: &'a Vec<u64>,
     // distance weights of synapses from the first layer to the second layer
-    pub distance_weights_1_to_2: &'a Array2<f32>,
+    pub distance_weights_1_to_2: &'a Vec<f32>,
     // distance weights of synapses from the second layer to the first layer
-    pub distance_weights_2_to_1: &'a Array2<f32>,
+    pub distance_weights_2_to_1: &'a Vec<f32>,
     // neuron states at the first layer
     pub neurons_1: &'a Vec<u8>,
     // neuron states at the second layer
@@ -134,17 +135,17 @@ pub struct NetworkDumpSerialize<'a> {
 
 #[derive(Deserialize)]
 pub struct NetworkDumpDeserialize {
-    pub accumulated_weights_1_to_2: Array2<f32>,
+    pub accumulated_weights_1_to_2: Vec<f32>,
     // acumulated weights of synapses from the second layer to the first layer
-    pub accumulated_weights_2_to_1: Array2<f32>,
+    pub accumulated_weights_2_to_1: Vec<f32>,
     // synapses to identical map from the first layer to the second layer
     pub strong_synapses_1_to_2: Vec<u64>,
     // synapses to identical map from the second layer to the first layer
     pub strong_synapses_2_to_1: Vec<u64>,
     // distance weights of synapses from the first layer to the second layer
-    pub distance_weights_1_to_2: Array2<f32>,
+    pub distance_weights_1_to_2: Vec<f32>,
     // distance weights of synapses from the second layer to the first layer
-    pub distance_weights_2_to_1: Array2<f32>,
+    pub distance_weights_2_to_1: Vec<f32>,
     // neuron states at the first layer
     pub neurons_1: Vec<u8>,
     // neuron states at the second layer

@@ -26,7 +26,6 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
         .arg_named("neurons_to", None::<&Buffer<u8>>)
         .arg_named("signals_to", None::<&Buffer<f32>>)
         .arg_named("layer_size", 0_u32)
-        .arg_named("initial_refract_interval", 0_u8)
         .arg_named("threshold", 0.0_f32)
         .arg_named("gamma_inc", 0.0_f32)
         .arg_named("gamma_dec", 0.0_f32)
@@ -88,7 +87,6 @@ pub fn apply_synapses(
     let LayerParams { partitions, .. } = layer_params;
 
     let SynapseParams {
-        refract_interval,
         gamma_inc,
         gamma_dec,
         g_0,
@@ -157,7 +155,6 @@ pub fn apply_synapses(
         kernel.set_arg("neurons_to", &buffer_neurons_to)?;
         kernel.set_arg("signals_to", &buffer_signals_to)?;
         kernel.set_arg("layer_size", layer_size as u32)?;
-        kernel.set_arg("initial_refract_interval", refract_interval)?;
         kernel.set_arg("threshold", threshold)?;
         kernel.set_arg("gamma_inc", gamma_inc)?;
         kernel.set_arg("gamma_dec", gamma_dec)?;

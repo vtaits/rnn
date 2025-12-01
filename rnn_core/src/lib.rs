@@ -1,4 +1,5 @@
 mod apply_synapses;
+mod apply_synapses_cpu_fallback;
 mod data_layer;
 mod excite_neurons_with_partitions;
 mod excite_neurons_without_partitions;
