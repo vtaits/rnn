@@ -46,6 +46,7 @@ async fn main() -> Result<(), ()> {
         .expect("MEASURES_COUNT should be a number");
 
     let mut total_res = vec![];
+    let mut toal_duration_mills = 0;
 
     for page in 0..measures_count {
         println!("Try #{}", page + 1);
@@ -68,7 +69,7 @@ async fn main() -> Result<(), ()> {
 
         let duration = start.elapsed();
 
-        println!("MAPE = {}, WAPE = {}", mape(&res), wape(&res));
+        println!("MAPE = {} , WAPE = {}", mape(&res), wape(&res));
 
         for regress_result in res {
             println!(
@@ -79,13 +80,17 @@ async fn main() -> Result<(), ()> {
             total_res.push(regress_result);
         }
 
+        let duration_mills = duration.as_millis();
+        toal_duration_mills += duration_mills;
+
         println!("Execution time (ms): {}", duration.as_millis());
     }
 
     println!(
-        "TOTAL MAPE = {}, TOTAL WAPE = {}",
+        "TOTAL MAPE = {} , TOTAL WAPE = {} , AVERAGE EXECUTION TIME = {}",
         mape(&total_res),
-        wape(&total_res)
+        wape(&total_res),
+        toal_duration_mills / measures_count as u128,
     );
 
     Ok(())
