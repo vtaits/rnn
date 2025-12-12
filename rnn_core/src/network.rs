@@ -715,11 +715,11 @@ impl Network {
      */
     pub fn push_data_and_apply(&mut self, bit_vec: &[bool], prediction_depth: usize) {
         // uncomment to enable logging
-        for value in bit_vec {
+        /* for value in bit_vec {
             print!("{}", if *value { "+" } else { " " });
         }
 
-        println!();
+        println!(); */
         self.push_data_binary(bit_vec, prediction_depth);
         self.apply_buffer();
     }

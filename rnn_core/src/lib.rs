@@ -1,6 +1,8 @@
 mod apply_synapses;
 mod apply_synapses_cpu_fallback;
+mod circular;
 mod data_layer;
+mod diagonal;
 mod excite_neurons_with_partitions;
 mod excite_neurons_without_partitions;
 mod get_neuron_coordinates;
@@ -8,6 +10,7 @@ mod get_neuron_full_coordinates;
 mod get_neuron_index;
 mod get_neuron_index_by_coordinates;
 mod get_synapse_mask;
+mod linear;
 mod logger;
 mod network;
 mod prediction;
