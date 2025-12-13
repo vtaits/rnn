@@ -13,6 +13,7 @@ members = [
     "rnn_core",
     "rnn_instance",
     "scheduler",
+    "stress_testing",
     "timeline_helpers",
     "training_server"
 ]

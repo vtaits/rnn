@@ -1,0 +1,9 @@
+[package]
+name = "stress_testing"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+rnn_core = { path = "../rnn_core" }
+timeline_helpers = { path = "../timeline_helpers" }
+tokio = { version = "1.40.0", features = ["full"]}
