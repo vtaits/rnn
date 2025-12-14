@@ -19,7 +19,8 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
         .queue(pro_que.queue().clone())
         .global_work_size(layer_size)
         .arg_named("forward_synapses", None::<&Buffer<f32>>)
-        .arg_named("distance_weights", None::<&Buffer<f32>>)
+        .arg_named("forward_distance_weights", None::<&Buffer<f32>>)
+        .arg_named("restore_distance_weights", None::<&Buffer<f32>>)
         .arg_named("offsets", None::<&Buffer<u64>>)
         .arg_named("restore_offsets", None::<&Buffer<u64>>)
         .arg_named("restore_offsets_count", 0_u32)
@@ -76,7 +77,8 @@ pub fn apply_synapses(
     is_prediction: bool,
     layer_size: usize,
     buffer_forward_synapses: &Buffer<f32>,
-    buffer_distance_weights: &Buffer<f32>,
+    buffer_forward_distance_weights: &Buffer<f32>,
+    buffer_restore_distance_weights: Option<&Buffer<f32>>,
     buffer_offsets: &Buffer<u64>,
     buffer_restore_offsets: Option<&Buffer<u64>>,
     buffer_restore_synapses: Option<&Buffer<f32>>,
@@ -155,7 +157,8 @@ pub fn apply_synapses(
 
     unsafe {
         kernel.set_arg("forward_synapses", buffer_forward_synapses)?;
-        kernel.set_arg("distance_weights", buffer_distance_weights)?;
+        kernel.set_arg("forward_distance_weights", buffer_forward_distance_weights)?;
+        kernel.set_arg("restore_distance_weights", buffer_restore_distance_weights)?;
         kernel.set_arg("offsets", buffer_offsets)?;
         kernel.set_arg("restore_offsets", buffer_restore_offsets)?;
         kernel.set_arg("restore_offsets_count", *restore_offsets_count as u32)?;

@@ -45,15 +45,13 @@ pub struct Network {
     // acumulated weights of synapses from the first layer to the second layer
     forward_synapses_1_to_2: Vec<f32>,
     buffer_forward_synapses_1_to_2: Buffer<f32>,
+    forward_distance_weights: Vec<f32>,
+    buffer_forward_distance_weights: Buffer<f32>,
+    restore_distance_weights_1_to_2: Vec<f32>,
+    buffer_restore_distance_weights_1_to_2: Buffer<f32>,
     // acumulated weights of synapses from the second layer to the first layer
     forward_synapses_2_to_1: Vec<f32>,
     buffer_forward_synapses_2_to_1: Buffer<f32>,
-    // distance weights of synapses from the first layer to the second layer
-    distance_weights_1_to_2: Vec<f32>,
-    buffer_distance_weights_1_to_2: Buffer<f32>,
-    // distance weights of synapses from the second layer to the first layer
-    distance_weights_2_to_1: Vec<f32>,
-    buffer_distance_weights_2_to_1: Buffer<f32>,
     // compiled kernel for recount neurons and refract intervals with opencl
     kernel_synapses: CompiledKernel,
     output_field_index: usize,
@@ -247,14 +245,14 @@ impl Network {
         let mask = get_synapse_mask(&synapse_params);
 
         let InitialConnections {
-            distance_weights_1_to_2,
-            distance_weights_2_to_1,
             forward_synapses_1_to_2,
             forward_synapses_2_to_1,
             offsets_1_to_2,
             offsets_2_to_1,
             restore_offsets_1_to_2,
             restore_synapses_1_to_2,
+            forward_distance_weights,
+            restore_distance_weights_1_to_2,
         } = set_initial_connections(&layer_params, &computed_params, &synapse_params, &mask);
 
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
@@ -309,19 +307,27 @@ impl Network {
             .build()
             .unwrap();
 
-        let buffer_distance_weights_1_to_2 = Buffer::<f32>::builder()
+        let buffer_forward_distance_weights = Buffer::<f32>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_ONLY)
-            .len(distance_weights_1_to_2.len())
-            .copy_host_slice(distance_weights_1_to_2.as_slice())
+            .len(forward_distance_weights.len())
+            .copy_host_slice(forward_distance_weights.as_slice())
             .build()
             .unwrap();
 
-        let buffer_distance_weights_2_to_1 = Buffer::<f32>::builder()
+        let buffer_restore_distance_weights_1_to_2 = Buffer::<f32>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_ONLY)
-            .len(distance_weights_2_to_1.len())
-            .copy_host_slice(distance_weights_2_to_1.as_slice())
+            .len(if can_restore {
+                restore_distance_weights_1_to_2.len()
+            } else {
+                1
+            })
+            .copy_host_slice(if can_restore {
+                restore_distance_weights_1_to_2.as_slice()
+            } else {
+                &[0.0_f32]
+            })
             .build()
             .unwrap();
 
@@ -359,11 +365,11 @@ impl Network {
             buffer_forward_synapses_1_to_2,
             forward_synapses_2_to_1,
             buffer_forward_synapses_2_to_1,
+            forward_distance_weights,
+            buffer_forward_distance_weights,
+            restore_distance_weights_1_to_2,
+            buffer_restore_distance_weights_1_to_2,
             computed_params,
-            distance_weights_1_to_2,
-            buffer_distance_weights_1_to_2,
-            distance_weights_2_to_1,
-            buffer_distance_weights_2_to_1,
             kernel_synapses,
             output_field_index,
             output_field_neuron_indexes,
@@ -447,17 +453,19 @@ impl Network {
             .build()
             .unwrap();
 
-        let buffer_distance_weights_1_to_2 = Buffer::<f32>::builder()
+        let buffer_forward_distance_weights = Buffer::<f32>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
-            .len(parsed_dump.distance_weights_1_to_2.len())
-            .copy_host_slice(parsed_dump.distance_weights_2_to_1.as_slice())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(parsed_dump.forward_distance_weights.len())
+            .copy_host_slice(parsed_dump.forward_distance_weights.as_slice())
             .build()
             .unwrap();
 
-        let buffer_distance_weights_2_to_1 = Buffer::<f32>::builder()
+        let buffer_restore_distance_weights_1_to_2 = Buffer::<f32>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
-            .len(parsed_dump.distance_weights_2_to_1.len())
-            .copy_host_slice(parsed_dump.distance_weights_2_to_1.as_slice())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(parsed_dump.restore_distance_weights_1_to_2.len())
+            .copy_host_slice(parsed_dump.restore_distance_weights_1_to_2.as_slice())
             .build()
             .unwrap();
 
@@ -491,10 +499,10 @@ impl Network {
             forward_synapses_2_to_1: parsed_dump.forward_synapses_2_to_1,
             buffer_forward_synapses_2_to_1,
             computed_params,
-            distance_weights_1_to_2: parsed_dump.distance_weights_1_to_2,
-            buffer_distance_weights_1_to_2,
-            distance_weights_2_to_1: parsed_dump.distance_weights_2_to_1,
-            buffer_distance_weights_2_to_1,
+            forward_distance_weights: parsed_dump.forward_distance_weights,
+            buffer_forward_distance_weights,
+            restore_distance_weights_1_to_2: parsed_dump.restore_distance_weights_1_to_2,
+            buffer_restore_distance_weights_1_to_2,
             kernel_synapses,
             output_field_index,
             output_field_neuron_indexes,
@@ -541,8 +549,8 @@ impl Network {
         let dump = NetworkDumpSerialize {
             forward_synapses_1_to_2: &self.forward_synapses_1_to_2,
             forward_synapses_2_to_1: &self.forward_synapses_2_to_1,
-            distance_weights_1_to_2: &self.distance_weights_1_to_2,
-            distance_weights_2_to_1: &self.distance_weights_2_to_1,
+            forward_distance_weights: &self.forward_distance_weights,
+            restore_distance_weights_1_to_2: &self.restore_distance_weights_1_to_2,
             neurons_1: &self.neurons_1,
             neurons_2: &self.neurons_2,
             refract_intervals_1: &self.refract_intervals_1,
@@ -648,7 +656,8 @@ impl Network {
                 self.prediction.is_some(),
                 self.layer_size,
                 &self.buffer_forward_synapses_1_to_2,
-                &self.buffer_distance_weights_1_to_2,
+                &self.buffer_forward_distance_weights,
+                Some(&self.buffer_restore_distance_weights_1_to_2),
                 &self.buffer_offsets_1_to_2,
                 Some(&self.buffer_restore_offsets_1_to_2),
                 Some(&self.buffer_restore_synapses_1_to_2),
@@ -707,7 +716,8 @@ impl Network {
                 self.prediction.is_some(),
                 self.layer_size,
                 &self.buffer_forward_synapses_2_to_1,
-                &self.buffer_distance_weights_2_to_1,
+                &self.buffer_forward_distance_weights,
+                None,
                 &self.buffer_offsets_2_to_1,
                 None,
                 None,
@@ -1061,9 +1071,9 @@ impl Network {
         neuron_y: usize,
     ) -> Vec<f32> {
         let weights_layer = if layer_index == 1 {
-            &self.distance_weights_1_to_2
+            &self.forward_distance_weights
         } else {
-            &self.distance_weights_2_to_1
+            &self.forward_distance_weights
         };
 
         self.get_neuron_weights(weights_layer, neuron_x, neuron_y)

@@ -1,27 +1,28 @@
 use crate::{
-    get_neuron_coordinates::get_neuron_coordinates,
     get_neuron_index::get_neuron_index,
-    get_neuron_index_by_coordinates::get_neuron_index_by_coordinates,
     spiral::{get_last_field, get_next_field},
     structures::{ComputedParams, InitialConnections, PartitionPayloadByIndex, SynapseMask},
     LayerParams, SynapseParams,
 };
 
-fn apply_mask(
+fn apply_mask_to_block(
     layer_params: &LayerParams,
     computed_params: &ComputedParams,
-    base_neuron_index: usize,
     distance_weights: &mut Vec<f32>,
     mask: &SynapseMask,
+    offset: usize,
     x: usize,
     y: usize,
     has_connections: &Vec<bool>,
 ) {
+    let base_neuron_index =
+        (y % layer_params.field_height) * layer_params.field_width + x % layer_params.field_width;
+
     for iter_x in 0..mask.size {
         let offset_x = iter_x as i32 - mask.offset as i32;
         let neuron_x = (x as i32) + offset_x;
 
-        if neuron_x < 0 || (neuron_x as usize) > computed_params.row_width - 1 {
+        if neuron_x < 0 || (neuron_x as usize) > layer_params.field_width - 1 {
             continue;
         }
 
@@ -29,23 +30,22 @@ fn apply_mask(
             let offset_y = iter_y as i32 - mask.offset as i32;
             let neuron_y = (y as i32) + offset_y;
 
-            if neuron_y < 0 || (neuron_y as usize) > computed_params.column_height - 1 {
+            if neuron_y < 0 || (neuron_y as usize) > layer_params.field_height - 1 {
                 continue;
             }
 
-            let target_neuron_index = get_neuron_index_by_coordinates(
-                layer_params,
-                computed_params,
-                neuron_x as usize,
-                neuron_y as usize,
-            );
+            let target_neuron_index =
+                (neuron_y as usize) * layer_params.field_width + (neuron_x as usize);
 
             let value = mask.mask[iter_x + iter_y * mask.size];
 
-            if has_connections[target_neuron_index * computed_params.layer_size + base_neuron_index]
+            if has_connections[target_neuron_index * computed_params.field_size + base_neuron_index]
             {
-                distance_weights
-                    [target_neuron_index * computed_params.layer_size + base_neuron_index] = value;
+                distance_weights[offset
+                    * computed_params.field_size
+                    * computed_params.field_size
+                    + target_neuron_index * computed_params.field_size
+                    + base_neuron_index] = value;
             }
         }
     }
@@ -148,7 +148,7 @@ fn fill_conntected_fields(
 
                     if has_connections_by_partitions {
                         has_connections
-                            [neuron_to_index * computed_params.layer_size + neuron_from_index] =
+                            [neuron_to_index * computed_params.field_size + neuron_from_index] =
                             true;
                     }
                 }
@@ -161,8 +161,6 @@ fn fill_has_conntections(
     layer_params: &LayerParams,
     computed_params: &ComputedParams,
     synapse_params: &SynapseParams,
-    has_connections_1_to_2: &mut Vec<bool>,
-    has_connections_2_to_1: &mut Vec<bool>,
     offsets_2_to_1: &mut Vec<u64>,
     restore_offsets_1_to_2: &mut Vec<u64>,
 ) {
@@ -191,27 +189,7 @@ fn fill_has_conntections(
 
         if index > 0 && index % restoring_state_field_interval == 0 {
             restore_offsets_1_to_2.push(current_neuron_offset);
-
-            fill_conntected_fields(
-                layer_params,
-                computed_params,
-                has_connections_1_to_2,
-                cur_layer_x,
-                cur_layer_y,
-                0,
-                0,
-            );
         }
-
-        fill_conntected_fields(
-            layer_params,
-            computed_params,
-            has_connections_1_to_2,
-            cur_layer_x,
-            cur_layer_y,
-            cur_layer_x,
-            cur_layer_y,
-        );
 
         if cur_layer_x == last_layer_x && cur_layer_y == last_layer_y {
             return;
@@ -232,16 +210,6 @@ fn fill_has_conntections(
             offsets_2_to_1[neuron_index] = current_neuron_offset;
         }
 
-        fill_conntected_fields(
-            layer_params,
-            computed_params,
-            has_connections_2_to_1,
-            cur_layer_x,
-            cur_layer_y,
-            next_field_x,
-            next_field_y,
-        );
-
         cur_layer_x = next_field_x;
         cur_layer_y = next_field_y;
 
@@ -259,9 +227,6 @@ pub fn set_initial_connections(
         * layer_params.field_height
         * layer_params.layer_width
         * layer_params.layer_height;
-
-    let mut distance_weights_1_to_2 = vec![0f32; layer_size * layer_size];
-    let mut distance_weights_2_to_1 = vec![0f32; layer_size * layer_size];
 
     let mut forward_synapses_1_to_2 = vec![0f32; layer_size * computed_params.field_size];
     let mut forward_synapses_2_to_1 = vec![0f32; layer_size * computed_params.field_size];
@@ -282,91 +247,29 @@ pub fn set_initial_connections(
     let mut offsets_2_to_1 = vec![0u64; layer_size];
     let mut restore_offsets_1_to_2: Vec<u64> = vec![];
 
-    let mut has_conntections_1_to_2 = vec![false; layer_size * layer_size];
-    let mut has_conntections_2_to_1 = vec![false; layer_size * layer_size];
+    let mut has_connections_by_partitions =
+        vec![false; computed_params.field_size * computed_params.field_size];
+
+    fill_conntected_fields(
+        layer_params,
+        computed_params,
+        &mut has_connections_by_partitions,
+        0,
+        0,
+        0,
+        0,
+    );
+
+    let mut forward_distance_weights =
+        vec![0.0_f32; computed_params.field_size * computed_params.field_size];
 
     fill_has_conntections(
         layer_params,
         computed_params,
         synapse_params,
-        &mut has_conntections_1_to_2,
-        &mut has_conntections_2_to_1,
         &mut offsets_2_to_1,
         &mut restore_offsets_1_to_2,
     );
-
-    let (finish_x, finish_y) = get_last_field(layer_params);
-
-    for layer_y in 0..layer_params.layer_height {
-        for layer_x in 0..layer_params.layer_width {
-            let (layer_2_to_1_x, layer_2_to_1_y) = get_next_field(layer_params, layer_x, layer_y);
-
-            for neuron_in_field_y in 0..layer_params.field_height {
-                for neuron_in_field_x in 0..layer_params.field_width {
-                    // from 1 to 2
-                    let neuron_index = get_neuron_index(
-                        layer_params,
-                        computed_params,
-                        layer_x,
-                        layer_y,
-                        neuron_in_field_x,
-                        neuron_in_field_y,
-                    );
-
-                    let (x, y) = get_neuron_coordinates(
-                        layer_params,
-                        layer_x,
-                        layer_y,
-                        neuron_in_field_x,
-                        neuron_in_field_y,
-                    );
-
-                    apply_mask(
-                        layer_params,
-                        computed_params,
-                        neuron_index,
-                        &mut distance_weights_1_to_2,
-                        mask,
-                        x,
-                        y,
-                        &has_conntections_1_to_2,
-                    );
-
-                    // the last field have no connection to the first layer
-                    if layer_x != finish_x || layer_y != finish_y {
-                        // from 2 to 1
-                        let neuron_2_to_1_index = get_neuron_index(
-                            layer_params,
-                            computed_params,
-                            layer_2_to_1_x,
-                            layer_2_to_1_y,
-                            neuron_in_field_x,
-                            neuron_in_field_y,
-                        );
-
-                        let (x_2_to_1, y_2_to_1) = get_neuron_coordinates(
-                            layer_params,
-                            layer_2_to_1_x,
-                            layer_2_to_1_y,
-                            neuron_in_field_x,
-                            neuron_in_field_y,
-                        );
-
-                        apply_mask(
-                            layer_params,
-                            computed_params,
-                            neuron_index,
-                            &mut distance_weights_2_to_1,
-                            mask,
-                            x_2_to_1,
-                            y_2_to_1,
-                            &has_conntections_2_to_1,
-                        );
-                    }
-                }
-            }
-        }
-    }
 
     let restore_synapses_1_to_2 =
         vec![
@@ -374,14 +277,51 @@ pub fn set_initial_connections(
             restore_offsets_1_to_2.len() * computed_params.field_size * computed_params.field_size
         ];
 
+    let mut restore_distance_weights_1_to_2: Vec<f32> =
+        vec![
+            0.0_f32;
+            restore_offsets_1_to_2.len() * computed_params.field_size * computed_params.field_size
+        ];
+
+    for neuron_in_field_y in 0..layer_params.field_height {
+        for neuron_in_field_x in 0..layer_params.field_width {
+            apply_mask_to_block(
+                layer_params,
+                computed_params,
+                &mut forward_distance_weights,
+                mask,
+                0,
+                neuron_in_field_x,
+                neuron_in_field_y,
+                &has_connections_by_partitions,
+            );
+
+            for (index, offset) in restore_offsets_1_to_2.iter().enumerate() {
+                let base_x = (*offset as usize) % computed_params.row_width;
+                let base_y = ((*offset as usize) - base_x) / computed_params.row_width;
+
+                apply_mask_to_block(
+                    layer_params,
+                    computed_params,
+                    &mut restore_distance_weights_1_to_2,
+                    mask,
+                    index,
+                    base_x + neuron_in_field_x,
+                    base_y + neuron_in_field_y,
+                    &has_connections_by_partitions,
+                );
+            }
+        }
+    }
+
     InitialConnections {
-        distance_weights_1_to_2,
-        distance_weights_2_to_1,
         forward_synapses_1_to_2,
         forward_synapses_2_to_1,
         offsets_1_to_2,
         offsets_2_to_1,
         restore_offsets_1_to_2,
         restore_synapses_1_to_2,
+        forward_distance_weights,
+        restore_distance_weights_1_to_2,
     }
 }
