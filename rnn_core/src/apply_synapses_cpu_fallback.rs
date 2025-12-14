@@ -43,7 +43,7 @@ fn remove_extra_neurons(neurons: &mut Vec<u8>, limit: usize) {
 pub fn apply_synapses_cpu_fallback(
     is_prediction: bool,
     layer_size: usize,
-    accumulated_weights: &mut Vec<f32>,
+    forward_synapses: &mut Vec<f32>,
     strong_synapses: &Vec<u64>,
     distance_weights: &Vec<f32>,
     neurons_from: &Vec<u8>,
@@ -100,7 +100,7 @@ pub fn apply_synapses_cpu_fallback(
                 let index_from = row * layer_size + col;
 
                 if neurons_from[col] > 0 {
-                    let weight_to = accumulated_weights[index_from];
+                    let weight_to = forward_synapses[index_from];
 
                     if weight_to > 0.0001 || weight_to < -0.0001 {
                         sum +=
@@ -127,15 +127,15 @@ pub fn apply_synapses_cpu_fallback(
                         continue;
                     }
 
-                    let prev_value = accumulated_weights[index_from];
+                    let prev_value = forward_synapses[index_from];
 
                     if refract_intervals_to[row] > 0 {
-                        if accumulated_weights[index_from] > *min_g {
-                            accumulated_weights[index_from] = (prev_value - g_dec).max(0.0);
+                        if forward_synapses[index_from] > *min_g {
+                            forward_synapses[index_from] = (prev_value - g_dec).max(0.0);
                         }
                     } else if neurons_to[row] > 0 {
-                        if accumulated_weights[index_from] < *max_g {
-                            accumulated_weights[index_from] = (prev_value + g_inc).min(*max_g);
+                        if forward_synapses[index_from] < *max_g {
+                            forward_synapses[index_from] = (prev_value + g_inc).min(*max_g);
                         }
                     }
                 }

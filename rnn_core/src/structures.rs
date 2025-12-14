@@ -39,14 +39,14 @@ pub struct InitialConnections {
     pub distance_weights_1_to_2: Vec<f32>,
     // distance_weights of synapses from the second layer to the first layer
     pub distance_weights_2_to_1: Vec<f32>,
-    // synapses to identical map from the first layer to the second layer
-    pub strong_synapses_1_to_2: Vec<u64>,
-    // synapses to identical map from the second layer to the first layer
-    pub strong_synapses_2_to_1: Vec<u64>,
     // accumulated of synapses from the first layer to the second layer
-    pub accumulated_weights_1_to_2: Vec<f32>,
+    pub forward_synapses_1_to_2: Vec<f32>,
     // accumulated of synapses from the second layer to the first layer
-    pub accumulated_weights_2_to_1: Vec<f32>,
+    pub forward_synapses_2_to_1: Vec<f32>,
+    pub offsets_1_to_2: Vec<u64>,
+    pub offsets_2_to_1: Vec<u64>,
+    pub restore_offsets_1_to_2: Vec<u64>,
+    pub restore_synapses_1_to_2: Vec<f32>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -109,13 +109,9 @@ pub struct SynapseMask {
 
 #[derive(Serialize)]
 pub struct NetworkDumpSerialize<'a> {
-    pub accumulated_weights_1_to_2: &'a Vec<f32>,
+    pub forward_synapses_1_to_2: &'a Vec<f32>,
     // acumulated weights of synapses from the second layer to the first layer
-    pub accumulated_weights_2_to_1: &'a Vec<f32>,
-    // synapses to identical map from the first layer to the second layer
-    pub strong_synapses_1_to_2: &'a Vec<u64>,
-    // synapses to identical map from the second layer to the first layer
-    pub strong_synapses_2_to_1: &'a Vec<u64>,
+    pub forward_synapses_2_to_1: &'a Vec<f32>,
     // distance weights of synapses from the first layer to the second layer
     pub distance_weights_1_to_2: &'a Vec<f32>,
     // distance weights of synapses from the second layer to the first layer
@@ -135,13 +131,13 @@ pub struct NetworkDumpSerialize<'a> {
 
 #[derive(Deserialize)]
 pub struct NetworkDumpDeserialize {
-    pub accumulated_weights_1_to_2: Vec<f32>,
+    pub offsets_1_to_2: Vec<u64>,
+    pub offsets_2_to_1: Vec<u64>,
+    pub restore_offsets_1_to_2: Vec<u64>,
+    pub restore_synapses_1_to_2: Vec<f32>,
+    pub forward_synapses_1_to_2: Vec<f32>,
     // acumulated weights of synapses from the second layer to the first layer
-    pub accumulated_weights_2_to_1: Vec<f32>,
-    // synapses to identical map from the first layer to the second layer
-    pub strong_synapses_1_to_2: Vec<u64>,
-    // synapses to identical map from the second layer to the first layer
-    pub strong_synapses_2_to_1: Vec<u64>,
+    pub forward_synapses_2_to_1: Vec<f32>,
     // distance weights of synapses from the first layer to the second layer
     pub distance_weights_1_to_2: Vec<f32>,
     // distance weights of synapses from the second layer to the first layer

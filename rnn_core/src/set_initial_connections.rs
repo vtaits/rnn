@@ -163,10 +163,10 @@ fn fill_has_conntections(
     synapse_params: &SynapseParams,
     has_connections_1_to_2: &mut Vec<bool>,
     has_connections_2_to_1: &mut Vec<bool>,
+    offsets_2_to_1: &mut Vec<u64>,
+    restore_offsets_1_to_2: &mut Vec<u64>,
 ) {
     let (last_layer_x, last_layer_y) = get_last_field(layer_params);
-
-    let mut prev_fields = vec![];
 
     let mut cur_layer_x = 0usize;
     let mut cur_layer_y = 0usize;
@@ -175,29 +175,32 @@ fn fill_has_conntections(
 
     let mut index = 0usize;
 
-    loop {
-        if index > 0 && index % restoring_state_field_interval == 0 {
-            for (prev_layer_x, prev_layer_y) in prev_fields.iter() {
-                fill_conntected_fields(
-                    layer_params,
-                    computed_params,
-                    has_connections_1_to_2,
-                    cur_layer_x,
-                    cur_layer_y,
-                    *prev_layer_x,
-                    *prev_layer_y,
-                );
+    for neuron_index in 0..computed_params.field_size {
+        offsets_2_to_1[neuron_index] = computed_params.layer_size as u64;
+    }
 
-                /* fill_conntected_fields(
-                    layer_params,
-                    computed_params,
-                    has_connections_2_to_1,
-                    cur_layer_x,
-                    cur_layer_y,
-                    *prev_layer_x,
-                    *prev_layer_y,
-                ); */
-            }
+    loop {
+        let current_neuron_offset = get_neuron_index(
+            layer_params,
+            computed_params,
+            cur_layer_x,
+            cur_layer_y,
+            0,
+            0,
+        ) as u64;
+
+        if index > 0 && index % restoring_state_field_interval == 0 {
+            restore_offsets_1_to_2.push(current_neuron_offset);
+
+            fill_conntected_fields(
+                layer_params,
+                computed_params,
+                has_connections_1_to_2,
+                cur_layer_x,
+                cur_layer_y,
+                0,
+                0,
+            );
         }
 
         fill_conntected_fields(
@@ -210,21 +213,24 @@ fn fill_has_conntections(
             cur_layer_y,
         );
 
-        // fill_conntected_fields(
-        //     layer_params,
-        //     computed_params,
-        //     has_connections_2_to_1,
-        //     cur_layer_x,
-        //     cur_layer_y,
-        //     cur_layer_x,
-        //     cur_layer_y,
-        // );
-
         if cur_layer_x == last_layer_x && cur_layer_y == last_layer_y {
             return;
         }
 
         let (next_field_x, next_field_y) = get_next_field(layer_params, cur_layer_x, cur_layer_y);
+
+        let next_neuron_offset = get_neuron_index(
+            layer_params,
+            computed_params,
+            next_field_x,
+            next_field_y,
+            0,
+            0,
+        );
+
+        for neuron_index in next_neuron_offset..next_neuron_offset + computed_params.field_size {
+            offsets_2_to_1[neuron_index] = current_neuron_offset;
+        }
 
         fill_conntected_fields(
             layer_params,
@@ -235,10 +241,6 @@ fn fill_has_conntections(
             next_field_x,
             next_field_y,
         );
-
-        if cur_layer_x == 0 && cur_layer_y == 0 {
-            prev_fields.push((cur_layer_x, cur_layer_y));
-        }
 
         cur_layer_x = next_field_x;
         cur_layer_y = next_field_y;
@@ -261,13 +263,24 @@ pub fn set_initial_connections(
     let mut distance_weights_1_to_2 = vec![0f32; layer_size * layer_size];
     let mut distance_weights_2_to_1 = vec![0f32; layer_size * layer_size];
 
-    // synapses to identical map from the first layer to the second layer
-    let mut strong_synapses_1_to_2 = vec![0u64; layer_size];
-    // synapses to identical map from the second layer to the first layer
-    let mut strong_synapses_2_to_1 = vec![0u64; layer_size];
+    let mut forward_synapses_1_to_2 = vec![0f32; layer_size * computed_params.field_size];
+    let mut forward_synapses_2_to_1 = vec![0f32; layer_size * computed_params.field_size];
 
-    let mut accumulated_weights_1_to_2 = vec![0f32; layer_size * layer_size];
-    let mut accumulated_weights_2_to_1 = vec![0f32; layer_size * layer_size];
+    let mut offsets_1_to_2 = vec![0u64; layer_size];
+
+    for neuron_index in 0..layer_size {
+        let neuron_in_field_index = neuron_index % computed_params.field_size;
+
+        let synapse_index = neuron_in_field_index * layer_size + neuron_index;
+
+        forward_synapses_1_to_2[synapse_index] = synapse_params.max_g;
+        forward_synapses_2_to_1[synapse_index] = synapse_params.max_g;
+
+        offsets_1_to_2[neuron_index] = (neuron_index - neuron_in_field_index) as u64;
+    }
+
+    let mut offsets_2_to_1 = vec![0u64; layer_size];
+    let mut restore_offsets_1_to_2: Vec<u64> = vec![];
 
     let mut has_conntections_1_to_2 = vec![false; layer_size * layer_size];
     let mut has_conntections_2_to_1 = vec![false; layer_size * layer_size];
@@ -278,6 +291,8 @@ pub fn set_initial_connections(
         synapse_params,
         &mut has_conntections_1_to_2,
         &mut has_conntections_2_to_1,
+        &mut offsets_2_to_1,
+        &mut restore_offsets_1_to_2,
     );
 
     let (finish_x, finish_y) = get_last_field(layer_params);
@@ -298,11 +313,6 @@ pub fn set_initial_connections(
                         neuron_in_field_y,
                     );
 
-                    accumulated_weights_1_to_2[neuron_index * layer_size + neuron_index] =
-                        synapse_params.max_g;
-
-                    strong_synapses_1_to_2[neuron_index] = neuron_index as u64;
-
                     let (x, y) = get_neuron_coordinates(
                         layer_params,
                         layer_x,
@@ -322,10 +332,6 @@ pub fn set_initial_connections(
                         &has_conntections_1_to_2,
                     );
 
-                    if layer_x == 0 && layer_y == 0 {
-                        strong_synapses_2_to_1[neuron_index] = layer_size as u64;
-                    }
-
                     // the last field have no connection to the first layer
                     if layer_x != finish_x || layer_y != finish_y {
                         // from 2 to 1
@@ -337,12 +343,6 @@ pub fn set_initial_connections(
                             neuron_in_field_x,
                             neuron_in_field_y,
                         );
-
-                        accumulated_weights_2_to_1
-                            [neuron_2_to_1_index * layer_size + neuron_index] =
-                            synapse_params.max_g;
-
-                        strong_synapses_2_to_1[neuron_2_to_1_index] = neuron_index as u64;
 
                         let (x_2_to_1, y_2_to_1) = get_neuron_coordinates(
                             layer_params,
@@ -368,12 +368,20 @@ pub fn set_initial_connections(
         }
     }
 
+    let restore_synapses_1_to_2 =
+        vec![
+            0.0_f32;
+            restore_offsets_1_to_2.len() * computed_params.field_size * computed_params.field_size
+        ];
+
     InitialConnections {
         distance_weights_1_to_2,
         distance_weights_2_to_1,
-        strong_synapses_1_to_2,
-        strong_synapses_2_to_1,
-        accumulated_weights_1_to_2,
-        accumulated_weights_2_to_1,
+        forward_synapses_1_to_2,
+        forward_synapses_2_to_1,
+        offsets_1_to_2,
+        offsets_2_to_1,
+        restore_offsets_1_to_2,
+        restore_synapses_1_to_2,
     }
 }
