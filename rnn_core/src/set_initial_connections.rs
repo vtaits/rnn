@@ -297,8 +297,10 @@ pub fn set_initial_connections(
             );
 
             for (index, offset) in restore_offsets_1_to_2.iter().enumerate() {
-                let base_x = (*offset as usize) % computed_params.row_width;
-                let base_y = ((*offset as usize) - base_x) / computed_params.row_width;
+                let layer_field_index = (*offset as usize) / computed_params.field_size;
+
+                let layer_x = layer_field_index % layer_params.layer_width;
+                let layer_y = (layer_field_index - layer_x) / layer_params.layer_height;
 
                 apply_mask_to_block(
                     layer_params,
@@ -306,8 +308,8 @@ pub fn set_initial_connections(
                     &mut restore_distance_weights_1_to_2,
                     mask,
                     index,
-                    base_x + neuron_in_field_x,
-                    base_y + neuron_in_field_y,
+                    layer_x * layer_params.field_width + neuron_in_field_x,
+                    layer_y * layer_params.field_height + neuron_in_field_y,
                     &has_connections_by_partitions,
                 );
             }

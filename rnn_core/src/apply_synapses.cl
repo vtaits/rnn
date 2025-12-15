@@ -81,7 +81,7 @@ __kernel void apply_synapses(
                         float weight_to = restore_synapses[restore_offset_index * field_size * field_size + row * field_size + col];
 
                         if (weight_to > 0.0001 || weight_to < -0.0001) {
-                            sum += get_weight_coefficient(gamma_inc, gamma_dec, weight_to, g_0) * restore_distance_weights[restore_offset_index * field_size * field_size + col * field_size + neuron_in_field_x];
+                            sum += get_weight_coefficient(gamma_inc, gamma_dec, weight_to, g_0) * restore_distance_weights[restore_offset_index * field_size * field_size + neuron_in_field_x * field_size + col];
                         }
                     }
                 }
@@ -138,7 +138,7 @@ __kernel void apply_synapses(
                 unsigned int synapse_index = restore_offset_index * field_size * field_size + row * field_size + col;
 
                 if (neurons_from[neuron_from_index] > 0) {
-                    if (restore_distance_weights[restore_offset_index * field_size * field_size + col * field_size + neuron_in_field_x] < 0.001) {
+                    if (restore_distance_weights[restore_offset_index * field_size * field_size + neuron_in_field_x * field_size + col] < 0.001) {
                         continue;
                     }
 
