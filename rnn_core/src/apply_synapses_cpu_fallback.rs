@@ -44,8 +44,12 @@ pub fn apply_synapses_cpu_fallback(
     is_prediction: bool,
     layer_size: usize,
     forward_synapses: &mut Vec<f32>,
-    strong_synapses: &Vec<u64>,
-    distance_weights: &Vec<f32>,
+    forward_distance_weights: &Vec<f32>,
+    restore_distance_weights: Option<&Vec<f32>>,
+    offsets: &Vec<u64>,
+    restore_offsets: Option<&Vec<u64>>,
+    mut restore_synapses: Option<&mut Vec<f32>>,
+    restore_offsets_count: &usize,
     neurons_from: &Vec<u8>,
     neurons_to: &mut Vec<u8>,
     refract_intervals_to: &Vec<u8>,
@@ -70,17 +74,21 @@ pub fn apply_synapses_cpu_fallback(
     } = synapse_params;
 
     let ComputedParams {
-        field_size,
+        field_size: field_size_ref,
         field_count,
         excited_neurons_limit,
         ..
     } = computed_params;
 
     let g_0_for_layer = if layer_index == 2 { g_0 } else { &0.0 };
+    let field_size = *field_size_ref;
 
     // CPU realization of `apply_synapses.cl`
 
     for row in 0..layer_size {
+        let neuron_in_field_x = row % field_size;
+        let offset = offsets[row] as usize;
+
         if refract_intervals_to[row] > 0 {
             if is_prediction {
                 signals_to[row] = 0.0;
@@ -88,7 +96,7 @@ pub fn apply_synapses_cpu_fallback(
                 neurons_to[row] = 0;
             }
         } else if !is_prediction {
-            let index_from = strong_synapses[row] as usize;
+            let index_from = offset + neuron_in_field_x;
 
             if index_from < layer_size {
                 neurons_to[row] = neurons_from[index_from];
@@ -96,17 +104,62 @@ pub fn apply_synapses_cpu_fallback(
         } else {
             let mut sum = 0.0;
 
-            for col in 0..layer_size {
-                let index_from = row * layer_size + col;
+            if offset < layer_size {
+                for col in 0..field_size {
+                    let neuron_from_index = offset + col;
 
-                if neurons_from[col] > 0 {
-                    let weight_to = forward_synapses[index_from];
+                    if neurons_from[neuron_from_index] > 0 {
+                        let weight_to = forward_synapses[col * layer_size + row];
 
-                    if weight_to > 0.0001 || weight_to < -0.0001 {
-                        sum +=
-                            get_weight_coefficient(gamma_inc, gamma_dec, &weight_to, g_0_for_layer)
-                                * distance_weights[index_from];
+                        if weight_to > 0.0001 || weight_to < -0.0001 {
+                            sum += get_weight_coefficient(
+                                gamma_inc,
+                                gamma_dec,
+                                &weight_to,
+                                g_0_for_layer,
+                            ) * forward_distance_weights
+                                [col * field_size + neuron_in_field_x];
+                        }
                     }
+                }
+            }
+
+            if row < field_size {
+                match restore_offsets {
+                    Some(restore_offsets) => match restore_distance_weights {
+                        Some(restore_distance_weights) => match &restore_synapses {
+                            Some(restore_synapses) => {
+                                for restore_offset_index in 0..*restore_offsets_count {
+                                    for col in 0..field_size {
+                                        let neuron_from_index =
+                                            restore_offsets[restore_offset_index] as usize + col;
+
+                                        if neurons_from[neuron_from_index] > 0 {
+                                            let weight_to = restore_synapses[restore_offset_index
+                                                * field_size
+                                                * field_size
+                                                + row * field_size
+                                                + col];
+
+                                            if weight_to > 0.0001 || weight_to < -0.0001 {
+                                                sum += get_weight_coefficient(
+                                                    gamma_inc, gamma_dec, &weight_to, g_0,
+                                                ) * restore_distance_weights
+                                                    [restore_offset_index
+                                                        * field_size
+                                                        * field_size
+                                                        + neuron_in_field_x * field_size
+                                                        + col];
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {}
+                        },
+                        _ => {}
+                    },
+                    _ => {}
                 }
             }
 
@@ -115,29 +168,78 @@ pub fn apply_synapses_cpu_fallback(
 
         if !is_prediction {
             // recount synapses
-            for col in 0..layer_size {
-                let index_from = row * layer_size + col;
+            if offset < layer_size {
+                for col in 0..field_size {
+                    let neuron_from_index = offset + col;
+                    let synapse_index = col * layer_size + row;
 
-                if strong_synapses[row] as usize == col {
-                    continue;
+                    if neurons_from[neuron_from_index] > 0 {
+                        if forward_distance_weights[col * field_size + neuron_in_field_x] < 0.001 {
+                            continue;
+                        }
+
+                        let prev_value = forward_synapses[synapse_index];
+
+                        if refract_intervals_to[row] > 0 {
+                            if forward_synapses[synapse_index] > *min_g {
+                                forward_synapses[synapse_index] = (prev_value - g_dec).max(0.0);
+                            }
+                        } else if neurons_to[row] > 0 {
+                            if forward_synapses[synapse_index] < *max_g {
+                                forward_synapses[synapse_index] = (prev_value + g_inc).min(*max_g);
+                            }
+                        }
+                    }
                 }
+            }
 
-                if neurons_from[col] > 0 {
-                    if distance_weights[index_from] < 0.001 {
-                        continue;
-                    }
+            if row < field_size {
+                match restore_offsets {
+                    Some(restore_offsets) => match restore_distance_weights {
+                        Some(restore_distance_weights) => match restore_synapses.as_mut() {
+                            Some(restore_synapses) => {
+                                for restore_offset_index in 0..*restore_offsets_count {
+                                    for col in 0..field_size {
+                                        let neuron_from_index =
+                                            restore_offsets[restore_offset_index] as usize + col;
+                                        let synapse_index =
+                                            restore_offset_index * field_size * field_size
+                                                + row * field_size
+                                                + col;
 
-                    let prev_value = forward_synapses[index_from];
+                                        if neurons_from[neuron_from_index] > 0 {
+                                            if restore_distance_weights[restore_offset_index
+                                                * field_size
+                                                * field_size
+                                                + neuron_in_field_x * field_size
+                                                + col]
+                                                < 0.001
+                                            {
+                                                continue;
+                                            }
 
-                    if refract_intervals_to[row] > 0 {
-                        if forward_synapses[index_from] > *min_g {
-                            forward_synapses[index_from] = (prev_value - g_dec).max(0.0);
-                        }
-                    } else if neurons_to[row] > 0 {
-                        if forward_synapses[index_from] < *max_g {
-                            forward_synapses[index_from] = (prev_value + g_inc).min(*max_g);
-                        }
-                    }
+                                            let prev_value = restore_synapses[synapse_index];
+
+                                            if refract_intervals_to[row] > 0 {
+                                                if restore_synapses[synapse_index] > *min_g {
+                                                    restore_synapses[synapse_index] =
+                                                        (prev_value - g_dec).max(0.0);
+                                                }
+                                            } else if neurons_to[row] > 0 {
+                                                if restore_synapses[synapse_index] < *max_g {
+                                                    restore_synapses[synapse_index] =
+                                                        (prev_value + g_inc).min(*max_g);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {}
+                        },
+                        _ => {}
+                    },
+                    _ => {}
                 }
             }
         }
@@ -148,7 +250,7 @@ pub fn apply_synapses_cpu_fallback(
             excite_neurons_with_partitions(
                 neurons_to,
                 &signals_to,
-                *field_size,
+                field_size,
                 *field_count,
                 threshold,
                 partitions,

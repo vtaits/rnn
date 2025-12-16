@@ -634,12 +634,17 @@ impl Network {
         let threshold = self.get_threshold(&self.neurons_1);
 
         if self.enable_cpu_fallback {
-            /* apply_synapses_cpu_fallback(
+            apply_synapses_cpu_fallback(
                 self.prediction.is_some(),
                 self.layer_size,
                 &mut self.forward_synapses_1_to_2,
-                &self.distance_weights_1_to_2,
-                &self.neurons_1,
+                &self.forward_distance_weights,
+                Some(&self.restore_distance_weights_1_to_2),
+                &self.offsets_1_to_2,
+                Some(&self.restore_offsets_1_to_2),
+                Some(&mut self.restore_synapses_1_to_2),
+                &self.restore_offsets_1_to_2.len(),
+                &mut self.neurons_1,
                 &mut self.neurons_2,
                 &self.refract_intervals_2,
                 &self.layer_params,
@@ -649,7 +654,7 @@ impl Network {
                 1,
                 &mut self.cpu_fallback_signals_buffer,
             )
-            .unwrap(); */
+            .unwrap();
         } else {
             apply_synapses(
                 &self.kernel_synapses,
@@ -694,11 +699,16 @@ impl Network {
         let threshold = self.get_threshold(&self.neurons_2);
 
         if self.enable_cpu_fallback {
-            /* apply_synapses_cpu_fallback(
+            apply_synapses_cpu_fallback(
                 self.prediction.is_some(),
                 self.layer_size,
                 &mut self.forward_synapses_2_to_1,
-                &self.distance_weights_2_to_1,
+                &self.forward_distance_weights,
+                None,
+                &self.offsets_2_to_1,
+                None,
+                None,
+                &0,
                 &self.neurons_2,
                 &mut self.neurons_1,
                 &self.refract_intervals_1,
@@ -709,7 +719,7 @@ impl Network {
                 2,
                 &mut self.cpu_fallback_signals_buffer,
             )
-            .unwrap(); */
+            .unwrap();
         } else {
             apply_synapses(
                 &self.kernel_synapses,
