@@ -37,6 +37,8 @@ async fn main() -> Result<(), ()> {
 
     let mut toal_duration_mills = 0;
 
+    let total_size = streams_length * (stream_size as usize) * field_count * 2;
+
     for page in 0..measures_count {
         println!("Try #{}", page + 1);
 
@@ -68,7 +70,7 @@ async fn main() -> Result<(), ()> {
 
         let start_init = Instant::now();
 
-        println!("Initialization");
+        println!("Initialization {}", total_size);
 
         let network = Network::new(params, synapse_params, None);
 
@@ -161,7 +163,7 @@ async fn main() -> Result<(), ()> {
         toal_duration_mills += duration_mills;
 
         println!(
-            "Training time (ms): {}, Prediction time (ms): {}, Total time (ms): {}",
+            "Training time (ms): {} , Prediction time (ms): {} , Total time (ms): {}",
             duration_training, duration_prediction, duration_mills
         );
     }
