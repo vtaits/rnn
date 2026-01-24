@@ -5,6 +5,7 @@ import { BinaryField } from "./BinaryField";
 type IBinaryFormProps = Readonly<{
 	onPredictBinary: (bitVec: readonly boolean[]) => void;
 	onTrainBinary: (bitVec: readonly boolean[]) => void;
+	onUpdate: VoidFunction;
 }>;
 
 const FIELD_SIZE =
@@ -24,6 +25,7 @@ function processValues(values: readonly unknown[]): boolean[] {
 export function BinaryForm({
 	onPredictBinary,
 	onTrainBinary,
+	onUpdate,
 }: IBinaryFormProps) {
 	const [values, setValues] = useState<boolean[]>([]);
 
@@ -47,6 +49,7 @@ export function BinaryForm({
 				onPredict={() => {
 					onPredictBinary(processValues(values));
 				}}
+				onUpdate={onUpdate}
 			/>
 		</>
 	);

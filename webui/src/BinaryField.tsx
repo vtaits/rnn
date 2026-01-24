@@ -16,6 +16,9 @@ export function BinaryField({ onChagne, values }: IBinaryFieldProps) {
 			const row: ReactNode[] = [];
 
 			for (let x = 0; x < __APP_CONFIG__.layer_params.field_width; ++x) {
+				if (!onChagne) {
+					console.log(x, y, collectedIndex, Boolean(values[collectedIndex]));
+				}
 				row.push(
 					<td key={x}>
 						<Checkbox

@@ -107,6 +107,10 @@ pub struct SynapseMask {
 
 #[derive(Serialize)]
 pub struct NetworkDumpSerialize<'a> {
+    pub offsets_1_to_2: &'a Vec<u64>,
+    pub offsets_2_to_1: &'a Vec<u64>,
+    pub restore_offsets_1_to_2: &'a Vec<u64>,
+    pub restore_synapses_1_to_2: &'a Vec<f32>,
     pub forward_synapses_1_to_2: &'a Vec<f32>,
     // acumulated weights of synapses from the second layer to the first layer
     pub forward_synapses_2_to_1: &'a Vec<f32>,

@@ -9,6 +9,7 @@ use ocl::Buffer;
 
 use crate::apply_synapses_cpu_fallback::apply_synapses_cpu_fallback;
 use crate::get_neuron_coordinates::get_neuron_coordinates;
+use crate::get_neuron_coordinates_by_index::get_neuron_coordinates_by_index;
 use crate::get_neuron_full_coordinates::get_neuron_full_coordinates;
 use crate::get_neuron_index::get_neuron_index;
 use crate::get_neuron_index_by_coordinates::get_neuron_index_by_coordinates;
@@ -545,8 +546,25 @@ impl Network {
         Network::from_json_dump(&json)
     }
 
-    pub fn get_json_dump(&self) -> String {
+    pub fn get_json_dump(&mut self) -> String {
+        let _ = self
+            .buffer_forward_synapses_1_to_2
+            .read(&mut self.forward_synapses_1_to_2)
+            .enq();
+        let _ = self
+            .buffer_forward_synapses_2_to_1
+            .read(&mut self.forward_synapses_2_to_1)
+            .enq();
+        let _ = self
+            .buffer_restore_synapses_1_to_2
+            .read(&mut self.restore_synapses_1_to_2)
+            .enq();
+
         let dump = NetworkDumpSerialize {
+            offsets_1_to_2: &self.offsets_1_to_2,
+            offsets_2_to_1: &self.offsets_2_to_1,
+            restore_offsets_1_to_2: &self.restore_offsets_1_to_2,
+            restore_synapses_1_to_2: &self.restore_synapses_1_to_2,
             forward_synapses_1_to_2: &self.forward_synapses_1_to_2,
             forward_synapses_2_to_1: &self.forward_synapses_2_to_1,
             forward_distance_weights: &self.forward_distance_weights,
@@ -563,7 +581,7 @@ impl Network {
         serde_json::to_string(&dump).unwrap()
     }
 
-    pub fn get_gzip_dump(&self) -> Result<Vec<u8>, std::io::Error> {
+    pub fn get_gzip_dump(&mut self) -> Result<Vec<u8>, std::io::Error> {
         let json_dump = self.get_json_dump();
 
         let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
@@ -1052,26 +1070,79 @@ impl Network {
         res
     }
 
-    pub fn get_neuron_forward_synapses(
+    pub fn get_neuron_incoming_synapses(
         &self,
         layer_index: u8,
         neuron_x: usize,
         neuron_y: usize,
     ) -> Vec<f32> {
         let weights_buffer = if layer_index == 1 {
-            &self.buffer_forward_synapses_1_to_2
-        } else {
             &self.buffer_forward_synapses_2_to_1
+        } else {
+            &self.buffer_forward_synapses_1_to_2
         };
 
-        let layer_size = self.neurons_1.len();
+        let layer_size = self.computed_params.layer_size;
 
-        let mut weights_layer = vec![0.0_f32; layer_size * layer_size];
+        let neuron_index = get_neuron_index_by_coordinates(
+            &self.layer_params,
+            &self.computed_params,
+            neuron_x,
+            neuron_y,
+        );
 
-        // Читаем буфер обратно в data
-        weights_buffer.read(&mut weights_layer).enq().unwrap();
+        let neuron_index_in_field = neuron_index % self.computed_params.field_size;
 
-        self.get_neuron_weights(&weights_layer, neuron_x, neuron_y)
+        let offsets = if layer_index == 1 {
+            &self.offsets_2_to_1
+        } else {
+            &self.offsets_1_to_2
+        };
+
+        let neuron_index = get_neuron_index_by_coordinates(
+            &self.layer_params,
+            &self.computed_params,
+            neuron_x,
+            neuron_y,
+        );
+
+        let offset = offsets[neuron_index] as usize;
+
+        let mut res = vec![0.0_f32; layer_size];
+
+        if offset < layer_size {
+            for index in 0..self.computed_params.field_size {
+                let (x, y) = get_neuron_coordinates_by_index(
+                    &self.layer_params,
+                    &self.computed_params,
+                    offset + index,
+                );
+
+                res[y * self.computed_params.row_width + x] = self.forward_distance_weights
+                    [index * self.computed_params.field_size + neuron_index_in_field];
+            }
+        }
+
+        if layer_index == 2 && neuron_index < self.computed_params.field_size {
+            for (restore_index, offset) in self.restore_offsets_1_to_2.iter().enumerate() {
+                for index in 0..self.computed_params.field_size {
+                    let (x, y) = get_neuron_coordinates_by_index(
+                        &self.layer_params,
+                        &self.computed_params,
+                        *offset as usize + index,
+                    );
+
+                    res[y * self.computed_params.row_width + x] = self.restore_synapses_1_to_2
+                        [restore_index
+                            * self.computed_params.field_size
+                            * self.computed_params.field_size
+                            + neuron_index_in_field * self.computed_params.field_size
+                            + index];
+                }
+            }
+        }
+
+        res
     }
 
     pub fn get_neuron_distance_weights(
@@ -1080,13 +1151,60 @@ impl Network {
         neuron_x: usize,
         neuron_y: usize,
     ) -> Vec<f32> {
-        let weights_layer = if layer_index == 1 {
-            &self.forward_distance_weights
+        let layer_size = self.computed_params.layer_size;
+
+        let neuron_index = get_neuron_index_by_coordinates(
+            &self.layer_params,
+            &self.computed_params,
+            neuron_x,
+            neuron_y,
+        );
+
+        let neuron_index_in_field = neuron_index % self.computed_params.field_size;
+
+        let offsets = if layer_index == 1 {
+            &self.offsets_2_to_1
         } else {
-            &self.forward_distance_weights
+            &self.offsets_1_to_2
         };
 
-        self.get_neuron_weights(weights_layer, neuron_x, neuron_y)
+        let offset = offsets[neuron_index] as usize;
+
+        let mut res = vec![0.0_f32; layer_size];
+
+        if offset < layer_size {
+            for index in 0..self.computed_params.field_size {
+                let (x, y) = get_neuron_coordinates_by_index(
+                    &self.layer_params,
+                    &self.computed_params,
+                    offset + index,
+                );
+
+                res[y * self.computed_params.row_width + x] = self.forward_distance_weights
+                    [index * self.computed_params.field_size + neuron_index_in_field];
+            }
+        }
+
+        if layer_index == 2 && neuron_index < self.computed_params.field_size {
+            for (restore_index, offset) in self.restore_offsets_1_to_2.iter().enumerate() {
+                for index in 0..self.computed_params.field_size {
+                    let (x, y) = get_neuron_coordinates_by_index(
+                        &self.layer_params,
+                        &self.computed_params,
+                        *offset as usize + index,
+                    );
+
+                    res[y * self.computed_params.row_width + x] = self
+                        .restore_distance_weights_1_to_2[restore_index
+                        * self.computed_params.field_size
+                        * self.computed_params.field_size
+                        + neuron_index_in_field * self.computed_params.field_size
+                        + index];
+                }
+            }
+        }
+
+        res
     }
 
     pub fn get_forward_synapses_sum(&self, layer_index: u8) -> f32 {

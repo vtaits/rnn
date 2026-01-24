@@ -28,7 +28,7 @@ async fn download_dump(data: web::Data<AppState>) -> impl Responder {
 
     let compressed_data = data_layer
         .get_network()
-        .read()
+        .write()
         .unwrap()
         .get_gzip_dump()
         .unwrap();
@@ -100,7 +100,7 @@ async fn update_receivers(data: web::Data<AppState>) -> impl Responder {
 
     let compressed_data = data_layer
         .get_network()
-        .read()
+        .write()
         .unwrap()
         .get_gzip_dump()
         .unwrap();
@@ -173,18 +173,7 @@ async fn main() -> std::io::Result<()> {
 
     let _ = tokio::join!(
         HttpServer::new(move || {
-            let cors = Cors::default()
-                .allowed_origin("http://127.0.0.1:5173")
-                .allowed_origin("http://localhost:5173")
-                .allowed_methods(vec!["GET", "POST"])
-                .allowed_headers(vec![
-                    http::header::AUTHORIZATION,
-                    http::header::ACCEPT,
-                    http::header::ACCESS_CONTROL_ALLOW_CREDENTIALS,
-                    http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
-                    http::header::CONTENT_TYPE,
-                ])
-                .supports_credentials();
+            let cors = Cors::permissive();
 
             App::new()
                 .wrap(Logger::default())
