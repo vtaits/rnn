@@ -173,9 +173,7 @@ fn fill_has_conntections(
 
     let mut index = 0usize;
 
-    for neuron_index in 0..computed_params.field_size {
-        offsets_2_to_1[neuron_index] = computed_params.layer_size as u64;
-    }
+    offsets_2_to_1[0] = computed_params.layer_size as u64;
 
     loop {
         let current_neuron_offset = get_neuron_index(
@@ -206,9 +204,7 @@ fn fill_has_conntections(
             0,
         );
 
-        for neuron_index in next_neuron_offset..next_neuron_offset + computed_params.field_size {
-            offsets_2_to_1[neuron_index] = current_neuron_offset;
-        }
+        offsets_2_to_1[next_neuron_offset / computed_params.field_size] = current_neuron_offset;
 
         cur_layer_x = next_field_x;
         cur_layer_y = next_field_y;
@@ -231,7 +227,7 @@ pub fn set_initial_connections(
     let mut forward_synapses_1_to_2 = vec![0f32; layer_size * computed_params.field_size];
     let mut forward_synapses_2_to_1 = vec![0f32; layer_size * computed_params.field_size];
 
-    let mut offsets_1_to_2 = vec![0u64; layer_size];
+    let mut offsets_1_to_2 = vec![0u64; computed_params.field_count];
 
     for neuron_index in 0..layer_size {
         let neuron_in_field_index = neuron_index % computed_params.field_size;
@@ -241,10 +237,17 @@ pub fn set_initial_connections(
         forward_synapses_1_to_2[synapse_index] = synapse_params.max_g;
         forward_synapses_2_to_1[synapse_index] = synapse_params.max_g;
 
-        offsets_1_to_2[neuron_index] = (neuron_index - neuron_in_field_index) as u64;
+        if neuron_in_field_index == 0 {
+            offsets_1_to_2[neuron_index / computed_params.field_size] =
+                (neuron_index - neuron_in_field_index) as u64;
+        }
     }
 
-    let mut offsets_2_to_1 = vec![0u64; layer_size];
+    for offset_index in 0..computed_params.field_count {
+        offsets_1_to_2.push((offset_index * computed_params.field_size) as u64);
+    }
+
+    let mut offsets_2_to_1 = vec![0u64; computed_params.field_count];
     let mut restore_offsets_1_to_2: Vec<u64> = vec![];
 
     let mut has_connections_by_partitions =

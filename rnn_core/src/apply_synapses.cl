@@ -42,6 +42,7 @@ __kernel void apply_synapses(
     // recount neurons
     int row = get_global_id(0);
     int neuron_in_field_x = row % field_size;
+    int offset_index = row / field_size;
 
     if (refract_intervals_to[row] > 0) {
         if (is_prediction) {
@@ -50,7 +51,7 @@ __kernel void apply_synapses(
           neurons_to[row] = 0;
         }
     } else if (!is_prediction) {
-        ulong index_from = offsets[row] + neuron_in_field_x;
+        ulong index_from = offsets[offset_index] + neuron_in_field_x;
 
         if (index_from < layer_size) {
             neurons_to[row] = neurons_from[index_from];
@@ -58,9 +59,9 @@ __kernel void apply_synapses(
     } else {
         float sum = 0.0;
 
-        if (offsets[row] < layer_size) {
+        if (offsets[offset_index] < layer_size) {
             for (uint col = 0; col < field_size; ++col) {
-                unsigned int neuron_from_index = offsets[row] + col;
+                unsigned int neuron_from_index = offsets[offset_index] + col;
 
                 if (neurons_from[neuron_from_index] > 0) {
                     float weight_to = forward_synapses[col * layer_size + row];
@@ -96,9 +97,9 @@ __kernel void apply_synapses(
     }
 
     // recount synapses
-    if (offsets[row] < layer_size) {
+    if (offsets[offset_index] < layer_size) {
         for (uint col = 0; col < field_size; ++col) {
-            unsigned int neuron_from_index = offsets[row] + col;
+            unsigned int neuron_from_index = offsets[offset_index] + col;
             unsigned int synapse_index = col * layer_size + row;
 
             if (neurons_from[neuron_from_index] > 0) {
