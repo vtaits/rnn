@@ -21,8 +21,7 @@ pub fn render_accumulated_weights(frame: &mut Frame, area: Rect, app: &App) {
         Layer::Layer2 => 2,
     };
 
-    let weights =
-        network_ref.get_neuron_accumulated_weights(layer_index, app.neuron_x, app.neuron_y);
+    let weights = network_ref.get_neuron_incoming_synapses(layer_index, app.neuron_x, app.neuron_y);
 
     let mut widths: Vec<u16> = vec![];
 

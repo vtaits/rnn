@@ -13,6 +13,8 @@ pub enum ComplexTimelineValue {
     Datetime(String),
     Integer(i64),
     Enum(String),
+    Time(String),
+    Weekday(String),
 }
 
 #[derive(Deserialize)]

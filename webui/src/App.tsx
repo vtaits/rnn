@@ -37,6 +37,10 @@ export function App() {
 		await axios.post(`${__TRAINING_SERVER__}/push_data_binary`, values);
 	}, []);
 
+	const onUpdate = useCallback(() => {
+		axios.post(`${__TRAINING_SERVER__}/update_receivers`);
+	}, []);
+
 	return (
 		<>
 			<Tabs>
@@ -68,9 +72,10 @@ export function App() {
 					<BinaryForm
 						onPredictBinary={onPredictBinary}
 						onTrainBinary={onTrainBinary}
+						onUpdate={onUpdate}
 					/>
 				) : (
-					<Form onPredict={onPredict} onTrain={onTrain} />
+					<Form onPredict={onPredict} onTrain={onTrain} onUpdate={onUpdate} />
 				)}
 			</div>
 
@@ -79,7 +84,7 @@ export function App() {
 					<h3>Last prediction</h3>
 
 					{isBinary ? (
-						<BinaryField values={lastPrediction.raw} />
+						<BinaryField values={lastPrediction.raw[0]} />
 					) : (
 						<pre>
 							<code>{JSON.stringify(lastPrediction.data, null, 2)}</code>

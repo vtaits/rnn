@@ -19,6 +19,12 @@ export type ITimelineItem =
 	| {
 			type: "Datetime";
 			format?: string;
+	  }
+	| {
+			type: "Weekday";
+	  }
+	| {
+			type: "Time";
 	  };
 
 export type IConfig = {
@@ -43,11 +49,17 @@ export type ITimelineValue =
 	  }
 	| {
 			Datetime: string;
+	  }
+	| {
+			Weekday: string;
+	  }
+	| {
+			Time: string;
 	  };
 
 export type IPrediction = {
-	raw: readonly boolean[];
-	data: readonly ITimelineValue[];
+	raw: readonly (readonly boolean[])[];
+	data: readonly (readonly ITimelineValue[])[];
 };
 
 declare global {

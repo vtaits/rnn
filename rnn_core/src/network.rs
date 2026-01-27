@@ -9,6 +9,7 @@ use ocl::Buffer;
 
 use crate::apply_synapses_cpu_fallback::apply_synapses_cpu_fallback;
 use crate::get_neuron_coordinates::get_neuron_coordinates;
+use crate::get_neuron_coordinates_by_index::get_neuron_coordinates_by_index;
 use crate::get_neuron_full_coordinates::get_neuron_full_coordinates;
 use crate::get_neuron_index::get_neuron_index;
 use crate::get_neuron_index_by_coordinates::get_neuron_index_by_coordinates;
@@ -34,24 +35,24 @@ use crate::{
 // TO DO: bit-vec / bitfield
 pub struct Network {
     computed_params: ComputedParams,
+    offsets_1_to_2: Vec<u64>,
+    buffer_offsets_1_to_2: Buffer<u64>,
+    offsets_2_to_1: Vec<u64>,
+    buffer_offsets_2_to_1: Buffer<u64>,
+    restore_offsets_1_to_2: Vec<u64>,
+    buffer_restore_offsets_1_to_2: Buffer<u64>,
+    restore_synapses_1_to_2: Vec<f32>,
+    buffer_restore_synapses_1_to_2: Buffer<f32>,
     // acumulated weights of synapses from the first layer to the second layer
-    accumulated_weights_1_to_2: Vec<f32>,
-    buffer_accumulated_weights_1_to_2: Buffer<f32>,
+    forward_synapses_1_to_2: Vec<f32>,
+    buffer_forward_synapses_1_to_2: Buffer<f32>,
+    forward_distance_weights: Vec<f32>,
+    buffer_forward_distance_weights: Buffer<f32>,
+    restore_distance_weights_1_to_2: Vec<f32>,
+    buffer_restore_distance_weights_1_to_2: Buffer<f32>,
     // acumulated weights of synapses from the second layer to the first layer
-    accumulated_weights_2_to_1: Vec<f32>,
-    buffer_accumulated_weights_2_to_1: Buffer<f32>,
-    // synapses to identical map from the first layer to the second layer
-    strong_synapses_1_to_2: Vec<u64>,
-    buffer_strong_synapses_1_to_2: Buffer<u64>,
-    // synapses to identical map from the second layer to the first layer
-    strong_synapses_2_to_1: Vec<u64>,
-    buffer_strong_synapses_2_to_1: Buffer<u64>,
-    // distance weights of synapses from the first layer to the second layer
-    distance_weights_1_to_2: Vec<f32>,
-    buffer_distance_weights_1_to_2: Buffer<f32>,
-    // distance weights of synapses from the second layer to the first layer
-    distance_weights_2_to_1: Vec<f32>,
-    buffer_distance_weights_2_to_1: Buffer<f32>,
+    forward_synapses_2_to_1: Vec<f32>,
+    buffer_forward_synapses_2_to_1: Buffer<f32>,
     // compiled kernel for recount neurons and refract intervals with opencl
     kernel_synapses: CompiledKernel,
     output_field_index: usize,
@@ -245,61 +246,105 @@ impl Network {
         let mask = get_synapse_mask(&synapse_params);
 
         let InitialConnections {
-            distance_weights_1_to_2,
-            distance_weights_2_to_1,
-            strong_synapses_1_to_2,
-            strong_synapses_2_to_1,
-            accumulated_weights_1_to_2,
-            accumulated_weights_2_to_1,
+            forward_synapses_1_to_2,
+            forward_synapses_2_to_1,
+            offsets_1_to_2,
+            offsets_2_to_1,
+            restore_offsets_1_to_2,
+            restore_synapses_1_to_2,
+            forward_distance_weights,
+            restore_distance_weights_1_to_2,
         } = set_initial_connections(&layer_params, &computed_params, &synapse_params, &mask);
 
         let kernel_synapses = build_apply_synapses_kernel(layer_size).unwrap();
 
-        let buffer_distance_weights_1_to_2 = Buffer::<f32>::builder()
+        let buffer_offsets_1_to_2 = Buffer::<u64>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_ONLY)
-            .len(distance_weights_1_to_2.len())
-            .copy_host_slice(distance_weights_1_to_2.as_slice())
+            .len(offsets_1_to_2.len())
+            .copy_host_slice(offsets_1_to_2.as_slice())
             .build()
             .unwrap();
 
-        let buffer_distance_weights_2_to_1 = Buffer::<f32>::builder()
+        let buffer_offsets_2_to_1 = Buffer::<u64>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_ONLY)
-            .len(distance_weights_2_to_1.len())
-            .copy_host_slice(distance_weights_2_to_1.as_slice())
+            .len(offsets_2_to_1.len())
+            .copy_host_slice(offsets_2_to_1.as_slice())
             .build()
             .unwrap();
 
-        let buffer_strong_synapses_1_to_2 = Buffer::<u64>::builder()
+        let can_restore = restore_offsets_1_to_2.len() > 0;
+
+        let buffer_restore_offsets_1_to_2 = Buffer::<u64>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_ONLY)
-            .len(strong_synapses_1_to_2.len())
-            .copy_host_slice(strong_synapses_1_to_2.as_slice())
+            .len(if can_restore {
+                restore_offsets_1_to_2.len()
+            } else {
+                1
+            })
+            .copy_host_slice(if can_restore {
+                restore_offsets_1_to_2.as_slice()
+            } else {
+                &[0]
+            })
             .build()
             .unwrap();
 
-        let buffer_strong_synapses_2_to_1 = Buffer::<u64>::builder()
+        let buffer_restore_synapses_1_to_2 = Buffer::<f32>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_ONLY)
-            .len(strong_synapses_2_to_1.len())
-            .copy_host_slice(strong_synapses_2_to_1.as_slice())
+            .len(if can_restore {
+                restore_synapses_1_to_2.len()
+            } else {
+                1
+            })
+            .copy_host_slice(if can_restore {
+                restore_synapses_1_to_2.as_slice()
+            } else {
+                &[0.0_f32]
+            })
             .build()
             .unwrap();
 
-        let buffer_accumulated_weights_1_to_2 = Buffer::<f32>::builder()
+        let buffer_forward_distance_weights = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(forward_distance_weights.len())
+            .copy_host_slice(forward_distance_weights.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_restore_distance_weights_1_to_2 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(if can_restore {
+                restore_distance_weights_1_to_2.len()
+            } else {
+                1
+            })
+            .copy_host_slice(if can_restore {
+                restore_distance_weights_1_to_2.as_slice()
+            } else {
+                &[0.0_f32]
+            })
+            .build()
+            .unwrap();
+
+        let buffer_forward_synapses_1_to_2 = Buffer::<f32>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_WRITE)
-            .len(accumulated_weights_1_to_2.len())
-            .copy_host_slice(accumulated_weights_1_to_2.as_slice())
+            .len(forward_synapses_1_to_2.len())
+            .copy_host_slice(forward_synapses_1_to_2.as_slice())
             .build()
             .unwrap();
 
-        let buffer_accumulated_weights_2_to_1 = Buffer::<f32>::builder()
+        let buffer_forward_synapses_2_to_1 = Buffer::<f32>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_WRITE)
-            .len(accumulated_weights_2_to_1.len())
-            .copy_host_slice(accumulated_weights_2_to_1.as_slice())
+            .len(forward_synapses_2_to_1.len())
+            .copy_host_slice(forward_synapses_2_to_1.as_slice())
             .build()
             .unwrap();
 
@@ -309,19 +354,23 @@ impl Network {
             get_output_field_neuron_indexes(&layer_params, &computed_params, output_field_index);
 
         Network {
-            accumulated_weights_1_to_2,
-            buffer_accumulated_weights_1_to_2,
-            accumulated_weights_2_to_1,
-            buffer_accumulated_weights_2_to_1,
+            offsets_1_to_2,
+            buffer_offsets_1_to_2,
+            offsets_2_to_1,
+            buffer_offsets_2_to_1,
+            restore_offsets_1_to_2,
+            buffer_restore_offsets_1_to_2,
+            restore_synapses_1_to_2,
+            buffer_restore_synapses_1_to_2,
+            forward_synapses_1_to_2,
+            buffer_forward_synapses_1_to_2,
+            forward_synapses_2_to_1,
+            buffer_forward_synapses_2_to_1,
+            forward_distance_weights,
+            buffer_forward_distance_weights,
+            restore_distance_weights_1_to_2,
+            buffer_restore_distance_weights_1_to_2,
             computed_params,
-            distance_weights_1_to_2,
-            buffer_distance_weights_1_to_2,
-            distance_weights_2_to_1,
-            buffer_distance_weights_2_to_1,
-            strong_synapses_1_to_2,
-            buffer_strong_synapses_1_to_2,
-            strong_synapses_2_to_1,
-            buffer_strong_synapses_2_to_1,
             kernel_synapses,
             output_field_index,
             output_field_neuron_indexes,
@@ -373,66 +422,88 @@ impl Network {
             output_field_index,
         );
 
-        let buffer_distance_weights_1_to_2 = Buffer::<f32>::builder()
-            .queue(kernel_synapses.pro_que.queue().clone())
-            .len(parsed_dump.distance_weights_1_to_2.len())
-            .copy_host_slice(parsed_dump.distance_weights_2_to_1.as_slice())
-            .build()
-            .unwrap();
-
-        let buffer_distance_weights_2_to_1 = Buffer::<f32>::builder()
-            .queue(kernel_synapses.pro_que.queue().clone())
-            .len(parsed_dump.distance_weights_2_to_1.len())
-            .copy_host_slice(parsed_dump.distance_weights_2_to_1.as_slice())
-            .build()
-            .unwrap();
-
-        let buffer_strong_synapses_1_to_2 = Buffer::<u64>::builder()
+        let buffer_offsets_1_to_2 = Buffer::<u64>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_ONLY)
-            .len(parsed_dump.strong_synapses_1_to_2.len())
-            .copy_host_slice(parsed_dump.strong_synapses_1_to_2.as_slice())
+            .len(parsed_dump.offsets_1_to_2.len())
+            .copy_host_slice(parsed_dump.offsets_1_to_2.as_slice())
             .build()
             .unwrap();
 
-        let buffer_strong_synapses_2_to_1 = Buffer::<u64>::builder()
+        let buffer_offsets_2_to_1 = Buffer::<u64>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_ONLY)
-            .len(parsed_dump.strong_synapses_2_to_1.len())
-            .copy_host_slice(parsed_dump.strong_synapses_2_to_1.as_slice())
+            .len(parsed_dump.offsets_2_to_1.len())
+            .copy_host_slice(parsed_dump.offsets_2_to_1.as_slice())
             .build()
             .unwrap();
 
-        let buffer_accumulated_weights_1_to_2 = Buffer::<f32>::builder()
+        let buffer_restore_offsets_1_to_2 = Buffer::<u64>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
-            .flags(ocl::flags::MEM_READ_WRITE)
-            .len(parsed_dump.accumulated_weights_1_to_2.len())
-            .copy_host_slice(parsed_dump.accumulated_weights_1_to_2.as_slice())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(parsed_dump.restore_offsets_1_to_2.len())
+            .copy_host_slice(parsed_dump.restore_offsets_1_to_2.as_slice())
             .build()
             .unwrap();
 
-        let buffer_accumulated_weights_2_to_1 = Buffer::<f32>::builder()
+        let buffer_restore_synapses_1_to_2 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(parsed_dump.restore_synapses_1_to_2.len())
+            .copy_host_slice(parsed_dump.restore_synapses_1_to_2.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_forward_distance_weights = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(parsed_dump.forward_distance_weights.len())
+            .copy_host_slice(parsed_dump.forward_distance_weights.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_restore_distance_weights_1_to_2 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_ONLY)
+            .len(parsed_dump.restore_distance_weights_1_to_2.len())
+            .copy_host_slice(parsed_dump.restore_distance_weights_1_to_2.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_forward_synapses_1_to_2 = Buffer::<f32>::builder()
             .queue(kernel_synapses.pro_que.queue().clone())
             .flags(ocl::flags::MEM_READ_WRITE)
-            .len(parsed_dump.accumulated_weights_2_to_1.len())
-            .copy_host_slice(parsed_dump.accumulated_weights_2_to_1.as_slice())
+            .len(parsed_dump.forward_synapses_1_to_2.len())
+            .copy_host_slice(parsed_dump.forward_synapses_1_to_2.as_slice())
+            .build()
+            .unwrap();
+
+        let buffer_forward_synapses_2_to_1 = Buffer::<f32>::builder()
+            .queue(kernel_synapses.pro_que.queue().clone())
+            .flags(ocl::flags::MEM_READ_WRITE)
+            .len(parsed_dump.forward_synapses_2_to_1.len())
+            .copy_host_slice(parsed_dump.forward_synapses_2_to_1.as_slice())
             .build()
             .unwrap();
 
         let network = Network {
-            accumulated_weights_1_to_2: parsed_dump.accumulated_weights_1_to_2,
-            buffer_accumulated_weights_1_to_2,
-            accumulated_weights_2_to_1: parsed_dump.accumulated_weights_2_to_1,
-            buffer_accumulated_weights_2_to_1,
+            offsets_1_to_2: parsed_dump.offsets_1_to_2,
+            buffer_offsets_1_to_2,
+            offsets_2_to_1: parsed_dump.offsets_2_to_1,
+            buffer_offsets_2_to_1,
+            restore_offsets_1_to_2: parsed_dump.restore_offsets_1_to_2,
+            buffer_restore_offsets_1_to_2,
+            restore_synapses_1_to_2: parsed_dump.restore_synapses_1_to_2,
+            buffer_restore_synapses_1_to_2,
+            forward_synapses_1_to_2: parsed_dump.forward_synapses_1_to_2,
+            buffer_forward_synapses_1_to_2,
+            forward_synapses_2_to_1: parsed_dump.forward_synapses_2_to_1,
+            buffer_forward_synapses_2_to_1,
             computed_params,
-            distance_weights_1_to_2: parsed_dump.distance_weights_1_to_2,
-            buffer_distance_weights_1_to_2,
-            distance_weights_2_to_1: parsed_dump.distance_weights_2_to_1,
-            buffer_distance_weights_2_to_1,
-            strong_synapses_1_to_2: parsed_dump.strong_synapses_1_to_2,
-            buffer_strong_synapses_1_to_2,
-            strong_synapses_2_to_1: parsed_dump.strong_synapses_2_to_1,
-            buffer_strong_synapses_2_to_1,
+            forward_distance_weights: parsed_dump.forward_distance_weights,
+            buffer_forward_distance_weights,
+            restore_distance_weights_1_to_2: parsed_dump.restore_distance_weights_1_to_2,
+            buffer_restore_distance_weights_1_to_2,
             kernel_synapses,
             output_field_index,
             output_field_neuron_indexes,
@@ -475,14 +546,29 @@ impl Network {
         Network::from_json_dump(&json)
     }
 
-    pub fn get_json_dump(&self) -> String {
+    pub fn get_json_dump(&mut self) -> String {
+        let _ = self
+            .buffer_forward_synapses_1_to_2
+            .read(&mut self.forward_synapses_1_to_2)
+            .enq();
+        let _ = self
+            .buffer_forward_synapses_2_to_1
+            .read(&mut self.forward_synapses_2_to_1)
+            .enq();
+        let _ = self
+            .buffer_restore_synapses_1_to_2
+            .read(&mut self.restore_synapses_1_to_2)
+            .enq();
+
         let dump = NetworkDumpSerialize {
-            accumulated_weights_1_to_2: &self.accumulated_weights_1_to_2,
-            accumulated_weights_2_to_1: &self.accumulated_weights_2_to_1,
-            strong_synapses_1_to_2: &self.strong_synapses_1_to_2,
-            strong_synapses_2_to_1: &self.strong_synapses_2_to_1,
-            distance_weights_1_to_2: &self.distance_weights_1_to_2,
-            distance_weights_2_to_1: &self.distance_weights_2_to_1,
+            offsets_1_to_2: &self.offsets_1_to_2,
+            offsets_2_to_1: &self.offsets_2_to_1,
+            restore_offsets_1_to_2: &self.restore_offsets_1_to_2,
+            restore_synapses_1_to_2: &self.restore_synapses_1_to_2,
+            forward_synapses_1_to_2: &self.forward_synapses_1_to_2,
+            forward_synapses_2_to_1: &self.forward_synapses_2_to_1,
+            forward_distance_weights: &self.forward_distance_weights,
+            restore_distance_weights_1_to_2: &self.restore_distance_weights_1_to_2,
             neurons_1: &self.neurons_1,
             neurons_2: &self.neurons_2,
             refract_intervals_1: &self.refract_intervals_1,
@@ -495,7 +581,7 @@ impl Network {
         serde_json::to_string(&dump).unwrap()
     }
 
-    pub fn get_gzip_dump(&self) -> Result<Vec<u8>, std::io::Error> {
+    pub fn get_gzip_dump(&mut self) -> Result<Vec<u8>, std::io::Error> {
         let json_dump = self.get_json_dump();
 
         let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
@@ -569,10 +655,14 @@ impl Network {
             apply_synapses_cpu_fallback(
                 self.prediction.is_some(),
                 self.layer_size,
-                &mut self.accumulated_weights_1_to_2,
-                &self.strong_synapses_1_to_2,
-                &self.distance_weights_1_to_2,
-                &self.neurons_1,
+                &mut self.forward_synapses_1_to_2,
+                &self.forward_distance_weights,
+                Some(&self.restore_distance_weights_1_to_2),
+                &self.offsets_1_to_2,
+                Some(&self.restore_offsets_1_to_2),
+                Some(&mut self.restore_synapses_1_to_2),
+                &self.restore_offsets_1_to_2.len(),
+                &mut self.neurons_1,
                 &mut self.neurons_2,
                 &self.refract_intervals_2,
                 &self.layer_params,
@@ -588,9 +678,13 @@ impl Network {
                 &self.kernel_synapses,
                 self.prediction.is_some(),
                 self.layer_size,
-                &self.buffer_accumulated_weights_1_to_2,
-                &self.buffer_strong_synapses_1_to_2,
-                &self.buffer_distance_weights_1_to_2,
+                &self.buffer_forward_synapses_1_to_2,
+                &self.buffer_forward_distance_weights,
+                Some(&self.buffer_restore_distance_weights_1_to_2),
+                &self.buffer_offsets_1_to_2,
+                Some(&self.buffer_restore_offsets_1_to_2),
+                Some(&self.buffer_restore_synapses_1_to_2),
+                &self.restore_offsets_1_to_2.len(),
                 &self.neurons_1,
                 &mut self.neurons_2,
                 &self.refract_intervals_2,
@@ -611,7 +705,7 @@ impl Network {
         );
 
         if self.logger.is_some() {
-            let total_2 = self.get_accumulated_weights_sum(2);
+            let total_2 = self.get_forward_synapses_sum(2);
             self.logger
                 .as_mut()
                 .unwrap()
@@ -626,9 +720,13 @@ impl Network {
             apply_synapses_cpu_fallback(
                 self.prediction.is_some(),
                 self.layer_size,
-                &mut self.accumulated_weights_2_to_1,
-                &self.strong_synapses_2_to_1,
-                &self.distance_weights_2_to_1,
+                &mut self.forward_synapses_2_to_1,
+                &self.forward_distance_weights,
+                None,
+                &self.offsets_2_to_1,
+                None,
+                None,
+                &0,
                 &self.neurons_2,
                 &mut self.neurons_1,
                 &self.refract_intervals_1,
@@ -645,9 +743,13 @@ impl Network {
                 &self.kernel_synapses,
                 self.prediction.is_some(),
                 self.layer_size,
-                &self.buffer_accumulated_weights_2_to_1,
-                &self.buffer_strong_synapses_2_to_1,
-                &self.buffer_distance_weights_2_to_1,
+                &self.buffer_forward_synapses_2_to_1,
+                &self.buffer_forward_distance_weights,
+                None,
+                &self.buffer_offsets_2_to_1,
+                None,
+                None,
+                &0,
                 &self.neurons_2,
                 &mut self.neurons_1,
                 &self.refract_intervals_1,
@@ -668,7 +770,7 @@ impl Network {
         );
 
         if self.logger.is_some() {
-            let total_1 = self.get_accumulated_weights_sum(1);
+            let total_1 = self.get_forward_synapses_sum(1);
             self.logger
                 .as_mut()
                 .unwrap()
@@ -716,7 +818,7 @@ impl Network {
     pub fn push_data_and_apply(&mut self, bit_vec: &[bool], prediction_depth: usize) {
         // uncomment to enable logging
         /* for value in bit_vec {
-            print!("{}", if *value { "+" } else { " " });
+            print!("{}", if *value { "+" } else { "." });
         }
 
         println!(); */
@@ -968,26 +1070,79 @@ impl Network {
         res
     }
 
-    pub fn get_neuron_accumulated_weights(
+    pub fn get_neuron_incoming_synapses(
         &self,
         layer_index: u8,
         neuron_x: usize,
         neuron_y: usize,
     ) -> Vec<f32> {
         let weights_buffer = if layer_index == 1 {
-            &self.buffer_accumulated_weights_1_to_2
+            &self.buffer_forward_synapses_2_to_1
         } else {
-            &self.buffer_accumulated_weights_2_to_1
+            &self.buffer_forward_synapses_1_to_2
         };
 
-        let layer_size = self.neurons_1.len();
+        let layer_size = self.computed_params.layer_size;
 
-        let mut weights_layer = vec![0.0_f32; layer_size * layer_size];
+        let neuron_index = get_neuron_index_by_coordinates(
+            &self.layer_params,
+            &self.computed_params,
+            neuron_x,
+            neuron_y,
+        );
 
-        // Читаем буфер обратно в data
-        weights_buffer.read(&mut weights_layer).enq().unwrap();
+        let neuron_index_in_field = neuron_index % self.computed_params.field_size;
 
-        self.get_neuron_weights(&weights_layer, neuron_x, neuron_y)
+        let offsets = if layer_index == 1 {
+            &self.offsets_2_to_1
+        } else {
+            &self.offsets_1_to_2
+        };
+
+        let neuron_index = get_neuron_index_by_coordinates(
+            &self.layer_params,
+            &self.computed_params,
+            neuron_x,
+            neuron_y,
+        );
+
+        let offset = offsets[neuron_index] as usize;
+
+        let mut res = vec![0.0_f32; layer_size];
+
+        if offset < layer_size {
+            for index in 0..self.computed_params.field_size {
+                let (x, y) = get_neuron_coordinates_by_index(
+                    &self.layer_params,
+                    &self.computed_params,
+                    offset + index,
+                );
+
+                res[y * self.computed_params.row_width + x] = self.forward_distance_weights
+                    [index * self.computed_params.field_size + neuron_index_in_field];
+            }
+        }
+
+        if layer_index == 2 && neuron_index < self.computed_params.field_size {
+            for (restore_index, offset) in self.restore_offsets_1_to_2.iter().enumerate() {
+                for index in 0..self.computed_params.field_size {
+                    let (x, y) = get_neuron_coordinates_by_index(
+                        &self.layer_params,
+                        &self.computed_params,
+                        *offset as usize + index,
+                    );
+
+                    res[y * self.computed_params.row_width + x] = self.restore_synapses_1_to_2
+                        [restore_index
+                            * self.computed_params.field_size
+                            * self.computed_params.field_size
+                            + neuron_index_in_field * self.computed_params.field_size
+                            + index];
+                }
+            }
+        }
+
+        res
     }
 
     pub fn get_neuron_distance_weights(
@@ -996,20 +1151,67 @@ impl Network {
         neuron_x: usize,
         neuron_y: usize,
     ) -> Vec<f32> {
-        let weights_layer = if layer_index == 1 {
-            &self.distance_weights_1_to_2
+        let layer_size = self.computed_params.layer_size;
+
+        let neuron_index = get_neuron_index_by_coordinates(
+            &self.layer_params,
+            &self.computed_params,
+            neuron_x,
+            neuron_y,
+        );
+
+        let neuron_index_in_field = neuron_index % self.computed_params.field_size;
+
+        let offsets = if layer_index == 1 {
+            &self.offsets_2_to_1
         } else {
-            &self.distance_weights_2_to_1
+            &self.offsets_1_to_2
         };
 
-        self.get_neuron_weights(weights_layer, neuron_x, neuron_y)
+        let offset = offsets[neuron_index] as usize;
+
+        let mut res = vec![0.0_f32; layer_size];
+
+        if offset < layer_size {
+            for index in 0..self.computed_params.field_size {
+                let (x, y) = get_neuron_coordinates_by_index(
+                    &self.layer_params,
+                    &self.computed_params,
+                    offset + index,
+                );
+
+                res[y * self.computed_params.row_width + x] = self.forward_distance_weights
+                    [index * self.computed_params.field_size + neuron_index_in_field];
+            }
+        }
+
+        if layer_index == 2 && neuron_index < self.computed_params.field_size {
+            for (restore_index, offset) in self.restore_offsets_1_to_2.iter().enumerate() {
+                for index in 0..self.computed_params.field_size {
+                    let (x, y) = get_neuron_coordinates_by_index(
+                        &self.layer_params,
+                        &self.computed_params,
+                        *offset as usize + index,
+                    );
+
+                    res[y * self.computed_params.row_width + x] = self
+                        .restore_distance_weights_1_to_2[restore_index
+                        * self.computed_params.field_size
+                        * self.computed_params.field_size
+                        + neuron_index_in_field * self.computed_params.field_size
+                        + index];
+                }
+            }
+        }
+
+        res
     }
 
-    pub fn get_accumulated_weights_sum(&self, layer_index: u8) -> f32 {
+    pub fn get_forward_synapses_sum(&self, layer_index: u8) -> f32 {
         let weights_layer = if layer_index == 1 {
-            &self.accumulated_weights_1_to_2
+            &self.forward_synapses_1_to_2
         } else {
-            &self.accumulated_weights_2_to_1
+            &self.forward_synapses_2_to_1
         };
 
         weights_layer.into_iter().sum()

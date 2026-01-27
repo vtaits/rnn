@@ -114,8 +114,8 @@ impl App {
         }
     }
 
-    pub fn save_state(&self) -> std::io::Result<()> {
-        let json_str = self.network.read().unwrap().get_json_dump();
+    pub fn save_state(&mut self) -> std::io::Result<()> {
+        let json_str = self.network.write().unwrap().get_json_dump();
 
         let now = Local::now();
 

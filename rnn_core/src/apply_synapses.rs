@@ -18,14 +18,19 @@ pub fn build_apply_synapses_kernel(layer_size: usize) -> ocl::Result<CompiledKer
         .name("apply_synapses")
         .queue(pro_que.queue().clone())
         .global_work_size(layer_size)
-        .arg_named("accumulated_weights", None::<&Buffer<f32>>)
-        .arg_named("strong_synapses", None::<&Buffer<u64>>)
-        .arg_named("distance_weights", None::<&Buffer<f32>>)
+        .arg_named("forward_synapses", None::<&Buffer<f32>>)
+        .arg_named("forward_distance_weights", None::<&Buffer<f32>>)
+        .arg_named("restore_distance_weights", None::<&Buffer<f32>>)
+        .arg_named("offsets", None::<&Buffer<u64>>)
+        .arg_named("restore_offsets", None::<&Buffer<u64>>)
+        .arg_named("restore_offsets_count", 0_u32)
+        .arg_named("restore_synapses", None::<&Buffer<f32>>)
         .arg_named("neurons_from", None::<&Buffer<u8>>)
         .arg_named("refract_intervals_to", None::<&Buffer<u8>>)
         .arg_named("neurons_to", None::<&Buffer<u8>>)
         .arg_named("signals_to", None::<&Buffer<f32>>)
         .arg_named("layer_size", 0_u32)
+        .arg_named("field_size", 0_u32)
         .arg_named("threshold", 0.0_f32)
         .arg_named("gamma_inc", 0.0_f32)
         .arg_named("gamma_dec", 0.0_f32)
@@ -71,9 +76,13 @@ pub fn apply_synapses(
     compiled_kernel: &CompiledKernel,
     is_prediction: bool,
     layer_size: usize,
-    buffer_accumulated_weights: &Buffer<f32>,
-    buffer_strong_synapses: &Buffer<u64>,
-    buffer_distance_weights: &Buffer<f32>,
+    buffer_forward_synapses: &Buffer<f32>,
+    buffer_forward_distance_weights: &Buffer<f32>,
+    buffer_restore_distance_weights: Option<&Buffer<f32>>,
+    buffer_offsets: &Buffer<u64>,
+    buffer_restore_offsets: Option<&Buffer<u64>>,
+    buffer_restore_synapses: Option<&Buffer<f32>>,
+    restore_offsets_count: &usize,
     neurons_from: &Vec<u8>,
     neurons_to: &mut Vec<u8>,
     refract_intervals_to: &Vec<u8>,
@@ -147,14 +156,19 @@ pub fn apply_synapses(
     let kernel = compiled_kernel.kernel.lock().unwrap();
 
     unsafe {
-        kernel.set_arg("accumulated_weights", buffer_accumulated_weights)?;
-        kernel.set_arg("strong_synapses", buffer_strong_synapses)?;
-        kernel.set_arg("distance_weights", buffer_distance_weights)?;
+        kernel.set_arg("forward_synapses", buffer_forward_synapses)?;
+        kernel.set_arg("forward_distance_weights", buffer_forward_distance_weights)?;
+        kernel.set_arg("restore_distance_weights", buffer_restore_distance_weights)?;
+        kernel.set_arg("offsets", buffer_offsets)?;
+        kernel.set_arg("restore_offsets", buffer_restore_offsets)?;
+        kernel.set_arg("restore_offsets_count", *restore_offsets_count as u32)?;
+        kernel.set_arg("restore_synapses", buffer_restore_synapses)?;
         kernel.set_arg("neurons_from", &buffer_neurons_from)?;
         kernel.set_arg("refract_intervals_to", &buffer_refract_intervals_to)?;
         kernel.set_arg("neurons_to", &buffer_neurons_to)?;
         kernel.set_arg("signals_to", &buffer_signals_to)?;
         kernel.set_arg("layer_size", layer_size as u32)?;
+        kernel.set_arg("field_size", *field_size as u32)?;
         kernel.set_arg("threshold", threshold)?;
         kernel.set_arg("gamma_inc", gamma_inc)?;
         kernel.set_arg("gamma_dec", gamma_dec)?;

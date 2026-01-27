@@ -12,6 +12,24 @@ const schemas = __APP_CONFIG__.timelines.reduce<
 	Record<string, DefaultFieldSchema<FieldSchemaBase>>
 >((res, timelineItem, index) => {
 	switch (timelineItem.type) {
+		case "Weekday":
+			res[index] = {
+				type: "datetime",
+				label: `#${index + 1} weekday`,
+				serverDateFormat: "yyyy-MM-dd HH:mm:ss",
+				required: true,
+			};
+			break;
+
+		case "Time":
+			res[index] = {
+				type: "datetime",
+				label: `#${index + 1} time`,
+				serverDateFormat: "yyyy-MM-dd HH:mm:ss",
+				required: true,
+			};
+			break;
+
 		case "Datetime":
 			res[index] = {
 				type: "datetime",
@@ -53,7 +71,8 @@ const schemas = __APP_CONFIG__.timelines.reduce<
 			break;
 
 		default:
-			throw new Error("Unknown timeline item type");
+			// @ts-expect-error
+			throw new Error(`Unknown timeline item type: ${timelineItem.type}`);
 	}
 
 	return res;
@@ -64,9 +83,10 @@ const names = __APP_CONFIG__.timelines.map((_, index) => String(index));
 type IFormProps = Readonly<{
 	onPredict: (values: readonly ITimelineValue[]) => Promise<void>;
 	onTrain: (values: readonly ITimelineValue[]) => Promise<void>;
+	onUpdate: VoidFunction;
 }>;
 
-export function Form({ onPredict, onTrain }: IFormProps) {
+export function Form({ onPredict, onTrain, onUpdate }: IFormProps) {
 	const submitTypeRef = useRef<"train" | "predict">("train");
 
 	const handleSubmit = useCallback(
@@ -74,6 +94,16 @@ export function Form({ onPredict, onTrain }: IFormProps) {
 			const timelineValues = __APP_CONFIG__.timelines.map<ITimelineValue>(
 				({ type }, index) => {
 					switch (type) {
+						case "Weekday":
+							return {
+								Datetime: values[index] as string,
+							};
+
+						case "Time":
+							return {
+								Datetime: values[index] as string,
+							};
+
 						case "Datetime":
 							return {
 								Datetime: values[index] as string,
@@ -95,7 +125,10 @@ export function Form({ onPredict, onTrain }: IFormProps) {
 							};
 
 						default:
-							throw new Error("Unknown timeline item type");
+							// @ts-expect-error
+							throw new Error(
+								`Unknown timeline item type: ${timelineItem.type}`,
+							);
 					}
 				},
 			);
@@ -143,6 +176,7 @@ export function Form({ onPredict, onTrain }: IFormProps) {
 							submitTypeRef.current = "predict";
 							onSubmit();
 						}}
+						onUpdate={onUpdate}
 					/>
 				)}
 			/>

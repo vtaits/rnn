@@ -4,9 +4,10 @@ import { Button, Flex } from "@vkontakte/vkui";
 type IActionsProps = Readonly<{
 	onTrain: VoidFunction;
 	onPredict: VoidFunction;
+	onUpdate: VoidFunction;
 }>;
 
-export function Actions({ onTrain, onPredict }: IActionsProps) {
+export function Actions({ onTrain, onPredict, onUpdate }: IActionsProps) {
 	return (
 		<Flex gap="s">
 			<Button onClick={onTrain}>Train</Button>
@@ -20,6 +21,8 @@ export function Actions({ onTrain, onPredict }: IActionsProps) {
 			>
 				Download
 			</Button>
+
+			<Button onClick={onUpdate}>Update prediction server</Button>
 		</Flex>
 	);
 }

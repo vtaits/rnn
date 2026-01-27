@@ -27,7 +27,7 @@ beta(r[i][j]) = 1 / (1 + alpha * (r[i][j]) ^ ( 1 / h ) )
 
 ### Параметры сети
 
-* accumulated_weights_1_to_2, accumulated_weights_2_to_1 - накопительные коэффициэнты синапсов, изменяются при каждом такте
+* forward_synapses_1_to_2, forward_synapses_2_to_1 - накопительные коэффициэнты синапсов, изменяются при каждом такте
 * distance_weights_1_to_2, distance_weights_2_to_1 - коэффициэнты расстояний между нейронами, расчитываются при инициализации и не изменяются
 * neurons_1, neurons_2 - булевы состояния возбуждённости нейронов сети
 * refract_intervals_1, refract_intervals_2 - количество тактов невосприимчивости нейронов сети
@@ -39,7 +39,7 @@ beta(r[i][j]) = 1 / (1 + alpha * (r[i][j]) ^ ( 1 / h ) )
 
 ## Инициализация
 
-1. Настройка accumulated_weights_1_to_2 и accumulated_weights_2_to_1: если нейроны в блоках друг другу соответствуют, вес равен max_g, в противном случае 0
+1. Настройка forward_synapses_1_to_2 и forward_synapses_2_to_1: если нейроны в блоках друг другу соответствуют, вес равен max_g, в противном случае 0
 
 2. Настройка distance_weights_1_to_2 и distance_weights_2_to_1:
 
@@ -71,12 +71,12 @@ beta(r[i][j]) = 1 / (1 + alpha * (r[i][j]) ^ ( 1 / h ) )
 
     2.4. Если sum > threshold, refract_intervals[index] = refract_interval, neurons[index] = 1, в противном случае refract_intervals[index] = 0, neurons[index] = 0
 
-3. Для каждого accumulated_weights каждого слоя выпонить пересчёт:
+3. Для каждого forward_synapses каждого слоя выпонить пересчёт:
 
-    3.1. Если нейрон подающего слоя в данный момент невозбуждён, не менять значение accumulated_weights, в противном случае:
+    3.1. Если нейрон подающего слоя в данный момент невозбуждён, не менять значение forward_synapses, в противном случае:
 
-    3.2. Если нейрон принимающего слоя в данный момент возбуждён, увеличить значение accumulated_weights на g_inc, в противном случае:
+    3.2. Если нейрон принимающего слоя в данный момент возбуждён, увеличить значение forward_synapses на g_inc, в противном случае:
 
-    3.3. Если refract_intervals принимающего слоя был > 0 до текущего такта, уменьшить значение accumulated_weights на g_dec, в противном случае:
+    3.3. Если refract_intervals принимающего слоя был > 0 до текущего такта, уменьшить значение forward_synapses на g_dec, в противном случае:
 
-    3.4. Не менять значение accumulated_weights
+    3.4. Не менять значение forward_synapses
