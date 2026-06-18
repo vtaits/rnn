@@ -1,0 +1,8 @@
+[package]
+name = "memory_opencl_restore_first"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+ocl = "0.19.7"
+rnn_architecture = { path = "../rnn_architecture" }

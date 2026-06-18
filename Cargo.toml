@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "block_sequence_spiral",
+    "memory_opencl_restore_first",
+    "rnn_architecture",
+    "topology_spiral"
+]
