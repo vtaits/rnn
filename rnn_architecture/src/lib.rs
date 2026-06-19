@@ -15,11 +15,11 @@ pub trait Memory {
 }
 
 pub trait BlockSequence {
-    fn iterate_blocks(&self) -> impl Iterator<Item = (usize, usize)>;
+    fn iterate_blocks(&self) -> Box<dyn Iterator<Item = (usize, usize)>>;
 }
 
 pub trait Topology {
-    fn fill(&self, memory: dyn Memory);
+    fn fill(&self, block_sequence: Box<dyn BlockSequence>, memory: Box<dyn Memory>);
 }
 
 pub trait Processor {
@@ -75,13 +75,13 @@ pub trait HighLevelControllerFactory<DataType> {
 }
 
 pub trait DataProvider<DataType> {
-    fn iterate_training_data(&self) -> Box<impl Iterator<Item = DataType>>;
+    fn iterate_training_data(&self) -> Box<dyn Iterator<Item = DataType>>;
 
-    fn iterate_test_data(&self) -> Box<impl Iterator<Item = DataType>>;
+    fn iterate_test_data(&self) -> Box<dyn Iterator<Item = DataType>>;
 }
 
 pub trait DataProviderFactory<DataType> {
-    fn create_data_provider(&self, experiment_index: usize) -> dyn DataProvider<DataType>;
+    fn create_data_provider(&self, experiment_index: usize) -> Box<dyn DataProvider<DataType>>;
 }
 
 pub trait ExperimentResult<DataType> {

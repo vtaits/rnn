@@ -5,5 +5,5 @@ members = [
     "block_sequence_spiral",
     "memory_opencl_restore_first",
     "rnn_architecture",
-    "topology_spiral"
+    "topology_restore_first"
 ]
