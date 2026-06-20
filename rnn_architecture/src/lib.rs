@@ -14,12 +14,43 @@ pub trait Memory {
     );
 }
 
+pub trait NeuronCoordinatesResolver {
+    fn resolve(
+        &self,
+        field_x: usize,
+        field_y: usize,
+        neuron_in_field_x: usize,
+        neuron_in_field_y: usize,
+    ) -> usize;
+}
+
+pub trait FieldsConnector {
+    fn connect_1_to_2(
+        &self,
+        field_1_x: usize,
+        field_1_y: usize,
+        field_2_x: usize,
+        field_2_y: usize,
+    );
+    fn connect_2_to_1(
+        &self,
+        field_1_x: usize,
+        field_1_y: usize,
+        field_2_x: usize,
+        field_2_y: usize,
+    );
+}
+
 pub trait BlockSequence {
     fn iterate_blocks(&self) -> Box<dyn Iterator<Item = (usize, usize)>>;
 }
 
 pub trait Topology {
-    fn fill(&self, block_sequence: Box<dyn BlockSequence>, memory: Box<dyn Memory>);
+    fn fill(
+        &self,
+        block_sequence: Box<dyn BlockSequence>,
+        fields_connector: Box<dyn FieldsConnector>,
+    );
 }
 
 pub trait Processor {
