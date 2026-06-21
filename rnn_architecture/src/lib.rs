@@ -1,13 +1,24 @@
 pub trait Memory {
-    fn set_spatial_shift(&self, neuron_from_index: usize, neuron_to_index: usize);
+    fn set_distance_1_to_2(
+        &mut self,
+        neuron_from_index: usize,
+        neuron_to_index: usize,
+        distance: f32,
+    );
+    fn set_distance_2_to_1(
+        &mut self,
+        neuron_from_index: usize,
+        neuron_to_index: usize,
+        distance: f32,
+    );
     fn set_synapse_weight_1_to_2(
-        &self,
+        &mut self,
         neuron_from_index: usize,
         neuron_to_index: usize,
         weight: f32,
     );
     fn set_synapse_weight_2_to_1(
-        &self,
+        &mut self,
         neuron_from_index: usize,
         neuron_to_index: usize,
         weight: f32,
@@ -24,20 +35,28 @@ pub trait NeuronCoordinatesResolver {
     ) -> usize;
 }
 
+pub trait DistanceBetweenNeurons {
+    fn get_distance(&mut self, dx: i32, dy: i32) -> f32;
+}
+
 pub trait FieldsConnector {
     fn connect_1_to_2(
-        &self,
+        &mut self,
         field_1_x: usize,
         field_1_y: usize,
         field_2_x: usize,
         field_2_y: usize,
+        shift_x: i32,
+        shift_y: i32,
     );
     fn connect_2_to_1(
-        &self,
+        &mut self,
         field_1_x: usize,
         field_1_y: usize,
         field_2_x: usize,
         field_2_y: usize,
+        shift_x: i32,
+        shift_y: i32,
     );
 }
 
@@ -54,12 +73,12 @@ pub trait Topology {
 }
 
 pub trait Processor {
-    fn input_signal(&self, signal: Vec<bool>);
+    fn input_signal(&mut self, signal: Vec<bool>);
 
-    fn transfer_1_to_2();
-    fn transfer_2_to_1();
+    fn transfer_1_to_2(&mut self);
+    fn transfer_2_to_1(&mut self);
 
-    fn read_signal() -> Vec<bool>;
+    fn read_signal(&self) -> Vec<bool>;
 }
 
 pub trait ResultReader {

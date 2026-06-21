@@ -1,5 +1,5 @@
 [package]
-name = "mask_fields_connector"
+name = "full_fields_connector"
 version = "1.0.0"
 edition = "2021"
 

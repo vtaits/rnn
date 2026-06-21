@@ -3,8 +3,10 @@ resolver = "2"
 
 members = [
     "block_sequence_spiral",
-    "mask_fields_connector",
-    "memory_opencl_restore_first",
+    "full_fields_connector",
+    "memory_cpu_full",
+    "power_law_distance",
+    "processor_cpu_full",
     "rnn_architecture",
     "row_col_coordinates_resolver",
     "topology_restore_first"
