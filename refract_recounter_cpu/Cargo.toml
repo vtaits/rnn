@@ -1,8 +1,7 @@
 [package]
-name = "memory_cpu_full"
+name = "refract_recounter_cpu"
 version = "1.0.0"
 edition = "2021"
 
 [dependencies]
 processor_cpu_full = { path = "../processor_cpu_full" }
-rnn_architecture = { path = "../rnn_architecture" }

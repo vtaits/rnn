@@ -1,3 +1,4 @@
+use processor_cpu_full::ProcessorCpuFullMemory;
 use rnn_architecture::Memory;
 
 pub struct MemoryCpuFull {
@@ -71,5 +72,49 @@ impl Memory for MemoryCpuFull {
         weight: f32,
     ) {
         self.synapse_weights_2_to_1[neuron_from_index * self.layer_size + neuron_to_index] = weight;
+    }
+}
+
+impl ProcessorCpuFullMemory for MemoryCpuFull {
+    fn get_layer_size(&self) -> usize {
+        self.layer_size
+    }
+
+    fn get_neurons_1(&self) -> &[bool] {
+        &self.neurons_1
+    }
+
+    fn set_neuron_1(&mut self, index: usize, value: bool) {
+        self.neurons_1[index] = value;
+    }
+
+    fn get_refract_interval_1(&self, index: usize) -> u8 {
+        self.refract_intervals_1[index]
+    }
+
+    fn get_transfer_fields_1_to_2(
+        &mut self,
+    ) -> (&[bool], &mut [bool], &mut [u8], &[u8], &mut [f32], &[f32]) {
+        (
+            &self.neurons_1,
+            &mut self.neurons_2,
+            &mut self.refract_intervals_1,
+            &self.refract_intervals_2,
+            &mut self.synapse_weights_1_to_2,
+            &self.distances_1_to_2,
+        )
+    }
+
+    fn get_transfer_fields_2_to_1(
+        &mut self,
+    ) -> (&[bool], &mut [bool], &mut [u8], &[u8], &mut [f32], &[f32]) {
+        (
+            &self.neurons_2,
+            &mut self.neurons_1,
+            &mut self.refract_intervals_2,
+            &self.refract_intervals_1,
+            &mut self.synapse_weights_2_to_1,
+            &self.distances_2_to_1,
+        )
     }
 }

@@ -1,0 +1,17 @@
+pub trait ProcessorCpuFullMemory {
+    fn get_layer_size(&self) -> usize;
+
+    fn set_neuron_1(&mut self, index: usize, value: bool);
+
+    fn get_neurons_1(&self) -> &[bool];
+
+    fn get_refract_interval_1(&self, index: usize) -> u8;
+
+    fn get_transfer_fields_1_to_2(
+        &mut self,
+    ) -> (&[bool], &mut [bool], &mut [u8], &[u8], &mut [f32], &[f32]);
+
+    fn get_transfer_fields_2_to_1(
+        &mut self,
+    ) -> (&[bool], &mut [bool], &mut [u8], &[u8], &mut [f32], &[f32]);
+}

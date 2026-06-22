@@ -7,6 +7,7 @@ members = [
     "memory_cpu_full",
     "power_law_distance",
     "processor_cpu_full",
+    "refract_recounter_cpu",
     "rnn_architecture",
     "row_col_coordinates_resolver",
     "topology_restore_first"

@@ -1,0 +1,11 @@
+pub trait ProcessorCpuFullSignalTransferer {
+    fn transfer(
+        &self,
+        g_0: f32,
+        neurons_from: &[bool],
+        neurons_to: &mut [bool],
+        refract_intervals_to: &[u8],
+        synapses: &mut [f32],
+        distances: &[f32],
+    );
+}
