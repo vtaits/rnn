@@ -82,28 +82,32 @@ pub trait Processor {
 }
 
 pub trait ResultReader {
-    fn write_single_signal(&self, signal: Vec<bool>);
-    fn read_full_signal(&self, signal: Vec<bool>);
+    fn write_single_signal(&mut self, signal: Vec<bool>);
+    fn read_full_signal(&self) -> Vec<Vec<bool>>;
 }
 
 pub trait ResultReaderFactory {
-    fn create(&self) -> dyn ResultReader;
+    fn create(&self) -> Box<dyn ResultReader>;
 }
 
 pub trait TickController {
-    fn write_single_signal(&self, signal: Vec<bool>);
+    fn write_single_signal(&mut self, signal: Vec<bool>);
 
-    fn transfer_signal(&self);
+    fn transfer_signal(&mut self);
 
-    fn attach_reader(&self, reader: dyn ResultReader);
+    fn attach_reader(&mut self, result_reader: Box<dyn ResultReader>);
 
-    fn deattach_reader(&self);
+    fn detach_reader(&mut self) -> Box<dyn ResultReader>;
 }
 
 pub trait BinaryController {
-    fn push_single_signal(&self, signal: Vec<bool>);
+    fn push_single_signal(&mut self, signal: Vec<bool>);
 
-    fn predict(&self, depth: usize) -> Result<Vec<Vec<bool>>, ()>;
+    fn predict(&mut self, depth: usize) -> Result<Vec<Vec<bool>>, ()>;
+}
+
+pub trait BinaryControllerFactory {
+    fn create_binary_controller(&self) -> Box<dyn BinaryController>;
 }
 
 pub trait ForwardTransformer<DataType> {
@@ -115,13 +119,13 @@ pub trait InverseTransformer<DataType> {
 }
 
 pub trait HighLevelController<DataType> {
-    fn push(&self, data: DataType);
+    fn push(&mut self, data: DataType);
 
-    fn predict(&self, depth: usize) -> Result<Vec<DataType>, ()>;
+    fn predict(&mut self, depth: usize) -> Result<Vec<DataType>, ()>;
 }
 
 pub trait HighLevelControllerFactory<DataType> {
-    fn create_high_level_controller(&self) -> dyn HighLevelController<DataType>;
+    fn create_high_level_controller(&self) -> Box<dyn HighLevelController<DataType>>;
 }
 
 pub trait DataProvider<DataType> {

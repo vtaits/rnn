@@ -5,28 +5,14 @@ use crate::{
 };
 
 pub struct ProcessorCpuFullParams {
-    gamma_inc: f32,
-    gamma_dec: f32,
     g_0: f32,
-    g_dec: f32,
-    g_inc: f32,
-    min_g: f32,
-    max_g: f32,
     field_width: usize,
     field_height: usize,
-    threshold: f32,
 }
 
 pub struct ProcessorCpuFull {
-    gamma_inc: f32,
-    gamma_dec: f32,
     g_0: f32,
-    g_dec: f32,
-    g_inc: f32,
-    min_g: f32,
-    max_g: f32,
     field_size: usize,
-    threshold: f32,
     refract_recounter: Box<dyn ProcessorCpuFullRefractRecounter>,
     signal_transferer: Box<dyn ProcessorCpuFullSignalTransferer>,
     memory: Box<dyn ProcessorCpuFullMemory>,
@@ -40,30 +26,16 @@ impl ProcessorCpuFull {
         refract_recounter: Box<dyn ProcessorCpuFullRefractRecounter>,
     ) -> Self {
         let ProcessorCpuFullParams {
-            gamma_inc,
-            gamma_dec,
             g_0,
-            g_dec,
-            g_inc,
-            min_g,
-            max_g,
             field_height,
             field_width,
-            threshold,
         } = params;
 
         Self {
-            gamma_inc,
-            gamma_dec,
             g_0,
-            g_dec,
-            g_inc,
-            min_g,
-            max_g,
             memory,
             signal_transferer,
             refract_recounter,
-            threshold,
             field_size: field_width * field_height,
         }
     }

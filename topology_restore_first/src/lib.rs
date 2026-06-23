@@ -2,6 +2,12 @@ use rnn_architecture::{BlockSequence, FieldsConnector, Topology};
 
 pub struct TopologyRestoreFirst();
 
+impl TopologyRestoreFirst {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
 impl Topology for TopologyRestoreFirst {
     fn fill(
         &self,

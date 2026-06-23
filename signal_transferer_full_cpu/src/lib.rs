@@ -1,22 +1,4 @@
-use processor_cpu_full::ProcessorCpuFullSignalTransferer;
+mod get_weight_coefficient;
+mod signal_transferer_full_cpu;
 
-pub struct SignalTransfererCpuFull {}
-
-impl SignalTransfererCpuFull {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl ProcessorCpuFullSignalTransferer for SignalTransfererCpuFull {
-    fn transfer(
-        &self,
-        g_0: f32,
-        neurons_from: &[bool],
-        neurons_to: &mut [bool],
-        refract_intervals_to: &[u8],
-        synapses: &mut [f32],
-        distances: &[f32],
-    ) {
-    }
-}
+pub use signal_transferer_full_cpu::{SignalTransfererCpuFull, SignalTransfererCpuFullParams};
