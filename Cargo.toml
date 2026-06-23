@@ -10,5 +10,6 @@ members = [
     "refract_recounter_cpu",
     "rnn_architecture",
     "row_col_coordinates_resolver",
+    "signal_transferer_full_cpu",
     "topology_restore_first"
 ]
