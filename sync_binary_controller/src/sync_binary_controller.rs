@@ -1,18 +1,18 @@
-use rnn_architecture::{BinaryController, ResultReaderFactory, TickController};
+use rnn_architecture::{BinaryController, ResultReader, TickController};
 
 pub struct SyncBinaryController {
     tick_controller: Box<dyn TickController>,
-    result_reader_factory: Box<dyn ResultReaderFactory>,
+    create_result_reader: Box<dyn Fn() -> Box<dyn ResultReader>>,
 }
 
 impl SyncBinaryController {
     pub fn new(
         tick_controller: Box<dyn TickController>,
-        result_reader_factory: Box<dyn ResultReaderFactory>,
+        create_result_reader: Box<dyn Fn() -> Box<dyn ResultReader>>,
     ) -> Self {
         Self {
             tick_controller,
-            result_reader_factory,
+            create_result_reader,
         }
     }
 }
@@ -23,7 +23,7 @@ impl BinaryController for SyncBinaryController {
     }
 
     fn predict(&mut self, depth: usize) -> Result<Vec<Vec<bool>>, ()> {
-        let result_reader = self.result_reader_factory.create();
+        let result_reader = (self.create_result_reader)();
         self.tick_controller.attach_reader(result_reader);
 
         for _ in 0..depth {

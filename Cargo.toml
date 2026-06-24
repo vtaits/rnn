@@ -3,6 +3,7 @@ resolver = "2"
 
 members = [
     "block_sequence_spiral",
+    "data_multiple_timelines",
     "full_fields_connector",
     "memory_cpu_full",
     "power_law_distance",
