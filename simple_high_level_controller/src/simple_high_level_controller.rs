@@ -32,6 +32,10 @@ impl<DataType> HighLevelController<DataType> for SimpleHighLevelController<DataT
         })
     }
 
+    fn reset_neurons(&mut self) {
+        self.binary_controller.reset_neurons();
+    }
+
     fn push(&mut self, data: DataType) {
         self.binary_controller
             .push_single_signal(self.forward_transformer.transform(data));

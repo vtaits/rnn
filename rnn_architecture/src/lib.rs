@@ -1,4 +1,6 @@
 pub trait Memory {
+    fn reset_neurons(&mut self);
+
     fn set_distance_1_to_2(
         &mut self,
         neuron_from_index: usize,
@@ -75,6 +77,8 @@ pub trait Topology {
 pub trait Processor {
     fn input_signal(&mut self, signal: Vec<bool>);
 
+    fn reset_neurons(&mut self);
+
     fn transfer_1_to_2(&mut self);
     fn transfer_2_to_1(&mut self);
 
@@ -97,6 +101,8 @@ pub trait ResultReaderFactory {
 pub trait TickController {
     fn write_single_signal(&mut self, signal: Vec<bool>);
 
+    fn reset_neurons(&mut self);
+
     fn transfer_signal(&mut self);
 
     fn attach_reader(&mut self, result_reader: Box<dyn ResultReader>);
@@ -110,6 +116,8 @@ pub trait TickControllerFactory {
 
 pub trait BinaryController {
     fn push_single_signal(&mut self, signal: Vec<bool>);
+
+    fn reset_neurons(&mut self);
 
     fn predict(&mut self, depth: usize) -> Result<Vec<Vec<bool>>, ()>;
 }
@@ -140,6 +148,8 @@ pub trait InverseTransformerFactory<DataType> {
 pub trait HighLevelController<DataType> {
     fn push(&mut self, data: DataType);
 
+    fn reset_neurons(&mut self);
+
     fn predict(&mut self, depth: usize) -> Result<Vec<DataType>, ()>;
 }
 
@@ -161,15 +171,15 @@ pub trait DataProviderFactory<DataType> {
 }
 
 pub trait ExperimentResult<DataType> {
-    fn original_data(&self) -> Vec<DataType>;
+    fn original_data(&self) -> &[DataType];
 
-    fn generated_data(&self) -> Vec<DataType>;
+    fn generated_data(&self) -> &[DataType];
 }
 
 pub trait SingleExperiment<DataType> {
-    fn execute(&self) -> dyn ExperimentResult<DataType>;
+    fn execute(&mut self) -> Box<dyn ExperimentResult<DataType>>;
 }
 
 pub trait FullExperiment<DataType> {
-    fn execute() -> Vec<Box<dyn ExperimentResult<DataType>>>;
+    fn execute(&self) -> Vec<Box<dyn ExperimentResult<DataType>>>;
 }

@@ -37,6 +37,10 @@ impl TickController for SimpleTickController {
         processor.transfer_2_to_1();
     }
 
+    fn reset_neurons(&mut self) {
+        self.processor.reset_neurons();
+    }
+
     fn attach_reader(&mut self, result_reader: Box<dyn ResultReader>) {
         self.result_reader = Some(result_reader);
     }

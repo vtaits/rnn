@@ -22,6 +22,10 @@ impl BinaryController for SyncBinaryController {
         self.tick_controller.write_single_signal(signal);
     }
 
+    fn reset_neurons(&mut self) {
+        self.tick_controller.reset_neurons();
+    }
+
     fn predict(&mut self, depth: usize) -> Result<Vec<Vec<bool>>, ()> {
         let result_reader = (self.create_result_reader)();
         self.tick_controller.attach_reader(result_reader);

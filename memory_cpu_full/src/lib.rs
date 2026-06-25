@@ -1,4 +1,4 @@
-use processor_cpu_full::ProcessorCpuFullMemory;
+use processor_cpu_full::ProcessorCpuFullSpecificMemory;
 use rnn_architecture::Memory;
 
 pub struct MemoryCpuFull {
@@ -38,6 +38,13 @@ impl MemoryCpuFull {
 }
 
 impl Memory for MemoryCpuFull {
+    fn reset_neurons(&mut self) {
+        self.neurons_1.fill(false);
+        self.neurons_2.fill(false);
+        self.refract_intervals_1.fill(0);
+        self.refract_intervals_2.fill(0);
+    }
+
     fn set_distance_1_to_2(
         &mut self,
         neuron_from_index: usize,
@@ -75,7 +82,7 @@ impl Memory for MemoryCpuFull {
     }
 }
 
-impl ProcessorCpuFullMemory for MemoryCpuFull {
+impl ProcessorCpuFullSpecificMemory for MemoryCpuFull {
     fn get_layer_size(&self) -> usize {
         self.layer_size
     }

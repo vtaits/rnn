@@ -1,4 +1,6 @@
-pub trait ProcessorCpuFullMemory {
+use rnn_architecture::Memory;
+
+pub trait ProcessorCpuFullSpecificMemory {
     fn get_layer_size(&self) -> usize;
 
     fn set_neuron_1(&mut self, index: usize, value: bool);
@@ -15,3 +17,5 @@ pub trait ProcessorCpuFullMemory {
         &mut self,
     ) -> (&[bool], &mut [bool], &mut [u8], &[u8], &mut [f32], &[f32]);
 }
+
+pub trait ProcessorCpuFullMemory: ProcessorCpuFullSpecificMemory + Memory {}

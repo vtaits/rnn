@@ -3,7 +3,9 @@ resolver = "2"
 
 members = [
     "block_sequence_spiral",
+    "cross_validation",
     "data_multiple_timelines",
+    "experiment_prediction",
     "full_fields_connector",
     "memory_cpu_full",
     "power_law_distance",
@@ -12,6 +14,7 @@ members = [
     "rnn_architecture",
     "row_col_coordinates_resolver",
     "signal_transferer_full_cpu",
+    "simple_experiment_result",
     "simple_high_level_controller",
     "simple_result_reader",
     "simple_tick_controller",

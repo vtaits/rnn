@@ -52,6 +52,10 @@ impl Processor for ProcessorCpuFull {
         }
     }
 
+    fn reset_neurons(&mut self) {
+        self.memory.reset_neurons();
+    }
+
     fn read_signal(&self) -> Vec<bool> {
         let memory = self.memory.as_ref();
 
