@@ -18,6 +18,7 @@ members = [
     "simple_high_level_controller",
     "simple_result_reader",
     "simple_tick_controller",
+    "stream_splitter_data_provider",
     "sync_binary_controller",
     "topology_restore_first"
 ]
