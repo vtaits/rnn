@@ -19,6 +19,7 @@ members = [
     "simple_result_reader",
     "simple_tick_controller",
     "stream_splitter_data_provider",
+    "statshouse_data_iterator",
     "sync_binary_controller",
     "topology_restore_first"
 ]

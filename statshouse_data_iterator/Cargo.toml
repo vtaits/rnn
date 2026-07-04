@@ -1,0 +1,12 @@
+[package]
+name = "statshouse_data_iterator"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+chrono = "0.4.45"
+csv = "1.4.0"
+data_multiple_timelines = { path = "../data_multiple_timelines" }
+rnn_architecture = { path = "../rnn_architecture" }
+serde = "1.0.228"
+serde_derive = "1.0.228"

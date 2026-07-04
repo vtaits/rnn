@@ -8,7 +8,9 @@ mod timeline_value_retriever;
 
 pub use multiple_timelines_forward_transformer::MultipleTimelinesForwardTransformer;
 pub use multiple_timelines_inverse_transformer::MultipleTimelinesInverseTransformer;
+pub use multiple_timelines_value::MultipleTimelinesValue;
 pub use timeline_primitive_value::TimelinePrimitiveValue;
+pub use timeline_value::TimelineValue;
 
 pub use timeline_implementations::{
     FloatRetriever, FloatTimelineValue, TimeRetriever, TimeTimelineValue, WeekdayRetriever,
