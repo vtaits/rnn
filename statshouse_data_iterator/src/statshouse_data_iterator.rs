@@ -1,15 +1,16 @@
 use chrono::NaiveDateTime;
 use data_multiple_timelines::MultipleTimelinesValue;
+use two_states_frame::TwoStatesFrame;
 
-use crate::statshouse_stream::StatsHouseStream;
+use crate::data_record::DataRecord;
 
 pub struct StatsHouseDataIterator {
-    streams: Vec<Box<dyn StatsHouseStream>>,
+    streams: Vec<Box<dyn TwoStatesFrame<Box<dyn DataRecord>>>>,
     has_next: bool,
 }
 
 impl StatsHouseDataIterator {
-    pub fn new(streams: Vec<Box<dyn StatsHouseStream>>) -> Self {
+    pub fn new(streams: Vec<Box<dyn TwoStatesFrame<Box<dyn DataRecord>>>>) -> Self {
         Self {
             streams,
             has_next: true,
@@ -20,10 +21,8 @@ impl StatsHouseDataIterator {
         let mut result = None;
 
         for stream in self.streams.iter() {
-            let next_date_option = stream.get_next_time();
-
-            if let Some(next_date_ref) = next_date_option {
-                let next_date = *next_date_ref;
+            if let Some(next_date_ref) = stream.get_next() {
+                let next_date = *next_date_ref.get_time();
 
                 if let Some(current_result) = result {
                     if current_result > next_date {
@@ -42,9 +41,14 @@ impl StatsHouseDataIterator {
         let mut result = Vec::new();
 
         for stream in self.streams.iter() {
-            let value = stream.retrieve();
-
-            result.push(value);
+            match stream.get_current() {
+                Some(data) => {
+                    result.push(data.get_value());
+                }
+                _ => {
+                    panic!("Empty stream");
+                }
+            }
         }
 
         result
@@ -55,8 +59,8 @@ impl StatsHouseDataIterator {
 
         if let Some(next_time) = self.get_min_next_time() {
             for stream in self.streams.iter_mut() {
-                if let Some(stream_next_time) = stream.get_next_time() {
-                    if *stream_next_time <= next_time {
+                if let Some(stream_next_time) = stream.get_next() {
+                    if *(stream_next_time.get_time()) <= next_time {
                         stream.shift();
                         has_shifted = true;
                     }

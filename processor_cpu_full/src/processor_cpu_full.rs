@@ -5,9 +5,9 @@ use crate::{
 };
 
 pub struct ProcessorCpuFullParams {
-    g_0: f32,
-    field_width: usize,
-    field_height: usize,
+    pub g_0: f32,
+    pub field_width: usize,
+    pub field_height: usize,
 }
 
 pub struct ProcessorCpuFull {

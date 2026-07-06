@@ -19,3 +19,5 @@ pub trait ProcessorCpuFullSpecificMemory {
 }
 
 pub trait ProcessorCpuFullMemory: ProcessorCpuFullSpecificMemory + Memory {}
+
+impl<T: ProcessorCpuFullSpecificMemory + Memory> ProcessorCpuFullMemory for T {}

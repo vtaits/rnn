@@ -3,10 +3,14 @@ resolver = "2"
 
 members = [
     "block_sequence_spiral",
+    "binary_controller_builder",
     "cross_validation",
     "data_multiple_timelines",
     "experiment_prediction",
+    "forward_transformer_logger",
+    "full_experiment_prediction",
     "full_fields_connector",
+    "inverse_transformer_logger",
     "memory_cpu_full",
     "power_law_distance",
     "processor_cpu_full",
@@ -21,5 +25,7 @@ members = [
     "stream_splitter_data_provider",
     "statshouse_data_iterator",
     "sync_binary_controller",
-    "topology_restore_first"
+    "topology_restore_first",
+    "two_states_frame",
+    "two_states_frame_iterator",
 ]

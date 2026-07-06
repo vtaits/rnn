@@ -8,5 +8,7 @@ chrono = "0.4.45"
 csv = "1.4.0"
 data_multiple_timelines = { path = "../data_multiple_timelines" }
 rnn_architecture = { path = "../rnn_architecture" }
+two_states_frame = { path = "../two_states_frame" }
+two_states_frame_iterator = { path = "../two_states_frame_iterator" }
 serde = "1.0.228"
 serde_derive = "1.0.228"

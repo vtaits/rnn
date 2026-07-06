@@ -1,0 +1,17 @@
+[package]
+name = "full_experiment_prediction"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+binary_controller_builder = { path = "../binary_controller_builder" }
+cross_validation = { path = "../cross_validation" }
+data_multiple_timelines = { path = "../data_multiple_timelines" }
+experiment_prediction = { path = "../experiment_prediction" }
+forward_transformer_logger = { path = "../forward_transformer_logger" }
+inverse_transformer_logger = { path = "../inverse_transformer_logger" }
+rnn_architecture = { path = "../rnn_architecture" }
+simple_experiment_result = { path = "../simple_experiment_result" }
+simple_high_level_controller = { path = "../simple_high_level_controller" }
+statshouse_data_iterator = { path = "../statshouse_data_iterator" }
+stream_splitter_data_provider = { path = "../stream_splitter_data_provider" }

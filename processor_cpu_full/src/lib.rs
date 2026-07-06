@@ -3,7 +3,7 @@ mod processor_cpu_full_memory;
 mod processor_cpu_full_refract_recounter;
 mod processor_cpu_full_signal_transferer;
 
-pub use processor_cpu_full::ProcessorCpuFull;
+pub use processor_cpu_full::{ProcessorCpuFull, ProcessorCpuFullParams};
 pub use processor_cpu_full_memory::{ProcessorCpuFullMemory, ProcessorCpuFullSpecificMemory};
 pub use processor_cpu_full_refract_recounter::ProcessorCpuFullRefractRecounter;
 pub use processor_cpu_full_signal_transferer::ProcessorCpuFullSignalTransferer;

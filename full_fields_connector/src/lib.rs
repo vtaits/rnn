@@ -2,38 +2,36 @@ use rnn_architecture::{
     DistanceBetweenNeurons, FieldsConnector, Memory, NeuronCoordinatesResolver,
 };
 
-pub struct FullFieldsConnector<'a> {
+pub struct FullFieldsConnector {
     field_width: usize,
     field_height: usize,
     max_weight: f32,
-    distance_between_neurons: &'a mut dyn DistanceBetweenNeurons,
-    memory: &'a mut dyn Memory,
-    neuron_coordinates_resolver: &'a dyn NeuronCoordinatesResolver,
+    distance_between_neurons: Box<dyn DistanceBetweenNeurons>,
+    neuron_coordinates_resolver: Box<dyn NeuronCoordinatesResolver>,
 }
 
-impl<'a> FullFieldsConnector<'a> {
+impl<'a> FullFieldsConnector {
     pub fn new(
         field_width: usize,
         field_height: usize,
         max_weight: f32,
-        distance_between_neurons: &'a mut dyn DistanceBetweenNeurons,
-        memory: &'a mut dyn Memory,
-        neuron_coordinates_resolver: &'a dyn NeuronCoordinatesResolver,
+        distance_between_neurons: Box<dyn DistanceBetweenNeurons>,
+        neuron_coordinates_resolver: Box<dyn NeuronCoordinatesResolver>,
     ) -> Self {
         Self {
             field_width,
             field_height,
             max_weight,
             distance_between_neurons,
-            memory,
             neuron_coordinates_resolver,
         }
     }
 }
 
-impl<'a> FieldsConnector for FullFieldsConnector<'a> {
+impl FieldsConnector for FullFieldsConnector {
     fn connect_1_to_2(
         &mut self,
+        memory: &mut dyn Memory,
         field_1_x: usize,
         field_1_y: usize,
         field_2_x: usize,
@@ -78,11 +76,10 @@ impl<'a> FieldsConnector for FullFieldsConnector<'a> {
 
                         let distance = self.distance_between_neurons.get_distance(dx, dy);
 
-                        self.memory
-                            .set_distance_1_to_2(neuron_1_index, neuron_2_index, distance);
+                        memory.set_distance_1_to_2(neuron_1_index, neuron_2_index, distance);
 
                         if dx == 0 && dy == 0 {
-                            self.memory.set_synapse_weight_1_to_2(
+                            memory.set_synapse_weight_1_to_2(
                                 neuron_1_index,
                                 neuron_2_index,
                                 self.max_weight,
@@ -96,6 +93,7 @@ impl<'a> FieldsConnector for FullFieldsConnector<'a> {
 
     fn connect_2_to_1(
         &mut self,
+        memory: &mut dyn Memory,
         field_2_x: usize,
         field_2_y: usize,
         field_1_x: usize,
@@ -140,11 +138,10 @@ impl<'a> FieldsConnector for FullFieldsConnector<'a> {
 
                         let distance = self.distance_between_neurons.get_distance(dx, dy);
 
-                        self.memory
-                            .set_distance_2_to_1(neuron_2_index, neuron_1_index, distance);
+                        memory.set_distance_2_to_1(neuron_2_index, neuron_1_index, distance);
 
                         if dx == 0 && dy == 0 {
-                            self.memory.set_synapse_weight_2_to_1(
+                            memory.set_synapse_weight_2_to_1(
                                 neuron_2_index,
                                 neuron_1_index,
                                 self.max_weight,

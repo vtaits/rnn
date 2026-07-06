@@ -3,17 +3,17 @@ use processor_cpu_full::ProcessorCpuFullSignalTransferer;
 use crate::get_weight_coefficient::get_weight_coefficient;
 
 pub struct SignalTransfererCpuFullParams {
-    field_width: usize,
-    field_height: usize,
-    layer_width: usize,
-    layer_height: usize,
-    threshold: f32,
-    gamma_inc: f32,
-    gamma_dec: f32,
-    g_inc: f32,
-    g_dec: f32,
-    min_g: f32,
-    max_g: f32,
+    pub field_width: usize,
+    pub field_height: usize,
+    pub layer_width: usize,
+    pub layer_height: usize,
+    pub threshold: f32,
+    pub gamma_inc: f32,
+    pub gamma_dec: f32,
+    pub g_inc: f32,
+    pub g_dec: f32,
+    pub min_g: f32,
+    pub max_g: f32,
 }
 
 pub struct SignalTransfererCpuFull {

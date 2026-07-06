@@ -15,11 +15,11 @@ impl<DataType> SimpleExperimentResult<DataType> {
 }
 
 impl<DataType> ExperimentResult<DataType> for SimpleExperimentResult<DataType> {
-    fn generated_data(&self) -> &[DataType] {
+    fn get_generated_data(&self) -> &[DataType] {
         &self.generated_data
     }
 
-    fn original_data(&self) -> &[DataType] {
+    fn get_original_data(&self) -> &[DataType] {
         &self.original_data
     }
 }

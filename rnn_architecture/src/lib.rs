@@ -44,6 +44,7 @@ pub trait DistanceBetweenNeurons {
 pub trait FieldsConnector {
     fn connect_1_to_2(
         &mut self,
+        memory: &mut dyn Memory,
         field_1_x: usize,
         field_1_y: usize,
         field_2_x: usize,
@@ -51,8 +52,10 @@ pub trait FieldsConnector {
         shift_x: i32,
         shift_y: i32,
     );
+
     fn connect_2_to_1(
         &mut self,
+        memory: &mut dyn Memory,
         field_1_x: usize,
         field_1_y: usize,
         field_2_x: usize,
@@ -70,7 +73,8 @@ pub trait Topology {
     fn fill(
         &self,
         block_sequence: Box<dyn BlockSequence>,
-        fields_connector: Box<dyn FieldsConnector>,
+        fields_connector: &mut dyn FieldsConnector,
+        memory: &mut dyn Memory,
     );
 }
 
@@ -171,9 +175,9 @@ pub trait DataProviderFactory<DataType> {
 }
 
 pub trait ExperimentResult<DataType> {
-    fn original_data(&self) -> &[DataType];
+    fn get_original_data(&self) -> &[DataType];
 
-    fn generated_data(&self) -> &[DataType];
+    fn get_generated_data(&self) -> &[DataType];
 }
 
 pub trait SingleExperiment<DataType> {

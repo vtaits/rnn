@@ -1,0 +1,4 @@
+[package]
+name = "two_states_frame"
+version = "1.0.0"
+edition = "2021"

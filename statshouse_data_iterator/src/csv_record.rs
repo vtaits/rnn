@@ -1,9 +1,9 @@
 use serde_derive::Deserialize;
 
 #[derive(Debug, Deserialize)]
-struct CsvRecord {
+pub struct CsvRecord {
     #[serde(rename = "Date")]
-    date: String,
+    pub date: String,
     #[serde(rename = "Value")]
-    value: f32,
+    pub value: f32,
 }
