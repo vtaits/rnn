@@ -95,7 +95,7 @@ impl ProcessorCpuFullSignalTransferer for SignalTransfererCpuFull {
         }
 
         for neuron_from_index in 0..self.layer_size {
-            if neurons_from[neuron_from_index] {
+            if !neurons_from[neuron_from_index] {
                 continue;
             }
 

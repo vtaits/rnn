@@ -20,6 +20,7 @@ impl SyncBinaryController {
 impl BinaryController for SyncBinaryController {
     fn push_single_signal(&mut self, signal: Vec<bool>) {
         self.tick_controller.write_single_signal(signal);
+        self.tick_controller.transfer_signal();
     }
 
     fn reset_neurons(&mut self) {

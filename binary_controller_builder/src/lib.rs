@@ -39,17 +39,17 @@ impl BinaryControllerBuilder {
             field_height: None,
             layer_width: None,
             layer_height: None,
-            alpha: 3.0,
-            gamma_dec: 0.5,
-            gamma_inc: 0.5,
-            g_dec: 0.1,
-            g_inc: 0.1,
+            alpha: 2.0,
+            gamma_dec: 0.4,
+            gamma_inc: 0.6,
+            g_dec: 1.0,
+            g_inc: 5.0,
             g_0: 1.0,
             min_g: -10.0,
             max_g: 10.0,
             h: 0.5,
-            refract_interval: 3,
-            threshold: 0.9,
+            refract_interval: 1,
+            threshold: 0.8,
         }
     }
 
@@ -67,6 +67,50 @@ impl BinaryControllerBuilder {
 
     pub fn set_layer_height(&mut self, layer_height: usize) {
         self.layer_height = Some(layer_height);
+    }
+
+    pub fn set_alpha(&mut self, alpha: f32) {
+        self.alpha = alpha;
+    }
+
+    pub fn set_gamma_dec(&mut self, gamma_dec: f32) {
+        self.gamma_dec = gamma_dec;
+    }
+
+    pub fn set_gamma_inc(&mut self, gamma_inc: f32) {
+        self.gamma_inc = gamma_inc;
+    }
+
+    pub fn set_g_dec(&mut self, g_dec: f32) {
+        self.g_dec = g_dec;
+    }
+
+    pub fn set_g_inc(&mut self, g_inc: f32) {
+        self.g_inc = g_inc;
+    }
+
+    pub fn set_g_0(&mut self, g_0: f32) {
+        self.g_0 = g_0;
+    }
+
+    pub fn set_min_g(&mut self, min_g: f32) {
+        self.min_g = min_g;
+    }
+
+    pub fn set_max_g(&mut self, max_g: f32) {
+        self.max_g = max_g;
+    }
+
+    pub fn set_h(&mut self, h: f32) {
+        self.h = h;
+    }
+
+    pub fn set_refract_interval(&mut self, refract_interval: u8) {
+        self.refract_interval = refract_interval;
+    }
+
+    pub fn set_threshold(&mut self, threshold: f32) {
+        self.threshold = threshold;
     }
 
     fn build_fields_connector(&self) -> Box<dyn FieldsConnector> {

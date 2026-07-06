@@ -21,23 +21,25 @@ fn main() {
 
             builder.set_field_width(9);
             builder.set_field_height(9);
-            builder.set_layer_width(2);
-            builder.set_layer_height(2);
+            builder.set_layer_width(3);
+            builder.set_layer_height(3);
+            builder.set_threshold(0.6);
+            builder.set_refract_interval(0);
 
             let binary_controller = builder.build();
 
             let data_iterator = create_statshouse_iterator(vec![
-                StatshouseStream::Weekday(String::from("../media/csv/cpu_small.csv")),
-                StatshouseStream::Time(String::from("../media/csv/cpu_small.csv"), 24),
-                StatshouseStream::Float(String::from("../media/csv/cpu_small.csv"), 10, 0.0, 30.0),
+                StatshouseStream::Weekday(String::from("../media/csv/cpu.csv")),
+                StatshouseStream::Time(String::from("../media/csv/cpu.csv"), 24),
+                StatshouseStream::Float(String::from("../media/csv/cpu.csv"), 10, 5.0, 21.0),
                 StatshouseStream::Float(
-                    String::from("../media/csv/tcp_errors_small.csv"),
+                    String::from("../media/csv/tcp_errors.csv"),
                     30,
-                    3000000.0,
-                    7000000.0,
+                    1500000.0,
+                    6000000.0,
                 ),
                 StatshouseStream::Float(
-                    String::from("../media/csv/users_online_small.csv"),
+                    String::from("../media/csv/users_online.csv"),
                     10,
                     1000000.0,
                     4000000.0,
@@ -45,7 +47,7 @@ fn main() {
             ]);
 
             let data_provider = StreamSplitterDataProvider::new(
-                Box::new(data_iterator.into_iter()),
+                Box::new(data_iterator.into_iter().take(2000)),
                 index * 72,
                 index * 72 + 72,
             );
@@ -58,8 +60,8 @@ fn main() {
                     MultipleTimelinesInverseTransformer::new(vec![
                         Box::new(WeekdayRetriever::new()),
                         Box::new(TimeRetriever::new(24)),
-                        Box::new(FloatRetriever::new(10, 0.0, 30.0)),
-                        Box::new(FloatRetriever::new(30, 3000000.0, 7000000.0)),
+                        Box::new(FloatRetriever::new(10, 5.0, 21.0)),
+                        Box::new(FloatRetriever::new(30, 1500000.0, 6000000.0)),
                         Box::new(FloatRetriever::new(10, 1000000.0, 4000000.0)),
                     ]),
                 ))),
