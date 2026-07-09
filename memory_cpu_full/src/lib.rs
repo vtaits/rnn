@@ -11,14 +11,15 @@ pub struct MemoryCpuFull {
     refract_intervals_1: Vec<u8>,
     refract_intervals_2: Vec<u8>,
     layer_size: usize,
+    field_size: usize,
 }
 
 impl MemoryCpuFull {
     pub fn new(
-        layer_width: usize,
-        layer_height: usize,
         field_width: usize,
         field_height: usize,
+        layer_width: usize,
+        layer_height: usize,
     ) -> Self {
         let layer_size = layer_width * layer_height * field_width * field_height;
         let synapse_count = layer_size * layer_size;
@@ -33,6 +34,7 @@ impl MemoryCpuFull {
             refract_intervals_1: vec![0; layer_size],
             refract_intervals_2: vec![0; layer_size],
             layer_size,
+            field_size: field_width * field_height,
         }
     }
 }
@@ -87,8 +89,8 @@ impl ProcessorCpuFullSpecificMemory for MemoryCpuFull {
         self.layer_size
     }
 
-    fn get_neurons_1(&self) -> &[bool] {
-        &self.neurons_1
+    fn read_output_field(&self) -> Vec<bool> {
+        self.neurons_2[0..self.field_size].to_vec()
     }
 
     fn set_neuron_1(&mut self, index: usize, value: bool) {

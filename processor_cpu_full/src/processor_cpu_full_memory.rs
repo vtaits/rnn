@@ -5,7 +5,7 @@ pub trait ProcessorCpuFullSpecificMemory {
 
     fn set_neuron_1(&mut self, index: usize, value: bool);
 
-    fn get_neurons_1(&self) -> &[bool];
+    fn read_output_field(&self) -> Vec<bool>;
 
     fn get_refract_interval_1(&self, index: usize) -> u8;
 

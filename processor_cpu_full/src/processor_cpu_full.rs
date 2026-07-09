@@ -59,7 +59,7 @@ impl Processor for ProcessorCpuFull {
     fn read_signal(&self) -> Vec<bool> {
         let memory = self.memory.as_ref();
 
-        memory.get_neurons_1()[0..self.field_size].to_vec()
+        memory.read_output_field()
     }
 
     fn transfer_1_to_2(&mut self) {
