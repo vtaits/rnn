@@ -3,6 +3,7 @@ use rnn_architecture::BlockSequence;
 struct Coords {
     layer_width: usize,
     layer_height: usize,
+    is_start: bool,
     last_x: usize,
     last_y: usize,
     x: usize,
@@ -14,6 +15,7 @@ impl Coords {
         Self {
             layer_width,
             layer_height,
+            is_start: true,
             last_x: if layer_height % 2 == 0 {
                 0
             } else {
@@ -30,6 +32,11 @@ impl Iterator for Coords {
     type Item = (usize, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.is_start {
+            self.is_start = false;
+            return Some((0, 0));
+        }
+
         if self.x == self.last_x && self.y == self.last_y {
             return None;
         }

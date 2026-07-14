@@ -28,8 +28,8 @@ impl Topology for TopologyRestoreFirst {
             } else {
                 fields_connector.connect_2_to_1(
                     memory,
-                    prev_y,
                     prev_x,
+                    prev_y,
                     field_x,
                     field_y,
                     field_x as i32 - prev_x as i32,

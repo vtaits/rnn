@@ -40,16 +40,16 @@ impl FieldsConnector for FullFieldsConnector {
         shift_y: i32,
     ) {
         let offset_1_x = field_1_x * self.field_width;
-        let offset_1_y = field_1_y * self.field_height;
+        let offset_1_y: usize = field_1_y * self.field_height;
 
-        let offset_2_x = (field_2_x * self.field_width) as i32 - shift_x;
-        let offset_2_y = (field_2_y * self.field_height) as i32 - shift_y;
+        let offset_2_x = (field_2_x as i32 - shift_x) * self.field_width as i32;
+        let offset_2_y = (field_2_y as i32 - shift_y) * self.field_height as i32;
 
         for neuron_in_field_1_x in 0..self.field_width {
-            let nueron_1_x = (offset_1_x + neuron_in_field_1_x) as i32;
+            let neuron_1_x = (offset_1_x + neuron_in_field_1_x) as i32;
 
             for neuron_in_field_1_y in 0..self.field_height {
-                let nueron_1_y = (offset_1_y + neuron_in_field_1_y) as i32;
+                let neuron_1_y = (offset_1_y + neuron_in_field_1_y) as i32;
 
                 let neuron_1_index = self.neuron_coordinates_resolver.resolve(
                     field_1_x,
@@ -59,10 +59,10 @@ impl FieldsConnector for FullFieldsConnector {
                 );
 
                 for neuron_in_field_2_x in 0..self.field_width {
-                    let nueron_2_x = offset_2_x + neuron_in_field_2_x as i32;
+                    let neuron_2_x = offset_2_x + neuron_in_field_2_x as i32;
 
                     for neuron_in_field_2_y in 0..self.field_height {
-                        let nueron_2_y = offset_2_y + neuron_in_field_2_y as i32;
+                        let neuron_2_y = offset_2_y + neuron_in_field_2_y as i32;
 
                         let neuron_2_index = self.neuron_coordinates_resolver.resolve(
                             field_2_x,
@@ -71,8 +71,8 @@ impl FieldsConnector for FullFieldsConnector {
                             neuron_in_field_2_y,
                         );
 
-                        let dx = nueron_2_x - nueron_1_x;
-                        let dy = nueron_2_y - nueron_1_y;
+                        let dx = neuron_2_x - neuron_1_x;
+                        let dy = neuron_2_y - neuron_1_y;
 
                         let distance = self.distance_between_neurons.get_distance(dx, dy);
 
@@ -104,14 +104,14 @@ impl FieldsConnector for FullFieldsConnector {
         let offset_2_x = field_2_x * self.field_width;
         let offset_2_y = field_2_y * self.field_height;
 
-        let offset_1_x = (field_1_x * self.field_width) as i32 - shift_x;
-        let offset_1_y = (field_1_y * self.field_height) as i32 - shift_y;
+        let offset_1_x = (field_1_x as i32 - shift_x) * self.field_width as i32;
+        let offset_1_y = (field_1_y as i32 - shift_y) * self.field_height as i32;
 
         for neuron_in_field_2_x in 0..self.field_width {
-            let nueron_2_x = (offset_2_x + neuron_in_field_2_x) as i32;
+            let neuron_2_x = (offset_2_x + neuron_in_field_2_x) as i32;
 
             for neuron_in_field_2_y in 0..self.field_height {
-                let nueron_2_y = (offset_2_y + neuron_in_field_2_y) as i32;
+                let neuron_2_y = (offset_2_y + neuron_in_field_2_y) as i32;
 
                 let neuron_2_index = self.neuron_coordinates_resolver.resolve(
                     field_2_x,
@@ -121,10 +121,10 @@ impl FieldsConnector for FullFieldsConnector {
                 );
 
                 for neuron_in_field_1_x in 0..self.field_width {
-                    let nueron_1_x = offset_1_x + neuron_in_field_1_x as i32;
+                    let neuron_1_x = offset_1_x + neuron_in_field_1_x as i32;
 
                     for neuron_in_field_1_y in 0..self.field_height {
-                        let nueron_1_y = offset_1_y + neuron_in_field_1_y as i32;
+                        let neuron_1_y = offset_1_y + neuron_in_field_1_y as i32;
 
                         let neuron_1_index = self.neuron_coordinates_resolver.resolve(
                             field_1_x,
@@ -133,8 +133,8 @@ impl FieldsConnector for FullFieldsConnector {
                             neuron_in_field_1_y,
                         );
 
-                        let dx = nueron_1_x - nueron_2_x;
-                        let dy = nueron_1_y - nueron_2_y;
+                        let dx = neuron_1_x - neuron_2_x;
+                        let dy = neuron_1_y - neuron_2_y;
 
                         let distance = self.distance_between_neurons.get_distance(dx, dy);
 

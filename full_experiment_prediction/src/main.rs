@@ -24,7 +24,7 @@ fn main() {
             builder.set_layer_width(3);
             builder.set_layer_height(3);
             builder.set_threshold(0.6);
-            builder.set_refract_interval(0);
+            builder.set_refract_interval(1);
 
             let binary_controller = builder.build();
 
