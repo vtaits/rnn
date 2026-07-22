@@ -1,8 +1,9 @@
 [package]
-name = "processor_cpu_full"
+name = "memory_opencl_full"
 version = "1.0.0"
 edition = "2021"
 
 [dependencies]
-cpu_refract_recounter = { path = "../cpu_refract_recounter" }
+ocl = "0.19.7"
+processor_opencl_full = { path = "../processor_opencl_full" }
 rnn_architecture = { path = "../rnn_architecture" }

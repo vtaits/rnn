@@ -1,7 +1,8 @@
+use cpu_refract_recounter::CpuRefractRecounter;
 use rnn_architecture::Processor;
 
 use crate::{
-    ProcessorCpuFullMemory, ProcessorCpuFullRefractRecounter, ProcessorCpuFullSignalTransferer,
+    ProcessorCpuFullMemory, ProcessorCpuFullSignalTransferer,
 };
 
 pub struct ProcessorCpuFullParams {
@@ -13,7 +14,7 @@ pub struct ProcessorCpuFullParams {
 pub struct ProcessorCpuFull {
     g_0: f32,
     field_size: usize,
-    refract_recounter: Box<dyn ProcessorCpuFullRefractRecounter>,
+    refract_recounter: Box<dyn CpuRefractRecounter>,
     signal_transferer: Box<dyn ProcessorCpuFullSignalTransferer>,
     memory: Box<dyn ProcessorCpuFullMemory>,
 }
@@ -23,7 +24,7 @@ impl ProcessorCpuFull {
         params: ProcessorCpuFullParams,
         memory: Box<dyn ProcessorCpuFullMemory>,
         signal_transferer: Box<dyn ProcessorCpuFullSignalTransferer>,
-        refract_recounter: Box<dyn ProcessorCpuFullRefractRecounter>,
+        refract_recounter: Box<dyn CpuRefractRecounter>,
     ) -> Self {
         let ProcessorCpuFullParams {
             g_0,
@@ -84,7 +85,7 @@ impl Processor for ProcessorCpuFull {
         );
 
         self.refract_recounter
-            .recount(neurons_1, refract_intervals_1);
+            .recount(Box::new(neurons_1.iter().map(|value| *value)), refract_intervals_1);
     }
 
     fn transfer_2_to_1(&mut self) {
@@ -109,6 +110,6 @@ impl Processor for ProcessorCpuFull {
         );
 
         self.refract_recounter
-            .recount(neurons_2, refract_intervals_2);
+            .recount(Box::new(neurons_2.iter().map(|value| *value)), refract_intervals_2);
     }
 }

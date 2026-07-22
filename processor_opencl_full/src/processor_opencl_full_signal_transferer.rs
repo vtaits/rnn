@@ -1,11 +1,15 @@
+use ocl::{Buffer, ProQue};
+
 pub trait ProcessorOpenCLFullSignalTransferer {
     fn transfer(
         &self,
         g_0: f32,
-        neurons_from: &[bool],
-        neurons_to: &mut [bool],
+        neurons_from: &[u8],
+        neurons_to: &mut [u8],
         refract_intervals_to: &[u8],
-        synapses: &mut [f32],
-        distances: &[f32],
+        synapses: &Buffer<f32>,
+        distances: &Buffer<f32>,
     );
+
+    fn get_pro_que(&self) -> &ProQue;
 }

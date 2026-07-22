@@ -4,4 +4,5 @@ version = "1.0.0"
 edition = "2021"
 
 [dependencies]
+cpu_refract_recounter = { path = "../cpu_refract_recounter" }
 processor_cpu_full = { path = "../processor_cpu_full" }

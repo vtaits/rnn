@@ -1,8 +1,10 @@
 use block_sequence_spiral::BlockSequenceSpiral;
 use full_fields_connector::FullFieldsConnector;
 use memory_cpu_full::MemoryCpuFull;
+use memory_opencl_full::MemoryOpenCLFull;
 use power_law_distance::PowerLawDistance;
 use processor_cpu_full::{ProcessorCpuFull, ProcessorCpuFullMemory, ProcessorCpuFullParams};
+use processor_opencl_full::{ProcessorOpenCLFull, ProcessorOpenCLFullMemory, ProcessorOpenCLFullParams};
 use refract_recounter_cpu::RefractRecounterCpu;
 use rnn_architecture::{
     BinaryController, BlockSequence, FieldsConnector, Processor, ResultReader, Topology,
@@ -13,6 +15,12 @@ use simple_result_reader::SimpleResultReader;
 use simple_tick_controller::SimpleTickController;
 use sync_binary_controller::SyncBinaryController;
 use topology_restore_first::TopologyRestoreFirst;
+use signal_transferer_full_opencl::{SignalTransfererOpenCLFull,SignalTransfererOpenCLFullParams};
+
+pub enum ProcessorType {
+    CpuFull,
+    OpenCLFull,
+}
 
 pub struct BinaryControllerBuilder {
     field_width: Option<usize>,
@@ -30,6 +38,7 @@ pub struct BinaryControllerBuilder {
     h: f32,
     refract_interval: u8,
     threshold: f32,
+    processor_type: ProcessorType,
 }
 
 impl BinaryControllerBuilder {
@@ -50,6 +59,7 @@ impl BinaryControllerBuilder {
             h: 0.5,
             refract_interval: 1,
             threshold: 0.8,
+            processor_type: ProcessorType::OpenCLFull,
         }
     }
 
@@ -208,6 +218,67 @@ impl BinaryControllerBuilder {
         ))
     }
 
+    fn build_opencl_full_processor(
+        &self,
+        block_sequence: Box<dyn BlockSequence>,
+        topology: Box<dyn Topology>,
+    ) -> Box<dyn Processor> {
+        let BinaryControllerBuilder {
+            field_width,
+            field_height,
+            layer_width,
+            layer_height,
+            gamma_dec,
+            gamma_inc,
+            g_dec,
+            g_inc,
+            g_0,
+            min_g,
+            max_g,
+            refract_interval,
+            threshold,
+            ..
+        } = self;
+
+        let field_width = field_width.unwrap();
+        let field_height = field_height.unwrap();
+        let layer_width = layer_width.unwrap();
+        let layer_height = layer_height.unwrap();
+
+        let mut memory = MemoryOpenCLFull::new(field_width, field_height, layer_width, layer_height);
+
+        let signal_transferer = SignalTransfererOpenCLFull::new(SignalTransfererOpenCLFullParams {
+            field_width,
+            field_height,
+            layer_width,
+            layer_height,
+            threshold: *threshold,
+            gamma_inc: *gamma_inc,
+            gamma_dec: *gamma_dec,
+            g_inc: *g_inc,
+            g_dec: *g_dec,
+            min_g: *min_g,
+            max_g: *max_g,
+        });
+
+        let refract_recounter = RefractRecounterCpu::new(*refract_interval);
+
+        let mut fields_connector = self.build_fields_connector();
+
+        topology.fill(block_sequence, fields_connector.as_mut(), &mut memory);
+
+        Box::new(ProcessorOpenCLFull::new(
+            ProcessorOpenCLFullParams {
+                g_0: *g_0,
+                field_width,
+                field_height,
+            },
+            Box::new(memory) as Box<dyn ProcessorOpenCLFullMemory>,
+            Box::new(signal_transferer),
+            Box::new(refract_recounter),
+        ))
+    }
+
     pub fn build(&self) -> Box<dyn BinaryController> {
         let BinaryControllerBuilder {
             layer_width,
@@ -222,7 +293,10 @@ impl BinaryControllerBuilder {
 
         let topology = Box::new(TopologyRestoreFirst::new());
 
-        let processor = self.build_cpu_full_processor(block_sequence, topology);
+        let processor = match self.processor_type {
+                ProcessorType::CpuFull => self.build_cpu_full_processor(block_sequence, topology),
+                ProcessorType::OpenCLFull => self.build_opencl_full_processor(block_sequence, topology),
+        };
 
         let tick_controller = SimpleTickController::new(processor);
 

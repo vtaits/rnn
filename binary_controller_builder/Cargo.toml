@@ -8,13 +8,16 @@ block_sequence_spiral = { path = "../block_sequence_spiral" }
 cross_validation = { path = "../cross_validation" }
 experiment_prediction = { path = "../experiment_prediction" }
 full_fields_connector = { path = "../full_fields_connector" }
-processor_cpu_full = { path = "../processor_cpu_full" }
 memory_cpu_full = { path = "../memory_cpu_full" }
+memory_opencl_full = { path = "../memory_opencl_full" }
 refract_recounter_cpu = { path = "../refract_recounter_cpu" }
 power_law_distance = { path = "../power_law_distance" }
+processor_cpu_full = { path = "../processor_cpu_full" }
+processor_opencl_full = { path = "../processor_opencl_full" }
 rnn_architecture = { path = "../rnn_architecture" }
 row_col_coordinates_resolver = { path = "../row_col_coordinates_resolver" }
 signal_transferer_full_cpu = { path = "../signal_transferer_full_cpu" }
+signal_transferer_full_opencl = { path = "../signal_transferer_full_opencl" }
 simple_tick_controller = { path = "../simple_tick_controller" }
 simple_result_reader = { path = "../simple_result_reader" }
 sync_binary_controller = { path = "../sync_binary_controller" }

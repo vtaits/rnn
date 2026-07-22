@@ -1,0 +1,8 @@
+[package]
+name = "signal_transferer_full_opencl"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+ocl = "0.19.7"
+processor_opencl_full = { path = "../processor_opencl_full" }

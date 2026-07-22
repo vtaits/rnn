@@ -4,5 +4,6 @@ version = "1.0.0"
 edition = "2021"
 
 [dependencies]
+cpu_refract_recounter = { path = "../cpu_refract_recounter" }
 ocl = "0.19.7"
 rnn_architecture = { path = "../rnn_architecture" }

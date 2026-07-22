@@ -23,8 +23,10 @@ fn main() {
             builder.set_field_height(9);
             builder.set_layer_width(3);
             builder.set_layer_height(3);
-            builder.set_threshold(0.6);
             builder.set_refract_interval(1);
+            builder.set_g_dec(5.0);
+            builder.set_threshold(0.95);
+            builder.set_g_inc(0.0);
 
             let binary_controller = builder.build();
 
@@ -53,9 +55,7 @@ fn main() {
             );
 
             let high_level_controller = SimpleHighLevelController::new(
-                Box::new(ForwardTransformerLogger::new(Box::new(
-                    MultipleTimelinesForwardTransformer::new(),
-                ))),
+                Box::new(MultipleTimelinesForwardTransformer::new()),
                 Box::new(InverseTransformerLogger::new(Box::new(
                     MultipleTimelinesInverseTransformer::new(vec![
                         Box::new(WeekdayRetriever::new()),
