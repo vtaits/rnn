@@ -13,7 +13,11 @@ impl RefractRecounterCpu {
 }
 
 impl CpuRefractRecounter for RefractRecounterCpu {
-    fn recount<'a>(&self, neurons: Box<dyn Iterator<Item = bool> + 'a>, refract_intervals: &mut [u8]) {
+    fn recount<'a>(
+        &self,
+        neurons: Box<dyn Iterator<Item = bool> + 'a>,
+        refract_intervals: &mut [u8],
+    ) {
         for (index, neuron) in neurons.enumerate() {
             if neuron {
                 refract_intervals[index] = self.max_refract_interval.clone();

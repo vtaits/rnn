@@ -1,9 +1,7 @@
 use cpu_refract_recounter::CpuRefractRecounter;
 use rnn_architecture::Processor;
 
-use crate::{
-    ProcessorCpuFullMemory, ProcessorCpuFullSignalTransferer,
-};
+use crate::{ProcessorCpuFullMemory, ProcessorCpuFullSignalTransferer};
 
 pub struct ProcessorCpuFullParams {
     pub g_0: f32,
@@ -84,8 +82,10 @@ impl Processor for ProcessorCpuFull {
             distances_1_to_2,
         );
 
-        self.refract_recounter
-            .recount(Box::new(neurons_1.iter().map(|value| *value)), refract_intervals_1);
+        self.refract_recounter.recount(
+            Box::new(neurons_1.iter().map(|value| *value)),
+            refract_intervals_1,
+        );
     }
 
     fn transfer_2_to_1(&mut self) {
@@ -109,7 +109,9 @@ impl Processor for ProcessorCpuFull {
             distances_2_to_1,
         );
 
-        self.refract_recounter
-            .recount(Box::new(neurons_2.iter().map(|value| *value)), refract_intervals_2);
+        self.refract_recounter.recount(
+            Box::new(neurons_2.iter().map(|value| *value)),
+            refract_intervals_2,
+        );
     }
 }

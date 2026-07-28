@@ -1,3 +1,5 @@
+use std::println;
+
 use ocl::{Buffer, Kernel, ProQue};
 use processor_opencl_full::ProcessorOpenCLFullSignalTransferer;
 
@@ -101,6 +103,14 @@ impl ProcessorOpenCLFullSignalTransferer for SignalTransfererOpenCLFull {
         synapses: &Buffer<f32>,
         distances: &Buffer<f32>,
     ) {
+        for (index, neuron) in neurons_from.iter().enumerate() {
+            if index % 81 == 0 {
+                println!();
+            }
+            print!("{}", if *neuron > 0 { "+" } else { "." });
+        }
+        println!();
+
         let buffer_neurons_from = Buffer::<u8>::builder()
             .queue(self.pro_que.queue().clone())
             .len(neurons_from.len())
@@ -148,6 +158,14 @@ impl ProcessorOpenCLFullSignalTransferer for SignalTransfererOpenCLFull {
             self.kernel.enq().unwrap();
         }
 
-        buffer_neurons_to.read(neurons_to).enq().unwrap();
+        buffer_neurons_to.read(&mut *neurons_to).enq().unwrap();
+
+        for (index, neuron) in neurons_to.iter().enumerate() {
+            if index % 81 == 0 {
+                println!();
+            }
+            print!("{}", if *neuron > 0 { "+" } else { "." });
+        }
+        println!();
     }
 }

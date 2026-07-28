@@ -4,18 +4,20 @@ use memory_cpu_full::MemoryCpuFull;
 use memory_opencl_full::MemoryOpenCLFull;
 use power_law_distance::PowerLawDistance;
 use processor_cpu_full::{ProcessorCpuFull, ProcessorCpuFullMemory, ProcessorCpuFullParams};
-use processor_opencl_full::{ProcessorOpenCLFull, ProcessorOpenCLFullMemory, ProcessorOpenCLFullParams};
+use processor_opencl_full::{
+    ProcessorOpenCLFull, ProcessorOpenCLFullMemory, ProcessorOpenCLFullParams,
+};
 use refract_recounter_cpu::RefractRecounterCpu;
 use rnn_architecture::{
     BinaryController, BlockSequence, FieldsConnector, Processor, ResultReader, Topology,
 };
 use row_col_coordinates_resolver::RowColCoordinatesResolver;
 use signal_transferer_full_cpu::{SignalTransfererCpuFull, SignalTransfererCpuFullParams};
+use signal_transferer_full_opencl::{SignalTransfererOpenCLFull, SignalTransfererOpenCLFullParams};
 use simple_result_reader::SimpleResultReader;
 use simple_tick_controller::SimpleTickController;
 use sync_binary_controller::SyncBinaryController;
 use topology_restore_first::TopologyRestoreFirst;
-use signal_transferer_full_opencl::{SignalTransfererOpenCLFull,SignalTransfererOpenCLFullParams};
 
 pub enum ProcessorType {
     CpuFull,
@@ -245,7 +247,8 @@ impl BinaryControllerBuilder {
         let layer_width = layer_width.unwrap();
         let layer_height = layer_height.unwrap();
 
-        let mut memory = MemoryOpenCLFull::new(field_width, field_height, layer_width, layer_height);
+        let mut memory =
+            MemoryOpenCLFull::new(field_width, field_height, layer_width, layer_height);
 
         let signal_transferer = SignalTransfererOpenCLFull::new(SignalTransfererOpenCLFullParams {
             field_width,
@@ -294,8 +297,8 @@ impl BinaryControllerBuilder {
         let topology = Box::new(TopologyRestoreFirst::new());
 
         let processor = match self.processor_type {
-                ProcessorType::CpuFull => self.build_cpu_full_processor(block_sequence, topology),
-                ProcessorType::OpenCLFull => self.build_opencl_full_processor(block_sequence, topology),
+            ProcessorType::CpuFull => self.build_cpu_full_processor(block_sequence, topology),
+            ProcessorType::OpenCLFull => self.build_opencl_full_processor(block_sequence, topology),
         };
 
         let tick_controller = SimpleTickController::new(processor);

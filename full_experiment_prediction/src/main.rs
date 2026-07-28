@@ -49,13 +49,15 @@ fn main() {
             ]);
 
             let data_provider = StreamSplitterDataProvider::new(
-                Box::new(data_iterator.into_iter().take(2000)),
-                index * 72,
-                index * 72 + 72,
+                Box::new(data_iterator.into_iter().take(36)),
+                index * 12,
+                index * 12 + 12,
             );
 
             let high_level_controller = SimpleHighLevelController::new(
-                Box::new(MultipleTimelinesForwardTransformer::new()),
+                Box::new(ForwardTransformerLogger::new(Box::new(
+                    MultipleTimelinesForwardTransformer::new(),
+                ))),
                 Box::new(InverseTransformerLogger::new(Box::new(
                     MultipleTimelinesInverseTransformer::new(vec![
                         Box::new(WeekdayRetriever::new()),
