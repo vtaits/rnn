@@ -7,7 +7,7 @@ pub fn get_weight_coefficient(
     let shifted_synapse_weight = synapse_weight - g_0;
 
     if shifted_synapse_weight < 0.0 {
-        return (-gamma_dec * shifted_synapse_weight).exp() - 1.0;
+        return (gamma_dec * shifted_synapse_weight).exp() - 1.0;
     }
 
     return 1.0 - (-gamma_inc * shifted_synapse_weight).exp();

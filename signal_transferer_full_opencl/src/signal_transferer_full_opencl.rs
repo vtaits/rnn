@@ -103,6 +103,7 @@ impl ProcessorOpenCLFullSignalTransferer for SignalTransfererOpenCLFull {
         synapses: &Buffer<f32>,
         distances: &Buffer<f32>,
     ) {
+        println!("=================");
         for (index, neuron) in neurons_from.iter().enumerate() {
             if index % 81 == 0 {
                 println!();
@@ -167,5 +168,6 @@ impl ProcessorOpenCLFullSignalTransferer for SignalTransfererOpenCLFull {
             print!("{}", if *neuron > 0 { "+" } else { "." });
         }
         println!();
+        println!("=================");
     }
 }

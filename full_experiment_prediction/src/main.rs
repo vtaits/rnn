@@ -24,9 +24,9 @@ fn main() {
             builder.set_layer_width(3);
             builder.set_layer_height(3);
             builder.set_refract_interval(1);
-            builder.set_g_dec(5.0);
-            builder.set_threshold(0.95);
-            builder.set_g_inc(0.0);
+            builder.set_g_dec(1.0);
+            builder.set_g_inc(0.5);
+            builder.set_threshold(0.8);
 
             let binary_controller = builder.build();
 
@@ -49,9 +49,9 @@ fn main() {
             ]);
 
             let data_provider = StreamSplitterDataProvider::new(
-                Box::new(data_iterator.into_iter().take(36)),
-                index * 12,
-                index * 12 + 12,
+                Box::new(data_iterator.into_iter().take(2000)),
+                index * 72,
+                index * 72 + 72,
             );
 
             let high_level_controller = SimpleHighLevelController::new(
