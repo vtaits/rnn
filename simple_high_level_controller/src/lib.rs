@@ -1,5 +1,3 @@
 mod simple_high_level_controller;
-mod simple_high_level_controller_factory;
 
 pub use simple_high_level_controller::SimpleHighLevelController;
-pub use simple_high_level_controller_factory::SimpleHighLevelControllerFactory;

@@ -89,17 +89,9 @@ pub trait Processor {
     fn read_signal(&self) -> Vec<bool>;
 }
 
-pub trait ProcessorFactory {
-    fn create_processor(&self) -> Box<dyn Processor>;
-}
-
 pub trait ResultReader {
     fn write_single_signal(&mut self, signal: Vec<bool>);
     fn read_full_signal(&self) -> Vec<Vec<bool>>;
-}
-
-pub trait ResultReaderFactory {
-    fn create(&self) -> Box<dyn ResultReader>;
 }
 
 pub trait TickController {
@@ -114,10 +106,6 @@ pub trait TickController {
     fn detach_reader(&mut self) -> Box<dyn ResultReader>;
 }
 
-pub trait TickControllerFactory {
-    fn create_tick_controller(&self) -> Box<dyn TickController>;
-}
-
 pub trait BinaryController {
     fn push_single_signal(&mut self, signal: Vec<bool>);
 
@@ -126,27 +114,12 @@ pub trait BinaryController {
     fn predict(&mut self, depth: usize) -> Result<Vec<Vec<bool>>, ()>;
 }
 
-pub trait BinaryControllerFactory {
-    fn create_binary_controller(
-        &self,
-        result_reader_factory: Box<dyn ResultReaderFactory>,
-    ) -> Box<dyn BinaryController>;
-}
-
 pub trait ForwardTransformer<DataType> {
     fn transform(&self, data: DataType) -> Vec<bool>;
 }
 
-pub trait ForwardTransformerFactory<DataType> {
-    fn create_forward_transformer(&self) -> Box<dyn ForwardTransformer<DataType>>;
-}
-
 pub trait InverseTransformer<DataType> {
     fn transform(&self, signal: Vec<bool>) -> DataType;
-}
-
-pub trait InverseTransformerFactory<DataType> {
-    fn create_inverse_transformer(&self) -> Box<dyn InverseTransformer<DataType>>;
 }
 
 pub trait HighLevelController<DataType> {
@@ -157,21 +130,10 @@ pub trait HighLevelController<DataType> {
     fn predict(&mut self, depth: usize) -> Result<Vec<DataType>, ()>;
 }
 
-pub trait HighLevelControllerFactory<DataType> {
-    fn create_high_level_controller(
-        &self,
-        result_reader_factory: Box<dyn ResultReaderFactory>,
-    ) -> Box<dyn HighLevelController<DataType>>;
-}
-
 pub trait DataProvider<DataType> {
     fn iterate_training_data(&self) -> Box<dyn Iterator<Item = DataType>>;
 
     fn iterate_test_data(&self) -> Box<dyn Iterator<Item = DataType>>;
-}
-
-pub trait DataProviderFactory<DataType> {
-    fn create_data_provider(&self, experiment_index: usize) -> Box<dyn DataProvider<DataType>>;
 }
 
 pub trait ExperimentResult<DataType> {
