@@ -16,6 +16,7 @@ processor_cpu_full = { path = "../processor_cpu_full" }
 processor_opencl_full = { path = "../processor_opencl_full" }
 rnn_architecture = { path = "../rnn_architecture" }
 row_col_coordinates_resolver = { path = "../row_col_coordinates_resolver" }
+ocl = "0.19.7"
 signal_transferer_full_cpu = { path = "../signal_transferer_full_cpu" }
 signal_transferer_full_opencl = { path = "../signal_transferer_full_opencl" }
 simple_tick_controller = { path = "../simple_tick_controller" }

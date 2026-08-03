@@ -26,7 +26,7 @@ fn main() {
             builder.set_refract_interval(1);
             builder.set_g_dec(1.0);
             builder.set_g_inc(0.5);
-            builder.set_threshold(0.8);
+            builder.set_threshold_infer(0.3);
 
             let binary_controller = builder.build();
 

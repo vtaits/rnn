@@ -1,7 +1,10 @@
+use std::rc::Rc;
+
 use block_sequence_spiral::BlockSequenceSpiral;
 use full_fields_connector::FullFieldsConnector;
 use memory_cpu_full::MemoryCpuFull;
 use memory_opencl_full::MemoryOpenCLFull;
+use ocl::{Context, Device, Platform};
 use power_law_distance::PowerLawDistance;
 use processor_cpu_full::{ProcessorCpuFull, ProcessorCpuFullMemory, ProcessorCpuFullParams};
 use processor_opencl_full::{
@@ -39,7 +42,8 @@ pub struct BinaryControllerBuilder {
     max_g: f32,
     h: f32,
     refract_interval: u8,
-    threshold: f32,
+    threshold_learn: f32,
+    threshold_infer: f32,
     processor_type: ProcessorType,
 }
 
@@ -60,7 +64,8 @@ impl BinaryControllerBuilder {
             max_g: 10.0,
             h: 0.5,
             refract_interval: 1,
-            threshold: 0.8,
+            threshold_learn: 0.8,
+            threshold_infer: 0.7,
             processor_type: ProcessorType::OpenCLFull,
         }
     }
@@ -121,8 +126,12 @@ impl BinaryControllerBuilder {
         self.refract_interval = refract_interval;
     }
 
-    pub fn set_threshold(&mut self, threshold: f32) {
-        self.threshold = threshold;
+    pub fn set_threshold_learn(&mut self, threshold_learn: f32) {
+        self.threshold_learn = threshold_learn;
+    }
+
+    pub fn set_threshold_infer(&mut self, threshold_infer: f32) {
+        self.threshold_infer = threshold_infer;
     }
 
     fn build_fields_connector(&self) -> Box<dyn FieldsConnector> {
@@ -177,7 +186,8 @@ impl BinaryControllerBuilder {
             min_g,
             max_g,
             refract_interval,
-            threshold,
+            threshold_infer,
+            threshold_learn,
             ..
         } = self;
 
@@ -188,12 +198,26 @@ impl BinaryControllerBuilder {
 
         let mut memory = MemoryCpuFull::new(field_width, field_height, layer_width, layer_height);
 
-        let signal_transferer = SignalTransfererCpuFull::new(SignalTransfererCpuFullParams {
+        let signal_transferer_learn = SignalTransfererCpuFull::new(SignalTransfererCpuFullParams {
             field_width,
             field_height,
             layer_width,
             layer_height,
-            threshold: *threshold,
+            threshold: *threshold_learn,
+            gamma_inc: *gamma_inc,
+            gamma_dec: *gamma_dec,
+            g_inc: *g_inc,
+            g_dec: *g_dec,
+            min_g: *min_g,
+            max_g: *max_g,
+        });
+
+        let signal_transferer_infer = SignalTransfererCpuFull::new(SignalTransfererCpuFullParams {
+            field_width,
+            field_height,
+            layer_width,
+            layer_height,
+            threshold: *threshold_infer,
             gamma_inc: *gamma_inc,
             gamma_dec: *gamma_dec,
             g_inc: *g_inc,
@@ -215,7 +239,8 @@ impl BinaryControllerBuilder {
                 field_height,
             },
             Box::new(memory) as Box<dyn ProcessorCpuFullMemory>,
-            Box::new(signal_transferer),
+            Rc::new(Box::new(signal_transferer_learn)),
+            Rc::new(Box::new(signal_transferer_infer)),
             Box::new(refract_recounter),
         ))
     }
@@ -238,7 +263,8 @@ impl BinaryControllerBuilder {
             min_g,
             max_g,
             refract_interval,
-            threshold,
+            threshold_infer,
+            threshold_learn,
             ..
         } = self;
 
@@ -250,19 +276,47 @@ impl BinaryControllerBuilder {
         let mut memory =
             MemoryOpenCLFull::new(field_width, field_height, layer_width, layer_height);
 
-        let signal_transferer = SignalTransfererOpenCLFull::new(SignalTransfererOpenCLFullParams {
-            field_width,
-            field_height,
-            layer_width,
-            layer_height,
-            threshold: *threshold,
-            gamma_inc: *gamma_inc,
-            gamma_dec: *gamma_dec,
-            g_inc: *g_inc,
-            g_dec: *g_dec,
-            min_g: *min_g,
-            max_g: *max_g,
-        });
+        let platform = Platform::default();
+        let device = Device::first(platform).unwrap();
+        let context = Context::builder()
+            .platform(platform)
+            .devices(device)
+            .build()
+            .unwrap();
+
+        let signal_transferer_infer =
+            SignalTransfererOpenCLFull::new(SignalTransfererOpenCLFullParams {
+                context: &context,
+                device,
+                field_width,
+                field_height,
+                layer_width,
+                layer_height,
+                threshold: *threshold_infer,
+                gamma_inc: *gamma_inc,
+                gamma_dec: *gamma_dec,
+                g_inc: *g_inc,
+                g_dec: *g_dec,
+                min_g: *min_g,
+                max_g: *max_g,
+            });
+
+        let signal_transferer_learn =
+            SignalTransfererOpenCLFull::new(SignalTransfererOpenCLFullParams {
+                context: &context,
+                device,
+                field_width,
+                field_height,
+                layer_width,
+                layer_height,
+                threshold: *threshold_learn,
+                gamma_inc: *gamma_inc,
+                gamma_dec: *gamma_dec,
+                g_inc: *g_inc,
+                g_dec: *g_dec,
+                min_g: *min_g,
+                max_g: *max_g,
+            });
 
         let refract_recounter = RefractRecounterCpu::new(*refract_interval);
 
@@ -277,7 +331,8 @@ impl BinaryControllerBuilder {
                 field_height,
             },
             Box::new(memory) as Box<dyn ProcessorOpenCLFullMemory>,
-            Box::new(signal_transferer),
+            Rc::new(Box::new(signal_transferer_learn)),
+            Rc::new(Box::new(signal_transferer_infer)),
             Box::new(refract_recounter),
         ))
     }

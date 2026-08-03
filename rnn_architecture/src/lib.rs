@@ -78,8 +78,15 @@ pub trait Topology {
     );
 }
 
+pub enum ProcessorState {
+    Learn,
+    Infer,
+}
+
 pub trait Processor {
     fn input_signal(&mut self, signal: Vec<bool>);
+
+    fn set_state(&mut self, state: ProcessorState);
 
     fn reset_neurons(&mut self);
 

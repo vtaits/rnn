@@ -1,9 +1,11 @@
 use std::println;
 
-use ocl::{Buffer, Kernel, ProQue};
+use ocl::{Buffer, Context, Device, Kernel, Program, Queue};
 use processor_opencl_full::ProcessorOpenCLFullSignalTransferer;
 
-pub struct SignalTransfererOpenCLFullParams {
+pub struct SignalTransfererOpenCLFullParams<'a> {
+    pub context: &'a Context,
+    pub device: Device,
     pub field_width: usize,
     pub field_height: usize,
     pub layer_width: usize,
@@ -19,7 +21,7 @@ pub struct SignalTransfererOpenCLFullParams {
 
 pub struct SignalTransfererOpenCLFull {
     kernel: Kernel,
-    pro_que: ProQue,
+    queue: Queue,
     layer_size: usize,
     threshold: f32,
     gamma_inc: f32,
@@ -33,6 +35,8 @@ pub struct SignalTransfererOpenCLFull {
 impl SignalTransfererOpenCLFull {
     pub fn new(params: SignalTransfererOpenCLFullParams) -> Self {
         let SignalTransfererOpenCLFullParams {
+            context,
+            device,
             field_width,
             field_height,
             layer_width,
@@ -46,16 +50,22 @@ impl SignalTransfererOpenCLFull {
             max_g,
         } = params;
 
-        let kernel_source = include_str!("signal_transferer_full_opencl.cl");
+        let source = include_str!("signal_transferer_full_opencl.cl");
 
-        let pro_que = ProQue::builder().src(kernel_source).build().unwrap();
+        let queue = Queue::new(&context, device, None).unwrap();
+
+        let program = Program::builder()
+            .src(source)
+            .devices(device)
+            .build(&context)
+            .unwrap();
 
         let layer_size = field_width * field_height * layer_width * layer_height;
 
         let kernel = Kernel::builder()
-            .program(pro_que.program())
+            .program(&program)
             .name("signal_transferer_full_opencl")
-            .queue(pro_que.queue().clone())
+            .queue(queue.clone())
             .global_work_size(layer_size)
             .arg_named("g_0", 0.0_f32)
             .arg_named("neurons_from", None::<&Buffer<u8>>)
@@ -75,7 +85,7 @@ impl SignalTransfererOpenCLFull {
             .unwrap();
 
         Self {
-            pro_que,
+            queue,
             kernel,
             layer_size,
             threshold,
@@ -90,8 +100,8 @@ impl SignalTransfererOpenCLFull {
 }
 
 impl ProcessorOpenCLFullSignalTransferer for SignalTransfererOpenCLFull {
-    fn get_pro_que(&self) -> &ProQue {
-        &self.pro_que
+    fn get_queue(&self) -> &Queue {
+        &self.queue
     }
 
     fn transfer(
@@ -113,21 +123,21 @@ impl ProcessorOpenCLFullSignalTransferer for SignalTransfererOpenCLFull {
         println!();
 
         let buffer_neurons_from = Buffer::<u8>::builder()
-            .queue(self.pro_que.queue().clone())
+            .queue(self.queue.clone())
             .len(neurons_from.len())
             .copy_host_slice(neurons_from)
             .build()
             .unwrap();
 
         let buffer_refract_intervals_to = Buffer::<u8>::builder()
-            .queue(self.pro_que.queue().clone())
+            .queue(self.queue.clone())
             .len(refract_intervals_to.len())
             .copy_host_slice(refract_intervals_to)
             .build()
             .unwrap();
 
         let buffer_neurons_to = Buffer::<u8>::builder()
-            .queue(self.pro_que.queue().clone())
+            .queue(self.queue.clone())
             .flags(ocl::flags::MEM_READ_WRITE)
             .len(self.layer_size)
             .build()

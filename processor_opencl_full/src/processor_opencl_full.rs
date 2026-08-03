@@ -1,5 +1,7 @@
+use std::rc::Rc;
+
 use cpu_refract_recounter::CpuRefractRecounter;
-use rnn_architecture::Processor;
+use rnn_architecture::{Processor, ProcessorState};
 
 use crate::{ProcessorOpenCLFullMemory, ProcessorOpenCLFullSignalTransferer};
 
@@ -13,7 +15,9 @@ pub struct ProcessorOpenCLFull {
     g_0: f32,
     field_size: usize,
     refract_recounter: Box<dyn CpuRefractRecounter>,
-    signal_transferer: Box<dyn ProcessorOpenCLFullSignalTransferer>,
+    signal_transferer: Rc<Box<dyn ProcessorOpenCLFullSignalTransferer>>,
+    learn_signal_transferer: Rc<Box<dyn ProcessorOpenCLFullSignalTransferer>>,
+    infer_signal_transferer: Rc<Box<dyn ProcessorOpenCLFullSignalTransferer>>,
     memory: Box<dyn ProcessorOpenCLFullMemory>,
 }
 
@@ -21,7 +25,8 @@ impl ProcessorOpenCLFull {
     pub fn new(
         params: ProcessorOpenCLFullParams,
         mut memory: Box<dyn ProcessorOpenCLFullMemory>,
-        signal_transferer: Box<dyn ProcessorOpenCLFullSignalTransferer>,
+        learn_signal_transferer: Rc<Box<dyn ProcessorOpenCLFullSignalTransferer>>,
+        infer_signal_transferer: Rc<Box<dyn ProcessorOpenCLFullSignalTransferer>>,
         refract_recounter: Box<dyn CpuRefractRecounter>,
     ) -> Self {
         let ProcessorOpenCLFullParams {
@@ -30,12 +35,14 @@ impl ProcessorOpenCLFull {
             field_width,
         } = params;
 
-        memory.make_buffers(signal_transferer.get_pro_que());
+        memory.make_buffers(learn_signal_transferer.get_queue());
 
         Self {
             g_0,
             memory,
-            signal_transferer,
+            signal_transferer: Rc::clone(&learn_signal_transferer),
+            learn_signal_transferer,
+            infer_signal_transferer,
             refract_recounter,
             field_size: field_width * field_height,
         }
@@ -49,6 +56,17 @@ impl Processor for ProcessorOpenCLFull {
         for (index, value) in signal.iter().enumerate() {
             if index < self.field_size && memory.get_refract_interval_1(index) == 0 {
                 memory.set_neuron_1(index, *value);
+            }
+        }
+    }
+
+    fn set_state(&mut self, state: ProcessorState) {
+        match state {
+            ProcessorState::Learn => {
+                self.signal_transferer = Rc::clone(&self.learn_signal_transferer);
+            }
+            ProcessorState::Infer => {
+                self.signal_transferer = Rc::clone(&self.infer_signal_transferer);
             }
         }
     }

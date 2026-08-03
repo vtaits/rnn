@@ -1,4 +1,4 @@
-use rnn_architecture::{Processor, ResultReader, TickController};
+use rnn_architecture::{Processor, ProcessorState, ResultReader, TickController};
 
 pub struct SimpleTickController {
     processor: Box<dyn Processor>,
@@ -42,10 +42,14 @@ impl TickController for SimpleTickController {
     }
 
     fn attach_reader(&mut self, result_reader: Box<dyn ResultReader>) {
+        self.processor.set_state(ProcessorState::Infer);
+
         self.result_reader = Some(result_reader);
     }
 
     fn detach_reader(&mut self) -> Box<dyn ResultReader> {
+        self.processor.set_state(ProcessorState::Learn);
+
         self.result_reader
             .take()
             .expect("Result reader is not attached")

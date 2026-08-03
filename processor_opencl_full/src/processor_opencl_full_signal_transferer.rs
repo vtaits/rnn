@@ -1,4 +1,4 @@
-use ocl::{Buffer, ProQue};
+use ocl::{Buffer, Queue};
 
 pub trait ProcessorOpenCLFullSignalTransferer {
     fn transfer(
@@ -11,5 +11,5 @@ pub trait ProcessorOpenCLFullSignalTransferer {
         distances: &Buffer<f32>,
     );
 
-    fn get_pro_que(&self) -> &ProQue;
+    fn get_queue(&self) -> &Queue;
 }

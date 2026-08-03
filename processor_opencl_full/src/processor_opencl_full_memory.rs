@@ -1,8 +1,8 @@
-use ocl::{Buffer, ProQue};
+use ocl::{Buffer, Queue};
 use rnn_architecture::Memory;
 
 pub trait ProcessorOpenCLFullSpecificMemory {
-    fn make_buffers(&mut self, pro_que: &ProQue);
+    fn make_buffers(&mut self, queue: &Queue);
 
     fn get_layer_size(&self) -> usize;
 

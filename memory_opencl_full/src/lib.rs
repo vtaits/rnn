@@ -1,4 +1,4 @@
-use ocl::{Buffer, ProQue};
+use ocl::{Buffer, Queue};
 use processor_opencl_full::ProcessorOpenCLFullSpecificMemory;
 use rnn_architecture::Memory;
 
@@ -94,10 +94,10 @@ impl Memory for MemoryOpenCLFull {
 }
 
 impl ProcessorOpenCLFullSpecificMemory for MemoryOpenCLFull {
-    fn make_buffers(&mut self, pro_que: &ProQue) {
+    fn make_buffers(&mut self, queue: &Queue) {
         self.synapse_weights_1_to_2_buffer = Some(
             Buffer::<f32>::builder()
-                .queue(pro_que.queue().clone())
+                .queue(queue.clone())
                 .flags(ocl::flags::MEM_READ_WRITE)
                 .len(self.synapse_weights_1_to_2.len())
                 .copy_host_slice(&self.synapse_weights_1_to_2)
@@ -107,7 +107,7 @@ impl ProcessorOpenCLFullSpecificMemory for MemoryOpenCLFull {
 
         self.synapse_weights_2_to_1_buffer = Some(
             Buffer::<f32>::builder()
-                .queue(pro_que.queue().clone())
+                .queue(queue.clone())
                 .flags(ocl::flags::MEM_READ_WRITE)
                 .len(self.synapse_weights_2_to_1.len())
                 .copy_host_slice(&self.synapse_weights_2_to_1)
@@ -117,7 +117,7 @@ impl ProcessorOpenCLFullSpecificMemory for MemoryOpenCLFull {
 
         self.distances_1_to_2_buffer = Some(
             Buffer::<f32>::builder()
-                .queue(pro_que.queue().clone())
+                .queue(queue.clone())
                 .flags(ocl::flags::MEM_READ_ONLY)
                 .len(self.distances_1_to_2.len())
                 .copy_host_slice(&self.distances_1_to_2)
@@ -127,7 +127,7 @@ impl ProcessorOpenCLFullSpecificMemory for MemoryOpenCLFull {
 
         self.distances_2_to_1_buffer = Some(
             Buffer::<f32>::builder()
-                .queue(pro_que.queue().clone())
+                .queue(queue.clone())
                 .flags(ocl::flags::MEM_READ_ONLY)
                 .len(self.distances_2_to_1.len())
                 .copy_host_slice(&self.distances_2_to_1)
