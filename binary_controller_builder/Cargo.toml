@@ -11,6 +11,7 @@ full_fields_connector = { path = "../full_fields_connector" }
 memory_cpu_full = { path = "../memory_cpu_full" }
 memory_opencl_full = { path = "../memory_opencl_full" }
 refract_recounter_cpu = { path = "../refract_recounter_cpu" }
+refract_recounter_skip = { path = "../refract_recounter_skip" }
 power_law_distance = { path = "../power_law_distance" }
 processor_cpu_full = { path = "../processor_cpu_full" }
 processor_opencl_full = { path = "../processor_opencl_full" }
@@ -19,6 +20,8 @@ row_col_coordinates_resolver = { path = "../row_col_coordinates_resolver" }
 ocl = "0.19.7"
 signal_transferer_full_cpu = { path = "../signal_transferer_full_cpu" }
 signal_transferer_full_opencl = { path = "../signal_transferer_full_opencl" }
+signal_transferer_strong_opencl = { path = "../signal_transferer_strong_opencl" }
+signal_transferer_winner_opencl = { path = "../signal_transferer_winner_opencl" }
 simple_tick_controller = { path = "../simple_tick_controller" }
 simple_result_reader = { path = "../simple_result_reader" }
 sync_binary_controller = { path = "../sync_binary_controller" }

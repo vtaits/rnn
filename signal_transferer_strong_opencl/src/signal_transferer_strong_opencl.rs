@@ -3,7 +3,7 @@ use std::println;
 use ocl::{Buffer, Context, Device, Kernel, Program, Queue};
 use processor_opencl_full::ProcessorOpenCLFullSignalTransferer;
 
-pub struct SignalTransfererOpenCLFullParams<'a> {
+pub struct SignalTransfererOpenCLStrongParams<'a> {
     pub context: &'a Context,
     pub device: Device,
     pub field_width: usize,
@@ -19,7 +19,7 @@ pub struct SignalTransfererOpenCLFullParams<'a> {
     pub max_g: f32,
 }
 
-pub struct SignalTransfererOpenCLFull {
+pub struct SignalTransfererOpenCLStrong {
     kernel: Kernel,
     queue: Queue,
     layer_size: usize,
@@ -32,9 +32,9 @@ pub struct SignalTransfererOpenCLFull {
     max_g: f32,
 }
 
-impl SignalTransfererOpenCLFull {
-    pub fn new(params: SignalTransfererOpenCLFullParams) -> Self {
-        let SignalTransfererOpenCLFullParams {
+impl SignalTransfererOpenCLStrong {
+    pub fn new(params: SignalTransfererOpenCLStrongParams) -> Self {
+        let SignalTransfererOpenCLStrongParams {
             context,
             device,
             field_width,
@@ -50,7 +50,7 @@ impl SignalTransfererOpenCLFull {
             max_g,
         } = params;
 
-        let source = include_str!("signal_transferer_full_opencl.cl");
+        let source = include_str!("signal_transferer_strong_opencl.cl");
 
         let queue = Queue::new(&context, device, None).unwrap();
 
@@ -64,7 +64,7 @@ impl SignalTransfererOpenCLFull {
 
         let kernel = Kernel::builder()
             .program(&program)
-            .name("signal_transferer_full_opencl")
+            .name("signal_transferer_strong_opencl")
             .queue(queue.clone())
             .global_work_size(layer_size)
             .arg_named("g_0", 0.0_f32)
@@ -99,7 +99,7 @@ impl SignalTransfererOpenCLFull {
     }
 }
 
-impl ProcessorOpenCLFullSignalTransferer for SignalTransfererOpenCLFull {
+impl ProcessorOpenCLFullSignalTransferer for SignalTransfererOpenCLStrong {
     fn get_queue(&self) -> &Queue {
         &self.queue
     }

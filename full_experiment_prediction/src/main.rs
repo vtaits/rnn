@@ -1,3 +1,5 @@
+use std::vec;
+
 use binary_controller_builder::BinaryControllerBuilder;
 use cross_validation::CrossValidation;
 use data_multiple_timelines::{
@@ -7,6 +9,7 @@ use data_multiple_timelines::{
 use experiment_prediction::ExprerimentPrediction;
 use forward_transformer_logger::ForwardTransformerLogger;
 use inverse_transformer_logger::InverseTransformerLogger;
+use metrics::count_all_metrics;
 use rnn_architecture::{FullExperiment, SingleExperiment};
 use simple_experiment_result::SimpleExperimentResult;
 use simple_high_level_controller::SimpleHighLevelController;
@@ -15,7 +18,7 @@ use stream_splitter_data_provider::StreamSplitterDataProvider;
 
 fn main() {
     let cross_validation = CrossValidation::new(
-        10,
+        1,
         Box::new(|index| {
             let mut builder = BinaryControllerBuilder::new();
 
@@ -24,9 +27,13 @@ fn main() {
             builder.set_layer_width(3);
             builder.set_layer_height(3);
             builder.set_refract_interval(1);
-            builder.set_g_dec(1.0);
-            builder.set_g_inc(0.5);
-            builder.set_threshold_infer(0.3);
+            builder.set_g_dec(4.0);
+            builder.set_g_inc(1.0);
+            builder.set_alpha(2.0);
+            builder.set_h(0.4);
+            builder.set_threshold_learn(0.8);
+            builder.set_threshold_infer(0.2);
+            builder.set_partitions(vec![7, 24, 10, 30, 10]);
 
             let binary_controller = builder.build();
 
@@ -49,15 +56,16 @@ fn main() {
             ]);
 
             let data_provider = StreamSplitterDataProvider::new(
-                Box::new(data_iterator.into_iter().take(2000)),
+                Box::new(data_iterator.into_iter().take(2150)),
                 index * 72,
                 index * 72 + 72,
             );
 
             let high_level_controller = SimpleHighLevelController::new(
-                Box::new(ForwardTransformerLogger::new(Box::new(
-                    MultipleTimelinesForwardTransformer::new(),
-                ))),
+                // Box::new(ForwardTransformerLogger::new(Box::new(
+                //     MultipleTimelinesForwardTransformer::new(),
+                // ))),
+                Box::new(MultipleTimelinesForwardTransformer::new()),
                 Box::new(InverseTransformerLogger::new(Box::new(
                     MultipleTimelinesInverseTransformer::new(vec![
                         Box::new(WeekdayRetriever::new()),
@@ -82,14 +90,28 @@ fn main() {
 
     let results = cross_validation.execute();
 
+    let mut actual = vec![];
+    let mut received = vec![];
+
     for result in results {
+        for original_item in result.get_original_data().into_iter() {
+            match original_item[3].get_primitive_value() {
+                data_multiple_timelines::TimelinePrimitiveValue::Float(value) => {
+                    actual.push(value);
+                }
+                _ => {}
+            }
+        }
+
         for generated_item in result.get_generated_data().into_iter() {
             match generated_item[3].get_primitive_value() {
                 data_multiple_timelines::TimelinePrimitiveValue::Float(value) => {
-                    println!("{}", value);
+                    received.push(value);
                 }
                 _ => {}
             }
         }
     }
+
+    count_all_metrics(&actual, &received);
 }

@@ -15,3 +15,4 @@ simple_experiment_result = { path = "../simple_experiment_result" }
 simple_high_level_controller = { path = "../simple_high_level_controller" }
 statshouse_data_iterator = { path = "../statshouse_data_iterator" }
 stream_splitter_data_provider = { path = "../stream_splitter_data_provider" }
+metrics = { path = "../metrics" }

@@ -28,7 +28,7 @@ impl Topology for TopologyRestoreFirst {
                 let shift_x = field_x as i32 - prev_x as i32;
                 let shift_y = field_y as i32 - prev_y as i32;
 
-                fields_connector.connect_2_to_1(memory, prev_x, prev_y, 0, 0, shift_x, shift_y);
+                fields_connector.connect_1_to_2(memory, prev_x, prev_y, 0, 0, 0, 0);
                 fields_connector
                     .connect_2_to_1(memory, prev_x, prev_y, field_x, field_y, shift_x, shift_y);
             }
@@ -36,7 +36,5 @@ impl Topology for TopologyRestoreFirst {
             prev_x = field_x;
             prev_y = field_y;
         }
-
-        fields_connector.connect_2_to_1(memory, prev_x, prev_y, 0, 0, 0, 0);
     }
 }

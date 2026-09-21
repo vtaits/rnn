@@ -14,7 +14,9 @@ pub struct ProcessorOpenCLFullParams {
 pub struct ProcessorOpenCLFull {
     g_0: f32,
     field_size: usize,
-    refract_recounter: Box<dyn CpuRefractRecounter>,
+    refract_recounter: Rc<Box<dyn CpuRefractRecounter>>,
+    learn_refract_recounter: Rc<Box<dyn CpuRefractRecounter>>,
+    infer_refract_recounter: Rc<Box<dyn CpuRefractRecounter>>,
     signal_transferer: Rc<Box<dyn ProcessorOpenCLFullSignalTransferer>>,
     learn_signal_transferer: Rc<Box<dyn ProcessorOpenCLFullSignalTransferer>>,
     infer_signal_transferer: Rc<Box<dyn ProcessorOpenCLFullSignalTransferer>>,
@@ -27,7 +29,8 @@ impl ProcessorOpenCLFull {
         mut memory: Box<dyn ProcessorOpenCLFullMemory>,
         learn_signal_transferer: Rc<Box<dyn ProcessorOpenCLFullSignalTransferer>>,
         infer_signal_transferer: Rc<Box<dyn ProcessorOpenCLFullSignalTransferer>>,
-        refract_recounter: Box<dyn CpuRefractRecounter>,
+        learn_refract_recounter: Rc<Box<dyn CpuRefractRecounter>>,
+        infer_refract_recounter: Rc<Box<dyn CpuRefractRecounter>>,
     ) -> Self {
         let ProcessorOpenCLFullParams {
             g_0,
@@ -43,7 +46,9 @@ impl ProcessorOpenCLFull {
             signal_transferer: Rc::clone(&learn_signal_transferer),
             learn_signal_transferer,
             infer_signal_transferer,
-            refract_recounter,
+            refract_recounter: Rc::clone(&learn_refract_recounter),
+            learn_refract_recounter,
+            infer_refract_recounter,
             field_size: field_width * field_height,
         }
     }
@@ -64,9 +69,11 @@ impl Processor for ProcessorOpenCLFull {
         match state {
             ProcessorState::Learn => {
                 self.signal_transferer = Rc::clone(&self.learn_signal_transferer);
+                self.refract_recounter = Rc::clone(&self.learn_refract_recounter);
             }
             ProcessorState::Infer => {
                 self.signal_transferer = Rc::clone(&self.infer_signal_transferer);
+                self.refract_recounter = Rc::clone(&self.infer_refract_recounter);
             }
         }
     }

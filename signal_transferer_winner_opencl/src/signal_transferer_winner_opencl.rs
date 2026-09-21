@@ -3,7 +3,9 @@ use std::println;
 use ocl::{Buffer, Context, Device, Kernel, Program, Queue};
 use processor_opencl_full::ProcessorOpenCLFullSignalTransferer;
 
-pub struct SignalTransfererOpenCLFullParams<'a> {
+use crate::excite_neurons_with_partitions::excite_neurons_with_partitions;
+
+pub struct SignalTransfererOpenCLWinnerParams<'a> {
     pub context: &'a Context,
     pub device: Device,
     pub field_width: usize,
@@ -13,28 +15,25 @@ pub struct SignalTransfererOpenCLFullParams<'a> {
     pub threshold: f32,
     pub gamma_inc: f32,
     pub gamma_dec: f32,
-    pub g_inc: f32,
-    pub g_dec: f32,
-    pub min_g: f32,
-    pub max_g: f32,
+    pub partitions: Vec<usize>,
 }
 
-pub struct SignalTransfererOpenCLFull {
+pub struct SignalTransfererOpenCLWinner {
     kernel: Kernel,
     queue: Queue,
+    buffer_signals_to: Buffer<f32>,
     layer_size: usize,
+    field_size: usize,
+    field_count: usize,
     threshold: f32,
     gamma_inc: f32,
     gamma_dec: f32,
-    g_inc: f32,
-    g_dec: f32,
-    min_g: f32,
-    max_g: f32,
+    partitions: Vec<usize>,
 }
 
-impl SignalTransfererOpenCLFull {
-    pub fn new(params: SignalTransfererOpenCLFullParams) -> Self {
-        let SignalTransfererOpenCLFullParams {
+impl SignalTransfererOpenCLWinner {
+    pub fn new(params: SignalTransfererOpenCLWinnerParams) -> Self {
+        let SignalTransfererOpenCLWinnerParams {
             context,
             device,
             field_width,
@@ -44,13 +43,10 @@ impl SignalTransfererOpenCLFull {
             threshold,
             gamma_inc,
             gamma_dec,
-            g_inc,
-            g_dec,
-            min_g,
-            max_g,
+            partitions,
         } = params;
 
-        let source = include_str!("signal_transferer_full_opencl.cl");
+        let source = include_str!("signal_transferer_winner_opencl.cl");
 
         let queue = Queue::new(&context, device, None).unwrap();
 
@@ -64,42 +60,44 @@ impl SignalTransfererOpenCLFull {
 
         let kernel = Kernel::builder()
             .program(&program)
-            .name("signal_transferer_full_opencl")
+            .name("signal_transferer_winner_opencl")
             .queue(queue.clone())
             .global_work_size(layer_size)
             .arg_named("g_0", 0.0_f32)
             .arg_named("neurons_from", None::<&Buffer<u8>>)
-            .arg_named("neurons_to", None::<&Buffer<u8>>)
+            .arg_named("signals_to", None::<&Buffer<f32>>)
             .arg_named("refract_intervals_to", None::<&Buffer<u8>>)
             .arg_named("synapses", None::<&Buffer<f32>>)
             .arg_named("distances", None::<&Buffer<f32>>)
             .arg_named("layer_size", 0_u32)
-            .arg_named("threshold", 0.0_f32)
             .arg_named("gamma_inc", 0.0_f32)
             .arg_named("gamma_dec", 0.0_f32)
-            .arg_named("g_dec", 0.0_f32)
-            .arg_named("g_inc", 0.0_f32)
-            .arg_named("min_g", 0.0_f32)
-            .arg_named("max_g", 0.0_f32)
+            .build()
+            .unwrap();
+
+        let buffer_signals_to = Buffer::<f32>::builder()
+            .queue(queue.clone())
+            .flags(ocl::flags::MEM_READ_WRITE)
+            .len(layer_size)
             .build()
             .unwrap();
 
         Self {
             queue,
             kernel,
+            buffer_signals_to,
             layer_size,
             threshold,
             gamma_inc,
             gamma_dec,
-            g_inc,
-            g_dec,
-            min_g,
-            max_g,
+            field_size: field_width * field_height,
+            field_count: layer_width * layer_height,
+            partitions,
         }
     }
 }
 
-impl ProcessorOpenCLFullSignalTransferer for SignalTransfererOpenCLFull {
+impl ProcessorOpenCLFullSignalTransferer for SignalTransfererOpenCLWinner {
     fn get_queue(&self) -> &Queue {
         &self.queue
     }
@@ -136,20 +134,13 @@ impl ProcessorOpenCLFullSignalTransferer for SignalTransfererOpenCLFull {
             .build()
             .unwrap();
 
-        let buffer_neurons_to = Buffer::<u8>::builder()
-            .queue(self.queue.clone())
-            .flags(ocl::flags::MEM_READ_WRITE)
-            .len(self.layer_size)
-            .build()
-            .unwrap();
-
         unsafe {
             self.kernel.set_arg("g_0", g_0).unwrap();
             self.kernel
                 .set_arg("neurons_from", &buffer_neurons_from)
                 .unwrap();
             self.kernel
-                .set_arg("neurons_to", &buffer_neurons_to)
+                .set_arg("signals_to", &self.buffer_signals_to)
                 .unwrap();
             self.kernel
                 .set_arg("refract_intervals_to", &buffer_refract_intervals_to)
@@ -159,17 +150,23 @@ impl ProcessorOpenCLFullSignalTransferer for SignalTransfererOpenCLFull {
             self.kernel
                 .set_arg("layer_size", self.layer_size as u32)
                 .unwrap();
-            self.kernel.set_arg("threshold", self.threshold).unwrap();
             self.kernel.set_arg("gamma_inc", self.gamma_inc).unwrap();
             self.kernel.set_arg("gamma_dec", self.gamma_dec).unwrap();
-            self.kernel.set_arg("g_dec", self.g_dec).unwrap();
-            self.kernel.set_arg("g_inc", self.g_inc).unwrap();
-            self.kernel.set_arg("min_g", self.min_g).unwrap();
-            self.kernel.set_arg("max_g", self.max_g).unwrap();
             self.kernel.enq().unwrap();
         }
 
-        buffer_neurons_to.read(&mut *neurons_to).enq().unwrap();
+        let mut signals_to = vec![0.0; self.layer_size];
+
+        self.buffer_signals_to.read(&mut *signals_to).enq().unwrap();
+
+        excite_neurons_with_partitions(
+            neurons_to,
+            &signals_to,
+            &self.field_size,
+            &self.field_count,
+            &self.threshold,
+            &self.partitions,
+        );
 
         /* for (index, neuron) in neurons_to.iter().enumerate() {
             if index % 81 == 0 {

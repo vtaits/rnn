@@ -9,14 +9,22 @@ use power_law_distance::PowerLawDistance;
 use processor_cpu_full::{ProcessorCpuFull, ProcessorCpuFullMemory, ProcessorCpuFullParams};
 use processor_opencl_full::{
     ProcessorOpenCLFull, ProcessorOpenCLFullMemory, ProcessorOpenCLFullParams,
+    ProcessorOpenCLFullSignalTransferer,
 };
 use refract_recounter_cpu::RefractRecounterCpu;
+use refract_recounter_skip::RefractRecounterSkip;
 use rnn_architecture::{
     BinaryController, BlockSequence, FieldsConnector, Processor, ResultReader, Topology,
 };
 use row_col_coordinates_resolver::RowColCoordinatesResolver;
 use signal_transferer_full_cpu::{SignalTransfererCpuFull, SignalTransfererCpuFullParams};
 use signal_transferer_full_opencl::{SignalTransfererOpenCLFull, SignalTransfererOpenCLFullParams};
+use signal_transferer_strong_opencl::{
+    SignalTransfererOpenCLStrong, SignalTransfererOpenCLStrongParams,
+};
+use signal_transferer_winner_opencl::{
+    SignalTransfererOpenCLWinner, SignalTransfererOpenCLWinnerParams,
+};
 use simple_result_reader::SimpleResultReader;
 use simple_tick_controller::SimpleTickController;
 use sync_binary_controller::SyncBinaryController;
@@ -45,6 +53,7 @@ pub struct BinaryControllerBuilder {
     threshold_learn: f32,
     threshold_infer: f32,
     processor_type: ProcessorType,
+    partitions: Vec<usize>,
 }
 
 impl BinaryControllerBuilder {
@@ -67,6 +76,7 @@ impl BinaryControllerBuilder {
             threshold_learn: 0.8,
             threshold_infer: 0.7,
             processor_type: ProcessorType::OpenCLFull,
+            partitions: vec![],
         }
     }
 
@@ -132,6 +142,10 @@ impl BinaryControllerBuilder {
 
     pub fn set_threshold_infer(&mut self, threshold_infer: f32) {
         self.threshold_infer = threshold_infer;
+    }
+
+    pub fn set_partitions(&mut self, partitions: Vec<usize>) {
+        self.partitions = partitions;
     }
 
     fn build_fields_connector(&self) -> Box<dyn FieldsConnector> {
@@ -284,25 +298,44 @@ impl BinaryControllerBuilder {
             .build()
             .unwrap();
 
-        let signal_transferer_infer =
-            SignalTransfererOpenCLFull::new(SignalTransfererOpenCLFullParams {
-                context: &context,
-                device,
-                field_width,
-                field_height,
-                layer_width,
-                layer_height,
-                threshold: *threshold_infer,
-                gamma_inc: *gamma_inc,
-                gamma_dec: *gamma_dec,
-                g_inc: *g_inc,
-                g_dec: *g_dec,
-                min_g: *min_g,
-                max_g: *max_g,
-            });
+        let signal_transferer_infer: Box<dyn ProcessorOpenCLFullSignalTransferer> =
+            if self.partitions.len() > 0 {
+                Box::new(SignalTransfererOpenCLWinner::new(
+                    SignalTransfererOpenCLWinnerParams {
+                        context: &context,
+                        device,
+                        field_width,
+                        field_height,
+                        layer_width,
+                        layer_height,
+                        threshold: *threshold_infer,
+                        gamma_inc: *gamma_inc,
+                        gamma_dec: *gamma_dec,
+                        partitions: self.partitions.clone(),
+                    },
+                ))
+            } else {
+                Box::new(SignalTransfererOpenCLFull::new(
+                    SignalTransfererOpenCLFullParams {
+                        context: &context,
+                        device,
+                        field_width,
+                        field_height,
+                        layer_width,
+                        layer_height,
+                        threshold: *threshold_infer,
+                        gamma_inc: *gamma_inc,
+                        gamma_dec: *gamma_dec,
+                        g_inc: *g_inc,
+                        g_dec: *g_dec,
+                        min_g: *min_g,
+                        max_g: *max_g,
+                    },
+                ))
+            };
 
         let signal_transferer_learn =
-            SignalTransfererOpenCLFull::new(SignalTransfererOpenCLFullParams {
+            SignalTransfererOpenCLStrong::new(SignalTransfererOpenCLStrongParams {
                 context: &context,
                 device,
                 field_width,
@@ -318,7 +351,8 @@ impl BinaryControllerBuilder {
                 max_g: *max_g,
             });
 
-        let refract_recounter = RefractRecounterCpu::new(*refract_interval);
+        let learn_refract_recounter = RefractRecounterCpu::new(*refract_interval);
+        let infer_refract_recounter = RefractRecounterSkip::new();
 
         let mut fields_connector = self.build_fields_connector();
 
@@ -332,8 +366,9 @@ impl BinaryControllerBuilder {
             },
             Box::new(memory) as Box<dyn ProcessorOpenCLFullMemory>,
             Rc::new(Box::new(signal_transferer_learn)),
-            Rc::new(Box::new(signal_transferer_infer)),
-            Box::new(refract_recounter),
+            Rc::new(signal_transferer_infer),
+            Rc::new(Box::new(learn_refract_recounter)),
+            Rc::new(Box::new(infer_refract_recounter)),
         ))
     }
 
